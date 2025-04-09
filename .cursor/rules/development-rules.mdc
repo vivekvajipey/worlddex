@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Development Rules for WorldDex App
+
+## Code Style
+- Keep code concise and clean - prefer short, readable functions and components
+- Avoid excessive commenting - code should be self-documenting where possible
+- Use meaningful variable and function names that explain their purpose
+
+## Styling
+- Use Tailwind CSS exclusively for all styling needs
+- Never use inline styles (style={{}})
+- Never create separate CSS/SCSS stylesheets
+- Follow utility-first approach with Tailwind's composable classes
+
+## Component Structure
+- Create small, reusable components
+- Follow single-responsibility principle
+- Keep component nesting to a reasonable depth
+- Use TypeScript for type safety
+
+## React/React Native Best Practices
+- Use functional components with hooks
+- Avoid unnecessary re-renders (use memoization when appropriate)
+- Properly handle async operations and loading states
+- Structure folders by feature rather than by type when applicable
+
+## Performance
+- Optimize imports to reduce bundle size
+- Lazy load components when appropriate
+- Properly handle and clean up subscriptions/listeners
