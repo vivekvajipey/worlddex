@@ -1,0 +1,6 @@
+module Pods_worlddexfrontend {
+  umbrella header "Pods-worlddexfrontend-umbrella.h"
+
+  export *
+  module * { export * }
+}

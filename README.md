@@ -7,7 +7,7 @@ Follow these steps to set up and run the React Native frontend application on an
 1.  **Navigate to the frontend directory:**
 
     ```bash
-    cd worlddex/worlddex-frontend
+    cd worlddex/frontend-worlddex
     ```
 
 2.  **Install Node modules:**
@@ -32,7 +32,7 @@ Follow these steps to set up and run the React Native frontend application on an
 
 5.  **Build and run via Xcode (Optional but recommended for first time):**
 
-    - Open the `WorldDexApp.xcworkspace` file (located in `worlddex/worlddex-frontend/ios/`) in Xcode.
+    - Open the `WorldDexApp.xcworkspace` file (located in `worlddex/frontend-worlddex/ios/`) in Xcode.
     - Select your target simulator or device.
     - Click the Run button (▶︎).
 
