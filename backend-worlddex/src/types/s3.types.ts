@@ -1,5 +1,4 @@
 import type { _Object as S3Object } from '@aws-sdk/client-s3';
-import type { FileMetadata } from '@worlddex/shared';
 
 // Internal service options
 export interface S3UploadOptions {
@@ -36,9 +35,6 @@ export interface S3ListOptions {
   maxKeys?: number;
   continuationToken?: string;
 }
-
-// Mapping function type
-export type S3ToFileMetadata = (s3Object: S3Object) => FileMetadata;
 
 export interface UploadResponse {
   key: string;
