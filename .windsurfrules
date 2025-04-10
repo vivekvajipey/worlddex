@@ -1,0 +1,32 @@
+# Development Rules for WorldDex App
+
+## Code Style
+- Keep code concise and clean - prefer short, readable functions and components
+- Avoid excessive commenting - code should be self-documenting where possible
+- Use meaningful variable and function names that explain their purpose
+
+## Styling
+- Use NativeWind exclusively for all styling needs in React Native
+- Never use inline styles (style={{}})
+- Never create separate CSS/SCSS stylesheets
+- Follow utility-first approach with NativeWind's composable classes
+- Use className prop instead of style prop for all components
+- Ensure all components are wrapped with styled() HOC from nativewind when needed
+- Use React Native's built-in components (View, Text, etc.) with NativeWind classes
+
+## Component Structure
+- Create small, reusable components
+- Follow single-responsibility principle
+- Keep component nesting to a reasonable depth
+- Use TypeScript for type safety
+
+## React/React Native Best Practices
+- Use functional components with hooks
+- Avoid unnecessary re-renders (use memoization when appropriate)
+- Properly handle async operations and loading states
+- Structure folders by feature rather than by type when applicable
+
+## Performance
+- Optimize imports to reduce bundle size
+- Lazy load components when appropriate
+- Properly handle and clean up subscriptions/listeners
