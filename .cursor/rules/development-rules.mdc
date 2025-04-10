@@ -11,10 +11,13 @@ alwaysApply: true
 - Use meaningful variable and function names that explain their purpose
 
 ## Styling
-- Use Tailwind CSS exclusively for all styling needs
+- Use NativeWind exclusively for all styling needs in React Native
 - Never use inline styles (style={{}})
 - Never create separate CSS/SCSS stylesheets
-- Follow utility-first approach with Tailwind's composable classes
+- Follow utility-first approach with NativeWind's composable classes
+- Use className prop instead of style prop for all components
+- Ensure all components are wrapped with styled() HOC from nativewind when needed
+- Use React Native's built-in components (View, Text, etc.) with NativeWind classes
 
 ## Component Structure
 - Create small, reusable components

@@ -27,6 +27,18 @@
     "plugins": [
       "expo-router",
       [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/LexendDeca-Regular.ttf",
+            "./assets/fonts/LexendDeca-Bold.ttf",
+            "./assets/fonts/LexendDeca-Light.ttf",
+            "./assets/fonts/LexendDeca-Medium.ttf",
+            "./assets/fonts/LexendDeca-SemiBold.ttf"
+          ]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
