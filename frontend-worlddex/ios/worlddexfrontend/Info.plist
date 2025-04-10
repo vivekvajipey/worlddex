@@ -75,5 +75,11 @@
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
+    <key>NSCameraUsageDescription</key>
+    <string>WorldDex needs camera access to identify objects in your surroundings.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>WorldDex needs access to your photo library to save captured discoveries.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>WorldDex needs permission to save captured discoveries to your photo library.</string>
   </dict>
 </plist>
