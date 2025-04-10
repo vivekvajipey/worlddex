@@ -5,49 +5,76 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // New color system
+        // Primary colors
         primary: {
-          50: "#fef2f5",
-          100: "#fde6eb",
-          200: "#ffc2cd",
-          300: "#ff9eae",
-          400: "#FF7275", // Bittersweet Orange
-          500: "#E14873", // Mandy Pink
-          600: "#c93965",
-          700: "#a92d53",
-          800: "#8a2543",
-          900: "#721e37",
-          950: "#450a1a",
+          DEFAULT: "#F97316", // Tangerine Orange
+          50: "#FEF5ED",
+          100: "#FDEAD8",
+          200: "#FAD5B1",
+          300: "#F7BF8A",
+          400: "#F5A963",
+          500: "#F97316", // Tangerine Orange
+          600: "#D6580E",
+          700: "#B3420B",
+          800: "#902C07",
+          900: "#6D1605",
+          950: "#450A00",
         },
+        // Accent colors
+        accent: {
+          DEFAULT: "#FACC15", // Goldenrod Yellow
+          50: "#FEFCE8",
+          100: "#FEF9C3",
+          200: "#FEF08A",
+          300: "#FDE047",
+          400: "#FACC15", // Goldenrod Yellow
+          500: "#EAB308",
+          600: "#CA8A04",
+          700: "#A16207",
+          800: "#854D0E",
+          900: "#713F12",
+          950: "#422006",
+        },
+        // Secondary Accent colors
         secondary: {
-          50: "#f1f3ff",
-          100: "#e3e7ff",
-          200: "#cbd4ff",
-          300: "#a8b8ff",
-          400: "#6A87FB", // Soft Blue
-          500: "#4b68dc",
-          600: "#3b4fbf",
-          700: "#2c3c99",
-          800: "#24327d",
-          900: "#212c67",
-          950: "#121a3e",
+          DEFAULT: "#4ADE80", // Spring Mint
+          50: "#F0FDF4",
+          100: "#DCFCE7",
+          200: "#BBF7D0",
+          300: "#86EFAC",
+          400: "#4ADE80", // Spring Mint
+          500: "#22C55E",
+          600: "#16A34A",
+          700: "#15803D",
+          800: "#166534",
+          900: "#14532D",
+          950: "#052E16",
         },
-        gray: {
-          50: "#FFF4ED", // Fantasy Pink (lightest shade for background)
-          100: "#f8ebe3",
-          200: "#eddcd1",
-          300: "#dcc7ba",
-          400: "#c4ab9b",
-          500: "#ac8e7d",
-          600: "#917366",
-          700: "#755c53",
-          800: "#604c45",
-          900: "#40322d",
-          950: "#101010", // Oil Black
+        // Background and surface colors
+        background: "#FFF4ED", // Fantasy Pink
+        surface: "#FFFFFF", // Pearl White
+        
+        // Text colors
+        text: {
+          primary: "#1F2937", // Charcoal Gray
+          secondary: "#6B7280", // Ash Gray
         },
         
-        // Set background color
-        background: "#FFF4ED", // Fantasy Pink
+        // Error/Alert color
+        error: {
+          DEFAULT: "#EF4444", // Sunset Red
+          50: "#FEF2F2",
+          100: "#FEE2E2",
+          200: "#FECACA",
+          300: "#FCA5A5",
+          400: "#F87171",
+          500: "#EF4444",
+          600: "#DC2626",
+          700: "#B91C1C",
+          800: "#991B1B",
+          900: "#7F1D1D",
+          950: "#450A0A",
+        },
       },
       fontFamily: {
         'sans': ['Lexend Deca'],
