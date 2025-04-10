@@ -1,20 +1,20 @@
-import { Stack } from 'expo-router';
-import { View } from 'react-native';
-import { useFonts } from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import '../global.css';
+import { Stack } from "expo-router";
+import { View } from "react-native";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import "../global.css";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    'LexendDeca-Regular': require('../assets/fonts/LexendDeca-Regular.ttf'),
-    'LexendDeca-Bold': require('../assets/fonts/LexendDeca-Bold.ttf'),
-    'LexendDeca-Light': require('../assets/fonts/LexendDeca-Light.ttf'),
-    'LexendDeca-Medium': require('../assets/fonts/LexendDeca-Medium.ttf'),
-    'LexendDeca-SemiBold': require('../assets/fonts/LexendDeca-SemiBold.ttf'),
+    "LexendDeca-Regular": require("../assets/fonts/LexendDeca-Regular.ttf"),
+    "LexendDeca-Bold": require("../assets/fonts/LexendDeca-Bold.ttf"),
+    "LexendDeca-Light": require("../assets/fonts/LexendDeca-Light.ttf"),
+    "LexendDeca-Medium": require("../assets/fonts/LexendDeca-Medium.ttf"),
+    "LexendDeca-SemiBold": require("../assets/fonts/LexendDeca-SemiBold.ttf"),
   });
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: {
-            backgroundColor: 'transparent',
+            backgroundColor: "transparent",
           },
         }}
       />

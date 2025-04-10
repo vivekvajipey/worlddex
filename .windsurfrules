@@ -4,6 +4,7 @@
 - Keep code concise and clean - prefer short, readable functions and components
 - Avoid excessive commenting - code should be self-documenting where possible
 - Use meaningful variable and function names that explain their purpose
+- Always use double quotations ("") instead of single quotations ('') for strings
 
 ## Styling
 - Use NativeWind exclusively for all styling needs in React Native
