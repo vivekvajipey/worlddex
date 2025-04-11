@@ -39,8 +39,26 @@ export default function RootLayout() {
             contentStyle: {
               backgroundColor: "transparent",
             },
+            // Disable animations for immediate transitions
+            animation: "none",
+            presentation: "transparentModal",
           }}
-        />
+        >
+          <Stack.Screen name="index" />
+          <Stack.Screen
+            name="(screens)/photo-preview"
+            options={{
+              animation: "none",
+              presentation: "transparentModal"
+            }}
+          />
+          <Stack.Screen
+            name="(screens)/camera"
+            options={{
+              animation: "none"
+            }}
+          />
+        </Stack>
       </View>
     </GestureHandlerRootView>
   );

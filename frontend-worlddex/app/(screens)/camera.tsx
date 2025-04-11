@@ -5,6 +5,7 @@ import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useAnimatedProps } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 
 const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 
@@ -13,6 +14,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
+  const router = useRouter();
 
   // Zoom state
   const [zoom, setZoom] = useState(0);
@@ -82,16 +84,23 @@ export default function CameraScreen() {
   }
 
   async function takePicture() {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync();
-        if (photo) {
-          await MediaLibrary.saveToLibraryAsync(photo.uri);
-          console.log("Photo saved to library:", photo.uri);
-        }
-      } catch (error) {
-        console.error("Error taking picture:", error);
+    if (!cameraRef.current) return;
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync();
+
+      if (photo) {
+        await MediaLibrary.saveToLibraryAsync(photo.uri);
+        console.log("Photo saved to library:", photo.uri);
+
+        // Navigate to the photo preview
+        router.push({
+          pathname: "/(screens)/photo-preview",
+          params: { photoUri: photo.uri }
+        });
       }
+    } catch (error) {
+      console.error("Error taking picture:", error);
     }
   }
 
