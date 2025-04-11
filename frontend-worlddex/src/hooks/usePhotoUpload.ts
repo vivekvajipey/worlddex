@@ -29,9 +29,7 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
       setIsUploading(true);
       setError(null);
 
-      // When testing in Expo Go, we need to use the local network URL on Android
       const baseUrl = Platform.select({
-        android: API_URL.replace('localhost', '10.0.2.2'), // Android emulator
         ios: API_URL,
         default: API_URL,
       });
