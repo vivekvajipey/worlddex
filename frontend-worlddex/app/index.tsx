@@ -1,10 +1,5 @@
-import { View } from 'react-native';
-import { TestPhotoUpload } from '../src/components/TestPhotoUpload';
+import CameraScreen from "./(screens)/camera";
 
-export default function App() {
-  return (
-    <View className="flex-1 items-center justify-center">
-      <TestPhotoUpload />
-    </View>
-  );
+export default function Index() {
+  return <CameraScreen />;
 }
