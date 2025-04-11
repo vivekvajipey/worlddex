@@ -1,13 +1,52 @@
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { useState, useRef } from "react";
-import { Button, Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import { useState, useRef, useCallback, useMemo } from "react";
+import { Button, Text, TouchableOpacity, View, StyleSheet, Platform } from "react-native";
 import * as MediaLibrary from "expo-media-library";
+import { Ionicons } from "@expo/vector-icons";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import Animated, { useAnimatedProps } from "react-native-reanimated";
+
+const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
+
+  // Zoom state
+  const [zoom, setZoom] = useState(0);
+  const [lastZoom, setLastZoom] = useState(0);
+
+  const cameraAnimatedProps = useAnimatedProps(() => {
+    return {
+      zoom: zoom,
+    };
+  });
+
+  // Pinch gesture handler using runOnJS
+  const pinchGesture = useMemo(
+    () => Gesture.Pinch()
+      .runOnJS(true)
+      .onUpdate((event) => {
+        const velocity = event.velocity / 15;
+        const outFactor = lastZoom * (Platform.OS === 'ios' ? 50 : 25);
+
+        let newZoom =
+          velocity > 0
+            ? zoom + event.scale * velocity * (Platform.OS === 'ios' ? 0.02 : 35)
+            : zoom - (event.scale * (outFactor || 1)) * Math.abs(velocity) * (Platform.OS === 'ios' ? 0.035 : 60);
+
+        if (newZoom < 0) newZoom = 0;
+        else if (newZoom > 0.9) newZoom = 0.9;
+
+        setZoom(newZoom);
+      })
+      .onEnd(() => {
+        setLastZoom(zoom);
+      }),
+    [zoom, lastZoom]
+  );
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -58,28 +97,40 @@ export default function CameraScreen() {
 
   return (
     <View style={StyleSheet.absoluteFillObject}>
-      <CameraView
-        ref={cameraRef}
-        className="flex-1"
-        facing={facing}
-        style={StyleSheet.absoluteFillObject}
-      >
-        <View className="flex-1 flex-row justify-center items-end mb-12">
-          <TouchableOpacity
-            className="bg-white rounded-full p-6 mr-6"
-            onPress={takePicture}
+      <GestureDetector gesture={pinchGesture}>
+        <Animated.View style={StyleSheet.absoluteFillObject}>
+          <AnimatedCamera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFillObject}
+            facing={facing}
+            animatedProps={cameraAnimatedProps}
           >
-            <View className="w-12 h-12 rounded-full border-4 border-background" />
-          </TouchableOpacity>
+            {/* Flip camera button - top right */}
+            <TouchableOpacity
+              className="absolute top-12 right-6"
+              onPress={toggleCameraFacing}
+            >
+              <Ionicons name="sync-outline" size={28} color="#FFF4ED" />
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            className="bg-black/50 rounded-full p-4 self-end"
-            onPress={toggleCameraFacing}
-          >
-            <Text className="text-white font-lexend-medium">Flip Camera</Text>
-          </TouchableOpacity>
-        </View>
-      </CameraView>
+            {/* Capture button - bottom center */}
+            <View className="absolute bottom-12 left-0 right-0 flex items-center">
+              <TouchableOpacity
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  borderWidth: 4,
+                  borderColor: "#FFF4ED",
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}
+                onPress={takePicture}
+              />
+            </View>
+          </AnimatedCamera>
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 } 
