@@ -1,10 +1,11 @@
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useState, useRef, useCallback, useMemo } from "react";
-import { Button, Text, TouchableOpacity, View, StyleSheet, Platform } from "react-native";
+import { Button, Text, TouchableOpacity, View, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useAnimatedProps } from "react-native-reanimated";
+import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
 const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 
@@ -13,6 +14,9 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
+  
+  const { identifyPhoto, isLoading: isIdentifying, error: identifyError, result: identifyResult } = useVlmIdentify();
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   // Zoom state
   const [zoom, setZoom] = useState(0);
@@ -81,16 +85,43 @@ export default function CameraScreen() {
     setFacing(current => (current === "back" ? "front" : "back"));
   }
 
-  async function takePicture() {
+  async function takePictureAndIdentify() {
     if (cameraRef.current) {
+      setFeedbackMessage(null);
+      
       try {
-        const photo = await cameraRef.current.takePictureAsync();
-        if (photo) {
+        // Take picture with base64 data for identification
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.7, // TODO: test and optimize
+          base64: true
+        });
+        
+        if (!photo) {
+          console.error("Failed to capture photo");
+          setFeedbackMessage("Failed to capture photo");
+          return;
+        }
+
+        if (photo.uri) {
           await MediaLibrary.saveToLibraryAsync(photo.uri);
           console.log("Photo saved to library:", photo.uri);
         }
+        
+        if (photo.base64) {
+          setFeedbackMessage("Identifying...");
+          const contentType = "image/jpeg";
+          
+          try {
+            const result = await identifyPhoto({ base64Data: photo.base64, contentType });
+            setFeedbackMessage(`Identified: ${result.label || "Unknown"}`);
+          } catch (identifyError: any) {
+            console.error("Error identifying image:", identifyError);
+            setFeedbackMessage(`Error: ${identifyError.message || "Failed to identify"}`);
+          }
+        }
       } catch (error) {
         console.error("Error taking picture:", error);
+        setFeedbackMessage("Error capturing image");
       }
     }
   }
@@ -105,6 +136,20 @@ export default function CameraScreen() {
             facing={facing}
             animatedProps={cameraAnimatedProps}
           >
+            {/* Feedback display - top center */}
+            {feedbackMessage && (
+              <View className="absolute top-12 left-5 right-5 bg-black/40 rounded-lg p-2 items-center">
+                {isIdentifying ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="#FFF4ED" />
+                    <Text className="text-white font-lexend-regular ml-2">{feedbackMessage}</Text>
+                  </View>
+                ) : (
+                  <Text className="text-white font-lexend-medium text-center">{feedbackMessage}</Text>
+                )}
+              </View>
+            )}
+            
             {/* Flip camera button - top right */}
             <TouchableOpacity
               className="absolute top-12 right-6"
@@ -116,17 +161,15 @@ export default function CameraScreen() {
             {/* Capture button - bottom center */}
             <View className="absolute bottom-12 left-0 right-0 flex items-center">
               <TouchableOpacity
+                className="w-20 h-20 rounded-full border-4 border-background justify-center items-center"
                 style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  borderWidth: 4,
-                  borderColor: "#FFF4ED",
-                  justifyContent: "center",
-                  alignItems: "center"
+                  opacity: isIdentifying ? 0.7 : 1,
                 }}
-                onPress={takePicture}
-              />
+                onPress={takePictureAndIdentify}
+                disabled={isIdentifying}
+              >
+                <View className="w-16 h-16 bg-white/80 rounded-full" />
+              </TouchableOpacity>
             </View>
           </AnimatedCamera>
         </Animated.View>

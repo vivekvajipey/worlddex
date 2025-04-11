@@ -15,6 +15,11 @@ app.use(express.json({ limit: "50mb" })); // For handling large base64 images
 app.use("/api/photos", photoRoutes);
 app.use("/api/vlm", vlmRoutes);
 
+// Health endpoint for connectivity testing
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "Server is running" });
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
