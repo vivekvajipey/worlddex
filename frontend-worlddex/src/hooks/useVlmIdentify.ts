@@ -33,7 +33,7 @@ export const useVlmIdentify = (): UseVlmIdentifyReturn => {
         try {
             const endpoint = `${API_URL}/vlm/identify`;
             
-            // Log request details for debugging
+            // Debug logging
             console.log("VLM Request URL:", endpoint);
             console.log("VLM Request Payload Size:", payload.base64Data?.length || 0, "characters");
             console.log("Content Type:", payload.contentType);

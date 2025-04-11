@@ -1,15 +1,17 @@
 import Constants from "expo-constants";
 
+let devLocalIp: string;
+const devConfig = require("./dev.local.config");
+devLocalIp = devConfig.DEV_LOCAL_IP;
+if (!devLocalIp) {
+  throw new Error("DEV_LOCAL_IP not found in dev.local.config.ts");
+}
+
 // Declare the __DEV__ global variable that Expo provides
 declare const __DEV__: boolean;
 
-/**
- * Use a hardcoded development server IP address
- * This works better than trying to auto-detect, which often falls back to localhost
- */
 const getDevelopmentServerIp = (): string => {
-  // Return your computer's actual local network IP address
-  return "10.0.0.195";
+  return devLocalIp;
 };
 
 // Server configurations
@@ -23,7 +25,6 @@ const PROD_SERVER = {
   url: "https://your-api-url.com/api" // TODO: Update for production
 };
 
-// Build API URL with automatic IP detection
 export const API_URL = __DEV__
   ? `http://${DEV_SERVER.ip}:${DEV_SERVER.port}/${DEV_SERVER.apiPath}`
   : PROD_SERVER.url;
