@@ -32,6 +32,6 @@ const identifyHandler: RequestHandler = async (req, res) => {
     }
 };
 
-router.post('/identify', identifyHandler);
+router.post("/identify", identifyHandler);
 
 export default router;
