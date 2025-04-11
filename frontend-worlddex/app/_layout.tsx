@@ -32,34 +32,40 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1 bg-background">
-        <Stack
-          screenOptions={{
-            headerShown: false,
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "none",
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{
             contentStyle: {
               backgroundColor: "transparent",
             },
-            // Disable animations for immediate transitions
-            animation: "none",
-            presentation: "transparentModal",
           }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen
-            name="(screens)/photo-preview"
-            options={{
-              animation: "none",
-              presentation: "transparentModal"
-            }}
-          />
-          <Stack.Screen
-            name="(screens)/camera"
-            options={{
-              animation: "none"
-            }}
-          />
-        </Stack>
-      </View>
+        />
+        <Stack.Screen
+          name="(screens)/photo-preview"
+          options={{
+            animation: "none",
+            // Use solid background
+            contentStyle: {
+              backgroundColor: "#FFF4ED",
+            },
+          }}
+        />
+        <Stack.Screen
+          name="(screens)/camera"
+          options={{
+            animation: "none",
+            contentStyle: {
+              backgroundColor: "transparent",
+            },
+          }}
+        />
+      </Stack>
     </GestureHandlerRootView>
   );
 }
