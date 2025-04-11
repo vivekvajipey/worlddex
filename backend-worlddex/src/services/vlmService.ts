@@ -50,7 +50,7 @@ export class VlmService {
                 temperature: 0.0
             });
 
-            console.log("VLM Response Received");
+            console.log("VLM Response:\n", response);
 
             const label = response?.choices?.[0]?.message?.content?.trim() || null;
 
