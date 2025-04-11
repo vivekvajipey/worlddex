@@ -13,7 +13,8 @@ app.use(express.json({ limit: "50mb" })); // For handling large base64 images
 
 // Routes
 app.use("/api/photos", photoRoutes);
+app.use("/api/vlm", vlmRoutes);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-}); 
+});
