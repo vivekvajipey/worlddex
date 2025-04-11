@@ -5,9 +5,6 @@ interface PermissionRequestProps {
   onRequest: () => void;
 }
 
-/**
- * Permission request screen component
- */
 export const PermissionRequest = ({ 
   message, 
   onRequest 

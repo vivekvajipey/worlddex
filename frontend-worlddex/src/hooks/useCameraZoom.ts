@@ -3,19 +3,14 @@ import { Platform } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
 import { useAnimatedProps } from "react-native-reanimated";
 
-/**
- * Custom hook for handling camera zoom gestures
- */
 export const useCameraZoom = () => {
   const [zoom, setZoom] = useState(0);
   const [lastZoom, setLastZoom] = useState(0);
 
-  // Animated props for camera zoom
   const cameraAnimatedProps = useAnimatedProps(() => ({
     zoom: zoom,
   }));
 
-  // Pinch gesture handler using runOnJS
   const pinchGesture = useMemo(
     () => Gesture.Pinch()
       .runOnJS(true)

@@ -10,18 +10,12 @@ interface UseCameraCaptureProps {
   setIdentificationStatus: (status: IdentificationStatus) => void;
 }
 
-/**
- * Custom hook for handling camera capture and image identification
- */
 export const useCameraCapture = ({
   cameraRef,
   identifyPhoto,
   setIdentificationStatus
 }: UseCameraCaptureProps) => {
   
-  /**
-   * Process image identification
-   */
   const processIdentification = async (base64Data: string) => {
     setIdentificationStatus({
       message: "Identifying...",
@@ -47,9 +41,6 @@ export const useCameraCapture = ({
     }
   };
   
-  /**
-   * Handle photo capture and identification
-   */
   const captureAndIdentify = useCallback(async () => {
     if (!cameraRef.current) return;
     
@@ -59,7 +50,6 @@ export const useCameraCapture = ({
     });
     
     try {
-      // Take picture with base64 data for identification
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
         base64: true
@@ -73,12 +63,10 @@ export const useCameraCapture = ({
         return;
       }
 
-      // Save photo to media library
       if (photo.uri) {
         await MediaLibrary.saveToLibraryAsync(photo.uri);
       }
       
-      // Process identification if base64 data is available
       if (photo.base64) {
         await processIdentification(photo.base64);
       }

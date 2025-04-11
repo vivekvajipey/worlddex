@@ -6,16 +6,13 @@ import Animated from "react-native-reanimated";
 import { GestureDetector } from "react-native-gesture-handler";
 import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
-// Import extracted components
 import { FeedbackOverlay } from "../../src/components/camera/FeedbackOverlay";
 import { CameraControls } from "../../src/components/camera/CameraControls";
 import { PermissionRequest } from "../../src/components/camera/PermissionRequest";
 
-// Import custom hooks
 import { useCameraZoom } from "../../src/hooks/useCameraZoom";
 import { useCameraCapture } from "../../src/hooks/useCameraCapture";
 
-// Import types
 import { IdentificationStatus } from "../../src/types/camera";
 
 const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
@@ -36,7 +33,6 @@ export default function CameraScreen() {
     isLoading: false
   });
 
-  // Use custom hooks
   const { cameraAnimatedProps, pinchGesture } = useCameraZoom();
   const { captureAndIdentify } = useCameraCapture({
     cameraRef,
@@ -44,7 +40,6 @@ export default function CameraScreen() {
     setIdentificationStatus
   });
 
-  // Toggle camera facing
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
   };

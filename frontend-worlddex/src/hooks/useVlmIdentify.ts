@@ -72,7 +72,6 @@ export const useVlmIdentify = (): UseVlmIdentifyReturn => {
       const error = err instanceof Error ? err : new Error("An unknown identification error occurred");
       setError(error);
       
-      // Enhanced error logging
       console.error("useVlmIdentify Error:", error);
       console.error("Error Name:", error.name);
       console.error("Error Message:", error.message);
