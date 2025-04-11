@@ -1,6 +1,6 @@
 import { OpenAI } from "openai";
 import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../../shared/types/vlm";
-
+import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 
 if (!process.env.FIREWORKS_API_KEY) {
     throw new Error("FIREWORKS_API_KEY env variable not set");
@@ -11,7 +11,7 @@ const fireworksClient = new OpenAI({
     apiKey: process.env.FIREWORKS_API_KEY
 });
 
-const VLM_MODEL_FIREWORKS = "accounts/fireworks/models/phi-3-vision-128k-instruct";
+const VLM_MODEL_FIREWORKS = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
 
 export class VlmService {
     // super basic prompt for initial testing
@@ -53,6 +53,17 @@ export class VlmService {
             console.log("VLM Response:\n", response);
 
             const label = response?.choices?.[0]?.message?.content?.trim() || null;
+
+            // Calculate and log cost using the utility
+            if (response.usage) {
+                const costResult = calculateCost(VLM_MODEL_FIREWORKS, {
+                    promptTokens: response.usage.prompt_tokens || 0,
+                    completionTokens: response.usage.completion_tokens || 0
+                });
+                logCostDetails(costResult);
+            } else {
+                console.log("Could not calculate cost: Usage data not found in response.");
+            }
 
             return { label };
 
