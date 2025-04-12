@@ -50,9 +50,9 @@ export default function RootLayout() {
           name="(screens)/photo-preview"
           options={{
             animation: "none",
-            // Use solid background
+            presentation: "transparentModal",
             contentStyle: {
-              backgroundColor: "#FFF4ED",
+              backgroundColor: "transparent",
             },
           }}
         />
