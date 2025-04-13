@@ -1,72 +1,49 @@
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
-import { useState, useRef, useCallback, useMemo } from "react";
-import { Button, Text, TouchableOpacity, View, StyleSheet, Platform, Dimensions } from "react-native";
+import React, { useRef, useState, useCallback } from "react";
+import { View, Button, Text, Dimensions } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
-import { Ionicons } from "@expo/vector-icons";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
-import Animated, { useAnimatedProps } from "react-native-reanimated";
-import { useRouter } from "expo-router";
-import Svg, { Path, Polygon } from "react-native-svg";
 import * as ImageManipulator from "expo-image-manipulator";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
+import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
-const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+// Used to simulate API response - set to false to test failure animation
+// TODO: make it dynamic based on VLM result
+const CAPTURE_SUCCESS = false;
+
 export default function CameraScreen() {
-  const [facing, setFacing] = useState<CameraType>("back");
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
-  const cameraRef = useRef<CameraView>(null);
-  const router = useRouter();
+  const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
 
-  // Zoom state
-  const [zoom, setZoom] = useState(0);
-  const [lastZoom, setLastZoom] = useState(0);
-
-  // Lasso state
-  const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [pathString, setPathString] = useState("");
-  const [polygonPoints, setPolygonPoints] = useState("");
-
-  // VLM state hook
-  const { identifyPhoto } = useVlmIdentify();
-
-  const cameraAnimatedProps = useAnimatedProps(() => {
-    return { zoom };
+  // Photo capture state
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+  const [captureBox, setCaptureBox] = useState({
+    x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
-  // Function to update the path string based on points
-  const updatePathString = useCallback((pts: { x: number, y: number }[]) => {
-    if (pts.length === 0) return "";
+  const { identifyPhoto, isLoading: vlmLoading, error: vlmError } = useVlmIdentify();
 
-    let path = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      path += ` L ${pts[i].x} ${pts[i].y}`;
-    }
-
-    return path;
-  }, []);
-
-  // Function to update polygon points for filling
-  const updatePolygonPoints = useCallback((pts: { x: number, y: number }[]) => {
-    if (pts.length === 0) return "";
-
-    return pts.map(pt => `${pt.x},${pt.y}`).join(" ");
-  }, []);
-
-  // Function to capture the area inside the lasso
-  const captureSelectedArea = useCallback(async () => {
+  const handleCapture = useCallback(async (
+    points: { x: number; y: number }[],
+    cameraRef: React.RefObject<CameraView>
+  ) => {
     if (!cameraRef.current || points.length < 3) return;
 
-    try {
-      // First take a picture of the entire view
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1, skipProcessing: false });
+    // Start capture state - freeze UI
+    setIsCapturing(true);
 
-      if (!photo) {
-        throw new Error("Failed to capture photo");
-      }
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ 
+        quality: 1, 
+        base64: true, // Need base64 for VLM
+        skipProcessing: false 
+      });
 
       // Calculate the image scale factor (photo dimensions vs screen dimensions)
       const scaleX = photo.width / SCREEN_WIDTH;
@@ -96,20 +73,22 @@ export default function CameraScreen() {
       // Calculate crop dimensions
       const cropWidth = maxX - minX;
       const cropHeight = maxY - minY;
+      const aspectRatio = cropWidth / cropHeight;
 
-      // Ensure we have a valid crop area
-      if (cropWidth <= 10 || cropHeight <= 10) {
+      // Store the capture box info for animation
+      setCaptureBox({
+        x: minX / scaleX,
+        y: minY / scaleY,
+        width: cropWidth / scaleX,
+        height: cropHeight / scaleY,
+        aspectRatio
+      });
+
+      // Ensure we have a valid crop area - use a smaller minimum size
+      // Some devices might have different pixel densities causing small lasso to be below threshold
+      if (cropWidth < 5 || cropHeight < 5) {
         throw new Error("Selection area too small");
       }
-
-      console.log("Cropping with dimensions:", {
-        originX: minX,
-        originY: minY,
-        width: cropWidth,
-        height: cropHeight,
-        originalWidth: photo.width,
-        originalHeight: photo.height
-      });
 
       // Crop the image
       const manipResult = await ImageManipulator.manipulateAsync(
@@ -124,14 +103,16 @@ export default function CameraScreen() {
             },
           },
         ],
-        { compress: 0.95, base64: true }
+        { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
 
       // Save cropped image
       await MediaLibrary.saveToLibraryAsync(manipResult.uri);
-      console.log("Cropped photo saved to library:", manipResult.uri);
 
-      // Start VLM Identification
+      // Store the captured URI for the animation
+      setCapturedUri(manipResult.uri);
+
+      // VLM Identification
       if (manipResult.base64) {
         console.log("Sending cropped image for VLM identification...");
         try {
@@ -139,112 +120,34 @@ export default function CameraScreen() {
             base64Data: manipResult.base64,
             contentType: "image/jpeg"
           });
-          console.log("VLM Identification Result:", vlmResult);
-          // No UI updates for now, just log the result
+          console.log("VLM Identification Result:", vlmResult); 
+          // TODO: Decide how to use vlmResult (e.g., display on Polaroid?)
+          // Set CAPTURE_SUCCESS based on vlmResult? 
         } catch (vlmError) {
           console.error("VLM Identification failed:", vlmError);
+          // Maybe set CAPTURE_SUCCESS to false here?
         }
       } else {
-        console.error("No base64 data found in manipResult, VLM identification failed. manipResult: ", manipResult);
+        console.error("No base64 data found in manipResult after cropping, VLM identification failed.");
+        // Maybe set CAPTURE_SUCCESS to false here?
       }
+      // ----------------------------------------------------
 
-      // Reset points and path
-      setPoints([]);
-      setPathString("");
-      setPolygonPoints("");
-
-      // Navigate to the photo preview
-      router.push({
-        pathname: "/(screens)/photo-preview",
-        params: { photoUri: manipResult.uri }
-      });
     } catch (error) {
       console.error("Error capturing selected area:", error);
       // Reset on error
-      setPoints([]);
-      setPathString("");
-      setPolygonPoints("");
+      setIsCapturing(false);
+      setCapturedUri(null);
+      cameraCaptureRef.current?.resetLasso();
     }
-  }, [points, router, identifyPhoto]);
+  }, [identifyPhoto]);
 
-  // Pan gesture for lasso drawing
-  const panGesture = useMemo(
-    () => Gesture.Pan()
-      .runOnJS(true)
-      .minPointers(1)
-      .maxPointers(1)  // Ensure only single finger triggers this
-      .onStart((event) => {
-        setIsDrawing(true);
-        const newPoint = { x: event.x, y: event.y };
-        setPoints([newPoint]);
-        setPathString(`M ${newPoint.x} ${newPoint.y}`);
-      })
-      .onUpdate((event) => {
-        if (!isDrawing) return;
-
-        const newPoint = { x: event.x, y: event.y };
-        setPoints(current => {
-          const updated = [...current, newPoint];
-          setPathString(updatePathString(updated));
-          return updated;
-        });
-      })
-      .onEnd(() => {
-        if (points.length > 2) {
-          // Close the path
-          const closedPoints = [...points, points[0]];
-          setPathString(updatePathString(closedPoints));
-          setPolygonPoints(updatePolygonPoints(closedPoints));
-
-          // Capture the area
-          captureSelectedArea();
-        } else {
-          // Not enough points to form an area
-          setPoints([]);
-          setPathString("");
-          setPolygonPoints("");
-        }
-        setIsDrawing(false);
-      }),
-    [isDrawing, points, updatePathString, updatePolygonPoints, captureSelectedArea]
-  );
-
-  // Pinch gesture for zoom
-  const pinchGesture = useMemo(
-    () => Gesture.Pinch()
-      .runOnJS(true)
-      .onUpdate((event: { velocity: number; scale: number }) => {
-        // Prevent drawing while zooming
-        if (isDrawing) {
-          setIsDrawing(false);
-          setPoints([]);
-          setPathString("");
-        }
-
-        const velocity = event.velocity / 15;
-        const outFactor = lastZoom * (Platform.OS === 'ios' ? 50 : 25);
-
-        let newZoom =
-          velocity > 0
-            ? zoom + event.scale * velocity * (Platform.OS === 'ios' ? 0.02 : 35)
-            : zoom - (event.scale * (outFactor || 1)) * Math.abs(velocity) * (Platform.OS === 'ios' ? 0.035 : 60);
-
-        if (newZoom < 0) newZoom = 0;
-        else if (newZoom > 0.9) newZoom = 0.9;
-
-        setZoom(newZoom);
-      })
-      .onEnd(() => {
-        setLastZoom(zoom);
-      }),
-    [zoom, lastZoom, isDrawing]
-  );
-
-  // Let the gestures compete to handle the touch
-  const gestures = Gesture.Race(
-    panGesture,
-    pinchGesture
-  );
+  // Handle dismiss of the preview
+  const handleDismissPreview = useCallback(() => {
+    setIsCapturing(false);
+    setCapturedUri(null);
+    cameraCaptureRef.current?.resetLasso();
+  }, []);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -275,60 +178,27 @@ export default function CameraScreen() {
     );
   }
 
-  function toggleCameraFacing() {
-    setFacing(current => (current === "back" ? "front" : "back"));
-  }
-
   return (
-    <View className="absolute inset-0">
-      <GestureDetector gesture={gestures}>
-        <Animated.View className="absolute inset-0">
-          <AnimatedCamera
-            ref={cameraRef}
-            className="absolute inset-0"
-            facing={facing}
-            animatedProps={cameraAnimatedProps}
-          >
-            {/* SVG overlay for drawing lasso */}
-            <Svg width="100%" height="100%" className="absolute inset-0">
-              {/* Filled polygon area */}
-              {polygonPoints ? (
-                <Polygon
-                  points={polygonPoints}
-                  fill="rgba(255, 244, 237, 0.2)"
-                  stroke="none"
-                />
-              ) : null}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View className="flex-1">
+        {/* Camera capture component */}
+        <CameraCapture
+          ref={cameraCaptureRef}
+          onCapture={handleCapture}
+          isCapturing={isCapturing}
+        />
 
-              {/* Lasso path */}
-              {pathString ? (
-                <Path
-                  d={pathString}
-                  stroke="#FFF4ED"
-                  strokeWidth={3}
-                  strokeDasharray="6,4"
-                  fill="none"
-                />
-              ) : null}
-            </Svg>
-
-            {/* Flip camera button - top right */}
-            <TouchableOpacity
-              className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
-              onPress={toggleCameraFacing}
-            >
-              <Ionicons name="sync-outline" size={22} color="black" />
-            </TouchableOpacity>
-
-            {/* Instructions text */}
-            <View className="absolute bottom-12 left-0 right-0 items-center">
-              <Text className="text-white text-center font-lexend-medium px-6 py-2 bg-black/50 rounded-full">
-                Draw with one finger to select an area
-              </Text>
-            </View>
-          </AnimatedCamera>
-        </Animated.View>
-      </GestureDetector>
-    </View>
+        {/* Polaroid development and animation overlay */}
+        {isCapturing && capturedUri && (
+          <PolaroidDevelopment
+            photoUri={capturedUri}
+            captureBox={captureBox}
+            onDismiss={handleDismissPreview}
+            // TODO: Connect CAPTURE_SUCCESS to VLM result?
+            captureSuccess={CAPTURE_SUCCESS} 
+          />
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
