@@ -23,6 +23,7 @@ interface CameraCaptureProps {
 const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
   ({ onCapture, isCapturing }, ref) => {
     const [facing, setFacing] = useState<CameraType>("back");
+    const [torchEnabled, setTorchEnabled] = useState(false);
     const cameraRef = useRef<CameraView>(null);
 
     // Zoom state
@@ -169,6 +170,11 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       setFacing(current => (current === "back" ? "front" : "back"));
     }
 
+    // Toggle flashlight/torch
+    function toggleTorch() {
+      setTorchEnabled(current => !current);
+    }
+
     return (
       <View className="flex-1">
         <GestureDetector gesture={gestures}>
@@ -178,6 +184,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             facing={facing}
             animatedProps={cameraAnimatedProps}
             animateShutter={true}
+            enableTorch={torchEnabled}
           >
             {/* SVG overlay for drawing lasso */}
             <Svg width="100%" height="100%" className="absolute inset-0">
@@ -213,15 +220,31 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           </AnimatedCamera>
         </GestureDetector>
 
-        {/* Flip camera button - moved outside the GestureDetector */}
+        {/* Camera controls - only show when not capturing */}
         {!isCapturing && (
-          <TouchableOpacity
-            className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
-            onPress={toggleCameraFacing}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="sync-outline" size={22} color="black" />
-          </TouchableOpacity>
+          <>
+            {/* Flip camera button - top right */}
+            <TouchableOpacity
+              className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
+              onPress={toggleCameraFacing}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="sync-outline" size={22} color="black" />
+            </TouchableOpacity>
+
+            {/* Flashlight/torch toggle button - top right, below flip button */}
+            <TouchableOpacity
+              className="absolute top-36 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
+              onPress={toggleTorch}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={torchEnabled ? "flashlight" : "flashlight-outline"}
+                size={22}
+                color="black"
+              />
+            </TouchableOpacity>
+          </>
         )}
       </View>
     );
