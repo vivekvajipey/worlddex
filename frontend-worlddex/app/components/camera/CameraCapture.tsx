@@ -61,38 +61,15 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
 
     // Method to reset lasso after capture
     const resetLasso = useCallback(() => {
-      console.log("[DEBUG] CameraCapture.resetLasso called");
       setPoints([]);
       setPathString("");
       setPolygonPoints("");
-      console.log("[DEBUG] CameraCapture.resetLasso state reset complete");
     }, []);
 
     // Method to get the camera ref
     const getCameraRef = useCallback(() => {
       return cameraRef;
     }, []);
-
-    // Add logging for state changes
-    useEffect(() => {
-      console.log(`[DEBUG] isCapturing changed: ${isCapturing}`);
-    }, [isCapturing]);
-
-    useEffect(() => {
-      console.log(`[DEBUG] isDrawing changed: ${isDrawing}`);
-    }, [isDrawing]);
-
-    useEffect(() => {
-      console.log(`[DEBUG] points array length: ${points.length}`);
-      // Log polygonPoints and pathString state when points change
-      console.log(`[DEBUG] polygonPoints empty: ${polygonPoints === ""}`);
-      console.log(`[DEBUG] pathString empty: ${pathString === ""}`);
-    }, [points, polygonPoints, pathString]);
-    
-    // For debugging SVG rendering
-    useEffect(() => {
-      console.log(`[DEBUG-RENDER] SVG conditions - polygonPoints: ${!!polygonPoints}, pathString: ${!!pathString}, isCapturing: ${isCapturing}`);
-    });
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -135,7 +112,6 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             const pointsCopy = [...points];
             const closedPoints = [...pointsCopy, pointsCopy[0]];
             
-            // Set path and polygon strings
             setPathString(updatePathString(closedPoints));
             setPolygonPoints(updatePolygonPoints(closedPoints));
             
@@ -144,7 +120,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             // and our UI elements stay mounted regardless
             onCapture(pointsCopy, cameraRef);
           } else {
-            // Not enough points - just clear state
+            // Not enough points to form an area
             setPoints([]);
             setPathString("");
             setPolygonPoints("");
@@ -214,8 +190,8 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             animateShutter={true}
             enableTorch={torchEnabled}
           >
-            {/* IMPORTANT: Avoid any conditional rendering that could cause view hierarchy changes */}
-            {/* Instead use empty/transparent SVG elements that are always present */}
+            {/* Avoiding any conditional rendering that could cause view hierarchy changes */}
+            {/* Instead using empty/transparent SVG elements that are always present */}
             <Svg 
               width="100%" 
               height="100%" 
