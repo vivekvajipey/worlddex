@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import AnimatedReanimated, { useAnimatedProps } from "react-native-reanimated";
 import Svg, { Path, Polygon } from "react-native-svg";
+import { backgroundColor } from "../../utils/colors";
 
 const AnimatedCamera = AnimatedReanimated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -183,7 +184,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
               {polygonPoints && !isCapturing ? (
                 <Polygon
                   points={polygonPoints}
-                  fill="rgba(255, 244, 237, 0.2)"
+                  fill={`${backgroundColor}33`}
                   stroke="none"
                 />
               ) : null}
@@ -192,7 +193,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
               {pathString && !isCapturing ? (
                 <Path
                   d={pathString}
-                  stroke="#FFF4ED"
+                  stroke={backgroundColor}
                   strokeWidth={3}
                   strokeDasharray="6,4"
                   fill="none"

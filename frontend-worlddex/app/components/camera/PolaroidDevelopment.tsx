@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from "react";
 import { View, Image, Animated, Dimensions, TouchableWithoutFeedback } from "react-native";
 import { BlurView } from "expo-blur";
-import Svg, { Path, Defs, ClipPath } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
+import { backgroundColor } from "../../utils/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -303,59 +304,20 @@ export default function PolaroidDevelopment({
     };
   };
 
-  // Generate the zigzag clip path for the left half
-  const getLeftHalfZigzagPath = (width: number, height: number) => {
-    const zigzagWidth = 10; // Width of the zigzag teeth
-    const zigzagCount = 12; // Number of zigzags
+  // Generate the zigzag path for the tear
+  const getZigzagPath = (width: number, height: number) => {
+    const zigzagWidth = width * 0.05; // Width of zigzag
+    const zigzagCount = 15; // Number of zigzags
     const segmentHeight = height / zigzagCount;
 
-    // Start at top-left, go right, then down with zigzags, then back to bottom-left, then up to top-left
-    let path = `M 0 0 H ${width}`;
+    let path = `M ${width / 2} 0`;
 
-    // Draw the zigzag down the right edge
     for (let i = 0; i < zigzagCount; i++) {
-      const y1 = i * segmentHeight;
-      const y2 = (i + 1) * segmentHeight;
-
-      if (i % 2 === 0) {
-        // Zigzag inward (to the left)
-        path += ` L ${width - zigzagWidth} ${y1 + segmentHeight / 2} L ${width} ${y2}`;
-      } else {
-        // Zigzag outward (to the right)
-        path += ` L ${width + zigzagWidth} ${y1 + segmentHeight / 2} L ${width} ${y2}`;
-      }
+      const y = (i + 1) * segmentHeight;
+      const direction = i % 2 === 0 ? 1 : -1;
+      path += ` L ${width / 2 + (zigzagWidth * direction)} ${y}`;
     }
 
-    // Complete the path
-    path += ` L 0 ${height} L 0 0 Z`;
-    return path;
-  };
-
-  // Generate the zigzag clip path for the right half
-  const getRightHalfZigzagPath = (width: number, height: number) => {
-    const zigzagWidth = 10; // Width of the zigzag teeth
-    const zigzagCount = 12; // Number of zigzags
-    const segmentHeight = height / zigzagCount;
-
-    // Start at top-left with zigzags, go right to top-right, down to bottom-right, back to bottom-left, up to top-left
-    let path = `M 0 0`;
-
-    // Draw the zigzag down the left edge
-    for (let i = 0; i < zigzagCount; i++) {
-      const y1 = i * segmentHeight;
-      const y2 = (i + 1) * segmentHeight;
-
-      if (i % 2 === 0) {
-        // Zigzag outward (to the left)
-        path += ` L ${-zigzagWidth} ${y1 + segmentHeight / 2} L 0 ${y2}`;
-      } else {
-        // Zigzag inward (to the right)
-        path += ` L ${zigzagWidth} ${y1 + segmentHeight / 2} L 0 ${y2}`;
-      }
-    }
-
-    // Complete the path
-    path += ` L ${width} ${height} L ${width} 0 L 0 0 Z`;
     return path;
   };
 
@@ -369,7 +331,7 @@ export default function PolaroidDevelopment({
       top: SCREEN_HEIGHT / 2 - targetDimensions.height / 2,
       width: targetDimensions.width / 2,
       height: targetDimensions.height,
-      backgroundColor: '#FFF4ED',
+      backgroundColor: backgroundColor,
       borderTopLeftRadius: 8,
       borderBottomLeftRadius: 8,
       overflow: 'hidden' as const,
@@ -396,7 +358,7 @@ export default function PolaroidDevelopment({
       top: SCREEN_HEIGHT / 2 - targetDimensions.height / 2,
       width: targetDimensions.width / 2,
       height: targetDimensions.height,
-      backgroundColor: '#FFF4ED',
+      backgroundColor: backgroundColor,
       borderTopRightRadius: 8,
       borderBottomRightRadius: 8,
       overflow: 'hidden' as const,
@@ -429,7 +391,7 @@ export default function PolaroidDevelopment({
         style={[
           {
             position: 'absolute',
-            backgroundColor: '#FFF4ED',
+            backgroundColor: backgroundColor,
             borderRadius: 8,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -472,7 +434,7 @@ export default function PolaroidDevelopment({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: '#FFF4ED',
+                backgroundColor: backgroundColor,
                 opacity: fadeAnim,
               }}
             />
@@ -485,137 +447,109 @@ export default function PolaroidDevelopment({
 
       {/* Left half of torn polaroid */}
       <Animated.View style={getLeftPieceStyles()}>
-        {/* Main left container */}
-        <View style={{
-          width: '100%',
-          height: '100%',
-          backgroundColor: '#FFF4ED',
-          borderTopLeftRadius: 8,
-          borderBottomLeftRadius: 8,
-          overflow: 'hidden',
-        }}>
-          {/* Left half of photo */}
-          <View style={{
-            position: 'absolute',
-            width: targetDimensions.photoWidth,
-            height: targetDimensions.photoHeight,
-            top: FRAME_EDGE_PADDING,
-            left: FRAME_EDGE_PADDING,
-            overflow: 'hidden',
-          }}>
-            <Image
-              source={{ uri: photoUri }}
-              style={{
-                width: targetDimensions.photoWidth,
-                height: targetDimensions.photoHeight,
-                position: 'absolute',
-                top: 0,
-                left: 0,
-              }}
-              resizeMode="cover"
-            />
-          </View>
-        </View>
-
-        {/* Zigzag edge mask - covers the right edge with zigzag patterns */}
+        {/* Left half of photo */}
         <View style={{
           position: 'absolute',
-          right: -5,
-          top: 0,
-          bottom: 0,
-          width: 15,
+          width: targetDimensions.photoWidth / 2 + FRAME_EDGE_PADDING, // Extend to the right edge
+          height: targetDimensions.photoHeight,
+          top: FRAME_EDGE_PADDING,
+          left: FRAME_EDGE_PADDING,
           overflow: 'hidden',
         }}>
-          {/* Create individual zigzag teeth */}
-          {Array(12).fill(0).map((_, i) => {
-            const height = targetDimensions.height / 12;
-            const isEven = i % 2 === 0;
-            return (
-              <View
-                key={`left-tooth-${i}`}
-                style={{
-                  position: 'absolute',
-                  right: isEven ? 0 : 8, // Alternate between in and out
-                  top: i * height,
-                  width: isEven ? 15 : 10,
-                  height: height,
-                  backgroundColor: '#FFF4ED', // Same as polaroid color
-                  // Triangle shape pointing inward for even, outward for odd
-                  transform: [
-                    { rotate: isEven ? '0deg' : '0deg' }
-                  ]
-                }}
-              />
-            );
-          })}
+          <Image
+            source={{ uri: photoUri }}
+            style={{
+              width: targetDimensions.photoWidth,
+              height: targetDimensions.photoHeight,
+              position: 'absolute',
+              top: 0,
+              left: 0,
+            }}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Bottom space */}
+        <View style={{
+          position: 'absolute',
+          height: FRAME_BOTTOM_PADDING,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: backgroundColor
+        }} />
+
+        {/* Zigzag tear - just visual, no content */}
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 1,
+          height: '100%',
+          backgroundColor: 'transparent',
+        }}>
+          <Svg height={targetDimensions.height} width={2}>
+            <Path
+              d={getZigzagPath(2, targetDimensions.height)}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={1}
+            />
+          </Svg>
         </View>
       </Animated.View>
 
       {/* Right half of torn polaroid */}
       <Animated.View style={getRightPieceStyles()}>
-        {/* Main right container */}
-        <View style={{
-          width: '100%',
-          height: '100%',
-          backgroundColor: '#FFF4ED',
-          borderTopRightRadius: 8,
-          borderBottomRightRadius: 8,
-          overflow: 'hidden',
-        }}>
-          {/* Right half of photo */}
-          <View style={{
-            position: 'absolute',
-            width: targetDimensions.photoWidth,
-            height: targetDimensions.photoHeight,
-            top: FRAME_EDGE_PADDING,
-            right: FRAME_EDGE_PADDING,
-            overflow: 'hidden',
-          }}>
-            <Image
-              source={{ uri: photoUri }}
-              style={{
-                width: targetDimensions.photoWidth,
-                height: targetDimensions.photoHeight,
-                position: 'absolute',
-                top: 0,
-                right: 0,
-              }}
-              resizeMode="cover"
-            />
-          </View>
-        </View>
-
-        {/* Zigzag edge mask - covers the left edge with zigzag patterns */}
+        {/* Right half of photo */}
         <View style={{
           position: 'absolute',
-          left: -5,
-          top: 0,
-          bottom: 0,
-          width: 15,
+          width: targetDimensions.photoWidth / 2 + FRAME_EDGE_PADDING, // Extend to the left edge
+          height: targetDimensions.photoHeight,
+          top: FRAME_EDGE_PADDING,
+          right: FRAME_EDGE_PADDING,
           overflow: 'hidden',
         }}>
-          {/* Create individual zigzag teeth */}
-          {Array(12).fill(0).map((_, i) => {
-            const height = targetDimensions.height / 12;
-            const isEven = i % 2 === 0;
-            return (
-              <View
-                key={`right-tooth-${i}`}
-                style={{
-                  position: 'absolute',
-                  left: isEven ? 0 : 8, // Alternate between in and out
-                  top: i * height,
-                  width: isEven ? 15 : 10,
-                  height: height,
-                  backgroundColor: '#FFF4ED', // Same as polaroid color
-                  // Triangle shape pointing outward for even, inward for odd
-                  transform: [
-                    { rotate: isEven ? '0deg' : '0deg' }
-                  ]
-                }}
-              />
-            );
-          })}
+          <Image
+            source={{ uri: photoUri }}
+            style={{
+              width: targetDimensions.photoWidth,
+              height: targetDimensions.photoHeight,
+              position: 'absolute',
+              top: 0,
+              right: 0,
+            }}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Bottom space */}
+        <View style={{
+          position: 'absolute',
+          height: FRAME_BOTTOM_PADDING,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: backgroundColor
+        }} />
+
+        {/* Zigzag tear - just visual, no content */}
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 1,
+          height: '100%',
+          backgroundColor: 'transparent',
+        }}>
+          <Svg height={targetDimensions.height} width={2}>
+            <Path
+              d={getZigzagPath(2, targetDimensions.height)}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={1}
+            />
+          </Svg>
         </View>
       </Animated.View>
     </View>
