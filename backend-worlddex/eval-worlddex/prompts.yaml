@@ -1,0 +1,7 @@
+prompt_simple_label: >
+  Identify the primary subject in the image.
+  Respond with only the most specific common name possible for the subject, using Title Case.
+
+prompt_focus_instruct: >
+  What is the main object depicted in this image?
+  Return only the object's common name in Title Case format.

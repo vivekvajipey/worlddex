@@ -1,6 +1,6 @@
 import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import { useState, useRef, useCallback, useMemo } from "react";
-import { Button, Text, TouchableOpacity, View, StyleSheet, Platform, Dimensions } from "react-native";
+import { Button, Text, TouchableOpacity, View, StyleSheet, Platform, Dimensions, ActivityIndicator } from "react-native";
 import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
@@ -8,12 +8,18 @@ import Animated, { useAnimatedProps } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import Svg, { Path, Polygon } from "react-native-svg";
 import * as ImageManipulator from "expo-image-manipulator";
+import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { styled } from "nativewind";
 
 const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function CameraScreen() {
+  // Camera state
   const [facing, setFacing] = useState<CameraType>("back");
+  const cameraRef = useRef<CameraView>(null);
+  
+  // Permissions
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -201,12 +207,12 @@ export default function CameraScreen() {
         }
 
         const velocity = event.velocity / 15;
-        const outFactor = lastZoom * (Platform.OS === 'ios' ? 50 : 25);
+        const outFactor = lastZoom * (Platform.OS === "ios" ? 50 : 25);
 
         let newZoom =
           velocity > 0
-            ? zoom + event.scale * velocity * (Platform.OS === 'ios' ? 0.02 : 35)
-            : zoom - (event.scale * (outFactor || 1)) * Math.abs(velocity) * (Platform.OS === 'ios' ? 0.035 : 60);
+            ? zoom + event.scale * velocity * (Platform.OS === "ios" ? 0.02 : 35)
+            : zoom - (event.scale * (outFactor || 1)) * Math.abs(velocity) * (Platform.OS === "ios" ? 0.035 : 60);
 
         if (newZoom < 0) newZoom = 0;
         else if (newZoom > 0.9) newZoom = 0.9;
@@ -225,32 +231,99 @@ export default function CameraScreen() {
     pinchGesture
   );
 
+  // Handle photo capture and identification
+  const captureAndIdentify = useCallback(async () => {
+    if (!cameraRef.current) return;
+    
+    setIdentificationStatus({
+      message: null,
+      isLoading: false
+    });
+    
+    try {
+      // Take picture with base64 data for identification
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.7,
+        base64: true
+      });
+      
+      if (!photo) {
+        setIdentificationStatus({
+          message: "Failed to capture photo",
+          isLoading: false
+        });
+        return;
+      }
+
+      // Save photo to media library
+      if (photo.uri) {
+        await MediaLibrary.saveToLibraryAsync(photo.uri);
+      }
+      
+      // Process identification if base64 data is available
+      if (photo.base64) {
+        await processIdentification(photo.base64);
+      }
+    } catch (error) {
+      console.error("Error taking picture:", error);
+      setIdentificationStatus({
+        message: "Error capturing image",
+        isLoading: false
+      });
+    }
+  }, []);
+
+  // Process image identification
+  const processIdentification = async (base64Data: string) => {
+    setIdentificationStatus({
+      message: "Identifying...",
+      isLoading: true
+    });
+    
+    try {
+      const result = await identifyPhoto({ 
+        base64Data, 
+        contentType: "image/jpeg" 
+      });
+      
+      setIdentificationStatus({
+        message: `Identified: ${result.label || "Unknown"}`,
+        isLoading: false
+      });
+    } catch (error: any) {
+      console.error("Error identifying image:", error);
+      setIdentificationStatus({
+        message: `Error: ${error.message || "Failed to identify"}`,
+        isLoading: false
+      });
+    }
+  };
+
+  // Toggle camera facing
+  const toggleCameraFacing = useCallback(() => {
+    setFacing(current => (current === "back" ? "front" : "back"));
+  }, []);
+
+  // Handle permissions
   if (!permission || !mediaPermission) {
-    // Camera or media permissions are still loading
     return <View className="flex-1 bg-background" />;
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-center text-text-primary font-lexend-medium mb-4">
-          We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="Grant camera permission" />
-      </View>
+      <PermissionRequest 
+        message="We need your permission to show the camera"
+        onRequest={requestPermission}
+      />
     );
   }
 
   if (!mediaPermission.granted) {
-    // Media library permissions are not granted yet
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-center text-text-primary font-lexend-medium mb-4">
-          We need your permission to save photos
-        </Text>
-        <Button onPress={requestMediaPermission} title="Grant media permission" />
-      </View>
+      <PermissionRequest 
+        message="We need your permission to save photos"
+        onRequest={requestMediaPermission}
+      />
     );
   }
 
@@ -310,4 +383,4 @@ export default function CameraScreen() {
       </GestureDetector>
     </View>
   );
-} 
+}
