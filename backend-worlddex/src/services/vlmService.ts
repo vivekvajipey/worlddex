@@ -59,7 +59,11 @@ export class VlmService {
             // Check if the response contains the specific "Unidentified" keyword
             if (identifiedLabel?.includes(UNIDENTIFIED_RESPONSE)) {
                 identifiedLabel = null; // Set label to null for frontend failure case
+            } else if (identifiedLabel) {
+                // Strip trailing punctuation
+                identifiedLabel = identifiedLabel.replace(/[.,;:!?]$/, '').trim();
             }
+            console.log("Processed VLM Identified Label:", identifiedLabel);
 
             // Calculate and log cost using the utility
             if (response.usage) {
