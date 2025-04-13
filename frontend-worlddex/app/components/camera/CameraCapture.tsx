@@ -177,6 +177,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             className="flex-1"
             facing={facing}
             animatedProps={cameraAnimatedProps}
+            animateShutter={false}
           >
             {/* SVG overlay for drawing lasso */}
             <Svg width="100%" height="100%" className="absolute inset-0">
