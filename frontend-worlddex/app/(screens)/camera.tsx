@@ -8,6 +8,7 @@ import Animated, { useAnimatedProps } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import Svg, { Path, Polygon } from "react-native-svg";
 import * as ImageManipulator from "expo-image-manipulator";
+import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
 const AnimatedCamera = Animated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -28,6 +29,9 @@ export default function CameraScreen() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [pathString, setPathString] = useState("");
   const [polygonPoints, setPolygonPoints] = useState("");
+
+  // VLM state hook
+  const { identifyPhoto } = useVlmIdentify();
 
   const cameraAnimatedProps = useAnimatedProps(() => {
     return { zoom };
@@ -120,12 +124,29 @@ export default function CameraScreen() {
             },
           },
         ],
-        { compress: 0.95 }
+        { compress: 0.95, base64: true }
       );
 
       // Save cropped image
       await MediaLibrary.saveToLibraryAsync(manipResult.uri);
       console.log("Cropped photo saved to library:", manipResult.uri);
+
+      // Start VLM Identification if base64 data exists
+      if (manipResult.base64) {
+        console.log("Sending cropped image for VLM identification...");
+        try {
+          const vlmResult = await identifyPhoto({
+            base64Data: manipResult.base64,
+            contentType: "image/jpeg" // Assuming JPG, adjust if needed
+          });
+          console.log("VLM Identification Result:", vlmResult);
+          // No UI updates for now, just log the result
+        } catch (vlmError) {
+          console.error("VLM Identification failed:", vlmError);
+        }
+      } else {
+        console.warn("No base64 data found in manipResult, skipping VLM identification.");
+      }
 
       // Reset points and path
       setPoints([]);
@@ -144,7 +165,7 @@ export default function CameraScreen() {
       setPathString("");
       setPolygonPoints("");
     }
-  }, [points, router]);
+  }, [points, router, identifyPhoto]);
 
   // Pan gesture for lasso drawing
   const panGesture = useMemo(
@@ -310,4 +331,4 @@ export default function CameraScreen() {
       </GestureDetector>
     </View>
   );
-} 
+}
