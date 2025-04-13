@@ -26,6 +26,7 @@ export default function CameraScreen() {
   // VLM
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
+  const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
@@ -124,9 +125,10 @@ export default function CameraScreen() {
           console.log("VLM Identification Result:", vlmResult);          
           if (vlmResult?.label) {
             setVlmCaptureSuccess(true);
-            // TODO: Use vlmResult.label for display
+            setIdentifiedLabel(vlmResult.label);
           } else {
             setVlmCaptureSuccess(false);
+            setIdentifiedLabel(null);
           }
         } catch (vlmApiError) {
           console.error("VLM Identification API Error:", vlmApiError);
@@ -155,6 +157,7 @@ export default function CameraScreen() {
     cameraCaptureRef.current?.resetLasso();
     resetVlm();
     setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
   }, [resetVlm]);
 
   if (!permission || !mediaPermission) {
@@ -202,7 +205,9 @@ export default function CameraScreen() {
             photoUri={capturedUri}
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
-            captureSuccess={vlmCaptureSuccess} 
+            captureSuccess={vlmCaptureSuccess}
+            label={identifiedLabel}
+            label={identifiedLabel || ""}
           />
         )}
       </View>

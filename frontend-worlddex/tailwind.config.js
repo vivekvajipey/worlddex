@@ -77,8 +77,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        'sans': ['Lexend Deca'],
-        'lexend': ['Lexend Deca'],
+        "sans": ["Lexend Deca"],
+        "lexend": ["Lexend Deca"],
+        "patrick": ["Patrick Hand"],
       },
     },
   },
