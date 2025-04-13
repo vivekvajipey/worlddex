@@ -170,14 +170,14 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     }
 
     return (
-      <GestureDetector gesture={gestures}>
-        <View className="flex-1">
+      <View className="flex-1">
+        <GestureDetector gesture={gestures}>
           <AnimatedCamera
             ref={cameraRef}
             className="flex-1"
             facing={facing}
             animatedProps={cameraAnimatedProps}
-            animateShutter={false}
+            animateShutter={true}
           >
             {/* SVG overlay for drawing lasso */}
             <Svg width="100%" height="100%" className="absolute inset-0">
@@ -202,16 +202,6 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
               ) : null}
             </Svg>
 
-            {/* Flip camera button - top right */}
-            {!isCapturing && (
-              <TouchableOpacity
-                className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
-                onPress={toggleCameraFacing}
-              >
-                <Ionicons name="sync-outline" size={22} color="black" />
-              </TouchableOpacity>
-            )}
-
             {/* Instructions text */}
             {!isCapturing && (
               <View className="absolute bottom-12 left-0 right-0 items-center">
@@ -221,8 +211,19 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
               </View>
             )}
           </AnimatedCamera>
-        </View>
-      </GestureDetector>
+        </GestureDetector>
+
+        {/* Flip camera button - moved outside the GestureDetector */}
+        {!isCapturing && (
+          <TouchableOpacity
+            className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
+            onPress={toggleCameraFacing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="sync-outline" size={22} color="black" />
+          </TouchableOpacity>
+        )}
+      </View>
     );
   }
 );
