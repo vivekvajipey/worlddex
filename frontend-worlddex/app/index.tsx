@@ -1,5 +1,6 @@
-import CameraScreen from "./(screens)/camera";
+import { View } from 'react-native';
+import CameraScreen from './(screens)/camera';
 
-export default function Index() {
+export default function App() {
   return <CameraScreen />;
 }
