@@ -206,7 +206,6 @@ export default function CameraScreen() {
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
-            label={identifiedLabel}
             label={identifiedLabel || ""}
           />
         )}

@@ -10,17 +10,24 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  console.log("Loading fonts...");
+  
+  // Revert to original font configuration to get app working
   const [fontsLoaded] = useFonts({
     "LexendDeca-Regular": require("../assets/fonts/LexendDeca-Regular.ttf"),
     "LexendDeca-Bold": require("../assets/fonts/LexendDeca-Bold.ttf"),
     "LexendDeca-Light": require("../assets/fonts/LexendDeca-Light.ttf"),
     "LexendDeca-Medium": require("../assets/fonts/LexendDeca-Medium.ttf"),
     "LexendDeca-SemiBold": require("../assets/fonts/LexendDeca-SemiBold.ttf"),
+    // Temporarily comment out to debug
+    // "PatrickHand": require("../assets/fonts/PatrickHand-Regular.ttf"),
   });
 
   useEffect(() => {
+    console.log("Fonts loaded state:", fontsLoaded);
     if (fontsLoaded) {
       // Hide splash screen once fonts are loaded
+      console.log("Hiding splash screen");
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
