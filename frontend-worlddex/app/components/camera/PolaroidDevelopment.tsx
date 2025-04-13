@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { View, Image, Animated, Dimensions, TouchableWithoutFeedback } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
-import { backgroundColor } from "../../utils/colors";
+import { backgroundColor } from "../../../src/utils/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
