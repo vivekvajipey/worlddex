@@ -456,7 +456,7 @@ export default function PolaroidDevelopment({
         {/* Bottom space with label text */}
         <View className="flex items-center justify-center" style={{ height: FRAME_BOTTOM_PADDING }}>
           {captureSuccess === true && label && (
-            <Text className="font-lexend-medium text-black text-center text-xl italic">
+            <Text className="font-shadows text-black text-center text-xl">
               {label}
             </Text>
           )}

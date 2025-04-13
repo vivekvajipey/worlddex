@@ -79,7 +79,7 @@ module.exports = {
       fontFamily: {
         "sans": ["Lexend Deca"],
         "lexend": ["Lexend Deca"],
-        "patrick": ["Patrick Hand"],
+        "shadows": ["ShadowsIntoLight"],
       },
     },
   },
