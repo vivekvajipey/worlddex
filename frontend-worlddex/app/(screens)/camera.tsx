@@ -285,6 +285,7 @@ export default function CameraScreen() {
                   d={pathString}
                   stroke="#FFF4ED"
                   strokeWidth={3}
+                  strokeDasharray="6,4"
                   fill="none"
                 />
               ) : null}
