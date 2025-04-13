@@ -5,6 +5,12 @@ import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../../sh
 const router = Router();
 const vlmService = new VlmService();
 
+// DEBUG: log when router is used
+router.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] VLM Router handling request for ${req.originalUrl}`);
+  next();
+});
+
 interface ErrorResponse {
     error: string;
 }
@@ -19,6 +25,7 @@ const identifyHandler: RequestHandler = async (req, res) => {
         }
 
         const result = await vlmService.identifyImage(requestData);
+        console.log("VLM Identification Result:", result); // DEBUG
         res.json(result); // Sends back { label: "..." }
 
     } catch (error: unknown) {

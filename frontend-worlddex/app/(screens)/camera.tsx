@@ -131,13 +131,13 @@ export default function CameraScreen() {
       await MediaLibrary.saveToLibraryAsync(manipResult.uri);
       console.log("Cropped photo saved to library:", manipResult.uri);
 
-      // Start VLM Identification if base64 data exists
+      // Start VLM Identification
       if (manipResult.base64) {
         console.log("Sending cropped image for VLM identification...");
         try {
           const vlmResult = await identifyPhoto({
             base64Data: manipResult.base64,
-            contentType: "image/jpeg" // Assuming JPG, adjust if needed
+            contentType: "image/jpeg"
           });
           console.log("VLM Identification Result:", vlmResult);
           // No UI updates for now, just log the result
@@ -145,7 +145,7 @@ export default function CameraScreen() {
           console.error("VLM Identification failed:", vlmError);
         }
       } else {
-        console.warn("No base64 data found in manipResult, skipping VLM identification.");
+        console.error("No base64 data found in manipResult, VLM identification failed. manipResult: ", manipResult);
       }
 
       // Reset points and path
