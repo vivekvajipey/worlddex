@@ -29,7 +29,7 @@ interface PolaroidDevelopmentProps {
     aspectRatio: number;
   };
   onDismiss: () => void;
-  captureSuccess: boolean;
+  captureSuccess: boolean | null;
 }
 
 export default function PolaroidDevelopment({
@@ -62,6 +62,7 @@ export default function PolaroidDevelopment({
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isRipping, setIsRipping] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [initialAnimationDone, setInitialAnimationDone] = useState(false);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -119,16 +120,25 @@ export default function PolaroidDevelopment({
           useNativeDriver: false,
         })
       ]).start(() => {
-        // After development, either show the final preview or run the failure animation
-        if (captureSuccess) {
-          setIsCompleted(true);
-        } else {
-          // Run failure animation after a short delay
-          runRipAnimation();
-        }
+        // Mark initial development animation as done
+        setInitialAnimationDone(true);
       });
     });
   }
+
+  // Effect to handle final state (success/failure) only after initial animation and VLM result
+  useEffect(() => {
+    if (initialAnimationDone) {
+      if (captureSuccess === true) {
+        setIsCompleted(true);
+      } else if (captureSuccess === false) {
+        if (!isRipping && !isMinimizing) {
+          runRipAnimation();
+        }
+      }
+      // If captureSuccess is null, do nothing - wait for VLM result
+    }
+  }, [captureSuccess, initialAnimationDone, isRipping, isMinimizing]);
 
   // Run minimize animation for when user dismisses
   const runMinimizeAnimation = () => {

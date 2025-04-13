@@ -11,10 +11,6 @@ import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// Used to simulate API response - set to false to test failure animation
-// TODO: make it dynamic based on VLM result
-const CAPTURE_SUCCESS = false;
-
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
@@ -27,13 +23,18 @@ export default function CameraScreen() {
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
-  const { identifyPhoto, isLoading: vlmLoading, error: vlmError } = useVlmIdentify();
-
+  // VLM
+  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
     if (!cameraRef.current || points.length < 3) return;
+
+    // Reset VLM state for new capture
+    resetVlm(); 
+    setVlmCaptureSuccess(null);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
@@ -113,41 +114,48 @@ export default function CameraScreen() {
       setCapturedUri(manipResult.uri);
 
       // VLM Identification
-      if (manipResult.base64) {
+      if (manipResult.base64) { 
         console.log("Sending cropped image for VLM identification...");
         try {
           const vlmResult = await identifyPhoto({
             base64Data: manipResult.base64,
             contentType: "image/jpeg"
           });
-          console.log("VLM Identification Result:", vlmResult); 
-          // TODO: Decide how to use vlmResult (e.g., display on Polaroid?)
-          // Set CAPTURE_SUCCESS based on vlmResult? 
-        } catch (vlmError) {
-          console.error("VLM Identification failed:", vlmError);
-          // Maybe set CAPTURE_SUCCESS to false here?
+          console.log("VLM Identification Result:", vlmResult);          
+          if (vlmResult?.label) {
+            setVlmCaptureSuccess(true);
+            // TODO: Use vlmResult.label for display
+          } else {
+            setVlmCaptureSuccess(false);
+          }
+        } catch (vlmApiError) {
+          console.error("VLM Identification API Error:", vlmApiError);
+          setVlmCaptureSuccess(false);
         }
       } else {
-        console.error("No base64 data found in manipResult after cropping, VLM identification failed.");
-        // Maybe set CAPTURE_SUCCESS to false here?
+        console.warn("No base64 data available for VLM identification.");
+        setVlmCaptureSuccess(false); // Treating missing base64 as capture failure
       }
       // ----------------------------------------------------
 
     } catch (error) {
       console.error("Error capturing selected area:", error);
-      // Reset on error
       setIsCapturing(false);
       setCapturedUri(null);
       cameraCaptureRef.current?.resetLasso();
+      resetVlm();
+      setVlmCaptureSuccess(null);
     }
-  }, [identifyPhoto]);
+  }, [identifyPhoto, resetVlm]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(() => {
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
-  }, []);
+    resetVlm();
+    setVlmCaptureSuccess(null);
+  }, [resetVlm]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -194,8 +202,7 @@ export default function CameraScreen() {
             photoUri={capturedUri}
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
-            // TODO: Connect CAPTURE_SUCCESS to VLM result?
-            captureSuccess={CAPTURE_SUCCESS} 
+            captureSuccess={vlmCaptureSuccess} 
           />
         )}
       </View>
