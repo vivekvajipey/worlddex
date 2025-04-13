@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import { View, Text, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -61,15 +61,38 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
 
     // Method to reset lasso after capture
     const resetLasso = useCallback(() => {
+      console.log("[DEBUG] CameraCapture.resetLasso called");
       setPoints([]);
       setPathString("");
       setPolygonPoints("");
+      console.log("[DEBUG] CameraCapture.resetLasso state reset complete");
     }, []);
 
     // Method to get the camera ref
     const getCameraRef = useCallback(() => {
       return cameraRef;
     }, []);
+
+    // Add logging for state changes
+    useEffect(() => {
+      console.log(`[DEBUG] isCapturing changed: ${isCapturing}`);
+    }, [isCapturing]);
+
+    useEffect(() => {
+      console.log(`[DEBUG] isDrawing changed: ${isDrawing}`);
+    }, [isDrawing]);
+
+    useEffect(() => {
+      console.log(`[DEBUG] points array length: ${points.length}`);
+      // Log polygonPoints and pathString state when points change
+      console.log(`[DEBUG] polygonPoints empty: ${polygonPoints === ""}`);
+      console.log(`[DEBUG] pathString empty: ${pathString === ""}`);
+    }, [points, polygonPoints, pathString]);
+    
+    // For debugging SVG rendering
+    useEffect(() => {
+      console.log(`[DEBUG-RENDER] SVG conditions - polygonPoints: ${!!polygonPoints}, pathString: ${!!pathString}, isCapturing: ${isCapturing}`);
+    });
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -95,32 +118,37 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           if (!isDrawing || isCapturing) return;
 
           const newPoint = { x: event.x, y: event.y };
-          setPoints(current => {
-            const updated = [...current, newPoint];
-            setPathString(updatePathString(updated));
-            return updated;
-          });
+          // Update points first
+          const updated = [...points, newPoint];
+          setPoints(updated);
+          // Then update path string separately - not inside a state updater callback
+          setPathString(updatePathString(updated));
         })
         .onEnd(() => {
           if (isCapturing) return;
+          
+          // Stop drawing immediately to prevent further updates
+          setIsDrawing(false);
 
           if (points.length > 2) {
-            // Close the path
-            const closedPoints = [...points, points[0]];
+            // Create a local copy of points to avoid race conditions
+            const pointsCopy = [...points];
+            const closedPoints = [...pointsCopy, pointsCopy[0]];
+            
+            // Set path and polygon strings
             setPathString(updatePathString(closedPoints));
             setPolygonPoints(updatePolygonPoints(closedPoints));
-
-            // Trigger capture with the points
-            onCapture(points, cameraRef);
-
-            // Reset will be handled by parent after capture processing
+            
+            // Capture using the point copy
+            // Note: We don't reset state here - the parent will do it 
+            // and our UI elements stay mounted regardless
+            onCapture(pointsCopy, cameraRef);
           } else {
-            // Not enough points to form an area
+            // Not enough points - just clear state
             setPoints([]);
             setPathString("");
             setPolygonPoints("");
           }
-          setIsDrawing(false);
         }),
       [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing]
     );
@@ -186,37 +214,41 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             animateShutter={true}
             enableTorch={torchEnabled}
           >
-            {/* SVG overlay for drawing lasso */}
-            <Svg width="100%" height="100%" className="absolute inset-0">
-              {/* Filled polygon area */}
-              {polygonPoints && !isCapturing ? (
-                <Polygon
-                  points={polygonPoints}
-                  fill={`${backgroundColor}33`}
-                  stroke="none"
-                />
-              ) : null}
-
-              {/* Lasso path */}
-              {pathString && !isCapturing ? (
-                <Path
-                  d={pathString}
-                  stroke={backgroundColor}
-                  strokeWidth={3}
-                  strokeDasharray="6,4"
-                  fill="none"
-                />
-              ) : null}
+            {/* IMPORTANT: Avoid any conditional rendering that could cause view hierarchy changes */}
+            {/* Instead use empty/transparent SVG elements that are always present */}
+            <Svg 
+              width="100%" 
+              height="100%" 
+              className="absolute inset-0"
+              key="lasso-svg-container"
+            >
+              {/* Always render the polygon but with empty or real points */}
+              <Polygon
+                key="lasso-polygon"
+                points={isCapturing ? "0,0" : (polygonPoints || "0,0")}
+                fill={isCapturing || !polygonPoints ? "transparent" : `${backgroundColor}33`}
+                stroke="none"
+              />
+              
+              {/* Always render the path but with empty or real path data */}
+              <Path
+                key="lasso-path"
+                d={isCapturing ? "M0,0" : (pathString || "M0,0")}
+                stroke={isCapturing || !pathString ? "transparent" : backgroundColor}
+                strokeWidth={3}
+                strokeDasharray="6,4"
+                fill="none"
+              />
             </Svg>
 
-            {/* Instructions text */}
-            {!isCapturing && (
-              <View className="absolute bottom-12 left-0 right-0 items-center">
-                <Text className="text-white text-center font-lexend-medium px-6 py-2 bg-black/50 rounded-full">
-                  Draw with one finger to select an area
-                </Text>
-              </View>
-            )}
+            {/* Always render the instruction but control its visibility with opacity */}
+            <View className="absolute bottom-12 left-0 right-0 items-center">
+              <Text 
+                className={`text-white text-center font-lexend-medium px-6 py-2 bg-black/50 rounded-full ${isCapturing ? "opacity-0" : "opacity-100"}`}
+              >
+                Draw with one finger to select an area
+              </Text>
+            </View>
           </AnimatedCamera>
         </GestureDetector>
 

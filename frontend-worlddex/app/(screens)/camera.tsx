@@ -38,6 +38,7 @@ export default function CameraScreen() {
     setVlmCaptureSuccess(null);
 
     // Start capture state - freeze UI
+    // Set this synchronously to ensure SVG components are unmounted immediately
     setIsCapturing(true);
 
     try {
