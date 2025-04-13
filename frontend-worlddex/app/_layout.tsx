@@ -47,16 +47,6 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="(screens)/photo-preview"
-          options={{
-            animation: "none",
-            presentation: "transparentModal",
-            contentStyle: {
-              backgroundColor: "transparent",
-            },
-          }}
-        />
-        <Stack.Screen
           name="(screens)/camera"
           options={{
             animation: "none",
