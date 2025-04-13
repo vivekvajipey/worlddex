@@ -11,7 +11,7 @@ import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Used to simulate API response - set to false to test failure animation
-const CAPTURE_SUCCESS = true;
+const CAPTURE_SUCCESS = false;
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -24,9 +24,6 @@ export default function CameraScreen() {
   const [captureBox, setCaptureBox] = useState({
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
-
-  // Preview state
-  const [showFinalPreview, setShowFinalPreview] = useState(false);
 
   // Process the captured area
   const handleCapture = useCallback(async (
@@ -122,19 +119,8 @@ export default function CameraScreen() {
     }
   }, []);
 
-  // Handle the transition from development to preview
-  const handleDevelopmentComplete = useCallback(() => {
-    if (CAPTURE_SUCCESS) {
-      setShowFinalPreview(true);
-    } else {
-      // On failure, reset everything
-      handleDismissPreview();
-    }
-  }, []);
-
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(() => {
-    setShowFinalPreview(false);
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
@@ -179,14 +165,13 @@ export default function CameraScreen() {
           isCapturing={isCapturing}
         />
 
-        {/* Polaroid development and preview overlay */}
+        {/* Polaroid development and animation overlay */}
         {isCapturing && capturedUri && (
           <PolaroidDevelopment
             photoUri={capturedUri}
             captureBox={captureBox}
-            onDevelopmentComplete={handleDevelopmentComplete}
             onDismiss={handleDismissPreview}
-            showFinalPreview={showFinalPreview}
+            captureSuccess={CAPTURE_SUCCESS}
           />
         )}
       </View>

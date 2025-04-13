@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { View, Image, Animated, Dimensions, TouchableWithoutFeedback } from "react-native";
 import { BlurView } from "expo-blur";
+import Svg, { Path, Defs, ClipPath } from "react-native-svg";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -26,17 +27,15 @@ interface PolaroidDevelopmentProps {
     height: number;
     aspectRatio: number;
   };
-  onDevelopmentComplete: () => void;
   onDismiss: () => void;
-  showFinalPreview: boolean;
+  captureSuccess: boolean;
 }
 
 export default function PolaroidDevelopment({
   photoUri,
   captureBox,
-  onDevelopmentComplete,
   onDismiss,
-  showFinalPreview
+  captureSuccess
 }: PolaroidDevelopmentProps) {
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -52,8 +51,16 @@ export default function PolaroidDevelopment({
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
-  // State to track if we're minimizing
+  // Rip animation values
+  const leftPieceAnim = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const rightPieceAnim = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const leftRotateAnim = useRef(new Animated.Value(0)).current;
+  const rightRotateAnim = useRef(new Animated.Value(0)).current;
+
+  // State tracking
   const [isMinimizing, setIsMinimizing] = useState(false);
+  const [isRipping, setIsRipping] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -111,13 +118,18 @@ export default function PolaroidDevelopment({
           useNativeDriver: false,
         })
       ]).start(() => {
-        // Notify parent that development is complete
-        onDevelopmentComplete();
+        // After development, either show the final preview or run the failure animation
+        if (captureSuccess) {
+          setIsCompleted(true);
+        } else {
+          // Run failure animation after a short delay
+          runRipAnimation();
+        }
       });
     });
   }
 
-  // Run minimize animation
+  // Run minimize animation for when user dismisses
   const runMinimizeAnimation = () => {
     setIsMinimizing(true);
 
@@ -160,16 +172,103 @@ export default function PolaroidDevelopment({
     });
   };
 
-  // Handle background tap
+  // Run rip animation for failure case
+  const runRipAnimation = () => {
+    // Ensure initial state
+    leftPieceAnim.setValue({ x: 0, y: 0 });
+    rightPieceAnim.setValue({ x: 0, y: 0 });
+    leftRotateAnim.setValue(0);
+    rightRotateAnim.setValue(0);
+
+    // First, violent shake before ripping
+    Animated.sequence([
+      // Violent shake
+      Animated.sequence([
+        Animated.timing(shakeAnim, {
+          toValue: 0.3,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -0.3,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 0.3,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -0.3,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 0,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+      ])
+    ]).start(() => {
+      // After shaking, show the torn pieces and animate them falling
+      setIsRipping(true);
+
+      // Small delay to ensure the torn pieces are visible
+      setTimeout(() => {
+        // Then rip and fall
+        Animated.parallel([
+          // Left piece falls to the left and down
+          Animated.timing(leftPieceAnim.x, {
+            toValue: -150,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(leftPieceAnim.y, {
+            toValue: SCREEN_HEIGHT,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(leftRotateAnim, {
+            toValue: -0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+
+          // Right piece falls to the right and down
+          Animated.timing(rightPieceAnim.x, {
+            toValue: 150,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rightPieceAnim.y, {
+            toValue: SCREEN_HEIGHT,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rightRotateAnim, {
+            toValue: 0.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // When animation completes, dismiss
+          setTimeout(onDismiss, 300);
+        });
+      }, 50);
+    });
+  };
+
+  // Handle background press
   const handleBackgroundPress = () => {
-    if (showFinalPreview) {
+    if (isCompleted && !isMinimizing) {
       runMinimizeAnimation();
     }
   };
 
-  // Animation styles depending on whether we're in preview mode or not
+  // Animation styles depending on current state
   const getAnimationStyles = () => {
-    // If we're minimizing, use different animation values
+    // If we're minimizing, use minimize animation values
     if (isMinimizing) {
       return {
         transform: [
@@ -187,8 +286,8 @@ export default function PolaroidDevelopment({
       };
     }
 
-    // For the initial development phase, we use relative transforms
-    if (!showFinalPreview) {
+    // If we're in the development/expansion phase
+    if (!isRipping) {
       return getAnimatedStyles(
         captureBox,
         targetDimensions,
@@ -198,21 +297,126 @@ export default function PolaroidDevelopment({
       );
     }
 
-    // For the preview phase, we use absolute positioning in the center
-    // This is what the animation ends with, so there's no visual jump
+    // If we're ripping, hide the main polaroid
+    return {
+      opacity: 0,
+    };
+  };
+
+  // Generate the zigzag clip path for the left half
+  const getLeftHalfZigzagPath = (width: number, height: number) => {
+    const zigzagWidth = 10; // Width of the zigzag teeth
+    const zigzagCount = 12; // Number of zigzags
+    const segmentHeight = height / zigzagCount;
+
+    // Start at top-left, go right, then down with zigzags, then back to bottom-left, then up to top-left
+    let path = `M 0 0 H ${width}`;
+
+    // Draw the zigzag down the right edge
+    for (let i = 0; i < zigzagCount; i++) {
+      const y1 = i * segmentHeight;
+      const y2 = (i + 1) * segmentHeight;
+
+      if (i % 2 === 0) {
+        // Zigzag inward (to the left)
+        path += ` L ${width - zigzagWidth} ${y1 + segmentHeight / 2} L ${width} ${y2}`;
+      } else {
+        // Zigzag outward (to the right)
+        path += ` L ${width + zigzagWidth} ${y1 + segmentHeight / 2} L ${width} ${y2}`;
+      }
+    }
+
+    // Complete the path
+    path += ` L 0 ${height} L 0 0 Z`;
+    return path;
+  };
+
+  // Generate the zigzag clip path for the right half
+  const getRightHalfZigzagPath = (width: number, height: number) => {
+    const zigzagWidth = 10; // Width of the zigzag teeth
+    const zigzagCount = 12; // Number of zigzags
+    const segmentHeight = height / zigzagCount;
+
+    // Start at top-left with zigzags, go right to top-right, down to bottom-right, back to bottom-left, up to top-left
+    let path = `M 0 0`;
+
+    // Draw the zigzag down the left edge
+    for (let i = 0; i < zigzagCount; i++) {
+      const y1 = i * segmentHeight;
+      const y2 = (i + 1) * segmentHeight;
+
+      if (i % 2 === 0) {
+        // Zigzag outward (to the left)
+        path += ` L ${-zigzagWidth} ${y1 + segmentHeight / 2} L 0 ${y2}`;
+      } else {
+        // Zigzag inward (to the right)
+        path += ` L ${zigzagWidth} ${y1 + segmentHeight / 2} L 0 ${y2}`;
+      }
+    }
+
+    // Complete the path
+    path += ` L ${width} ${height} L ${width} 0 L 0 0 Z`;
+    return path;
+  };
+
+  // Left half styles for ripping animation
+  const getLeftPieceStyles = () => {
+    if (!isRipping) return { opacity: 0, position: 'absolute' as const };
+
     return {
       position: 'absolute' as const,
       left: SCREEN_WIDTH / 2 - targetDimensions.width / 2,
       top: SCREEN_HEIGHT / 2 - targetDimensions.height / 2,
-      width: targetDimensions.width,
+      width: targetDimensions.width / 2,
       height: targetDimensions.height,
+      backgroundColor: '#FFF4ED',
+      borderTopLeftRadius: 8,
+      borderBottomLeftRadius: 8,
+      overflow: 'hidden' as const,
+      transform: [
+        { translateX: leftPieceAnim.x },
+        { translateY: leftPieceAnim.y },
+        {
+          rotate: leftRotateAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '-90deg']
+          })
+        }
+      ]
+    };
+  };
+
+  // Right half styles for ripping animation
+  const getRightPieceStyles = () => {
+    if (!isRipping) return { opacity: 0, position: 'absolute' as const };
+
+    return {
+      position: 'absolute' as const,
+      left: SCREEN_WIDTH / 2,
+      top: SCREEN_HEIGHT / 2 - targetDimensions.height / 2,
+      width: targetDimensions.width / 2,
+      height: targetDimensions.height,
+      backgroundColor: '#FFF4ED',
+      borderTopRightRadius: 8,
+      borderBottomRightRadius: 8,
+      overflow: 'hidden' as const,
+      transform: [
+        { translateX: rightPieceAnim.x },
+        { translateY: rightPieceAnim.y },
+        {
+          rotate: rightRotateAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '90deg']
+          })
+        }
+      ]
     };
   };
 
   return (
     <View className="absolute inset-0">
-      {/* Blurred background - gets touchable in preview mode */}
-      <TouchableWithoutFeedback onPress={showFinalPreview ? handleBackgroundPress : undefined}>
+      {/* Blurred background - gets touchable in final state */}
+      <TouchableWithoutFeedback onPress={isCompleted ? handleBackgroundPress : undefined}>
         <BlurView
           intensity={blurIntensityRef.current.value}
           tint="light"
@@ -220,22 +424,20 @@ export default function PolaroidDevelopment({
         />
       </TouchableWithoutFeedback>
 
-      {/* Polaroid frame - single instance that animates into position */}
+      {/* Main Polaroid frame */}
       <Animated.View
         style={[
           {
             position: 'absolute',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: '#FFF4ED',
             borderRadius: 8,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
-            // Start with the final dimensions immediately - dimensions controlled by scale transform
             width: targetDimensions.width,
             height: targetDimensions.height,
-            // Start centered on the capture box
             left: captureBox.x + (captureBox.width / 2) - (targetDimensions.width / 2),
             top: captureBox.y + (captureBox.height / 2) - (targetDimensions.height / 2),
           },
@@ -258,11 +460,11 @@ export default function PolaroidDevelopment({
               width: '100%',
               height: '100%'
             }}
-            resizeMode={showFinalPreview ? "contain" : "cover"}
+            resizeMode={isCompleted ? "contain" : "cover"}
           />
 
           {/* White overlay that fades away */}
-          {!showFinalPreview && (
+          {!isCompleted && !isRipping && (
             <Animated.View
               style={{
                 position: 'absolute',
@@ -270,7 +472,7 @@ export default function PolaroidDevelopment({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'white',
+                backgroundColor: '#FFF4ED',
                 opacity: fadeAnim,
               }}
             />
@@ -279,6 +481,142 @@ export default function PolaroidDevelopment({
 
         {/* Bottom space */}
         <View style={{ height: FRAME_BOTTOM_PADDING }} />
+      </Animated.View>
+
+      {/* Left half of torn polaroid */}
+      <Animated.View style={getLeftPieceStyles()}>
+        {/* Main left container */}
+        <View style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#FFF4ED',
+          borderTopLeftRadius: 8,
+          borderBottomLeftRadius: 8,
+          overflow: 'hidden',
+        }}>
+          {/* Left half of photo */}
+          <View style={{
+            position: 'absolute',
+            width: targetDimensions.photoWidth,
+            height: targetDimensions.photoHeight,
+            top: FRAME_EDGE_PADDING,
+            left: FRAME_EDGE_PADDING,
+            overflow: 'hidden',
+          }}>
+            <Image
+              source={{ uri: photoUri }}
+              style={{
+                width: targetDimensions.photoWidth,
+                height: targetDimensions.photoHeight,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+              }}
+              resizeMode="cover"
+            />
+          </View>
+        </View>
+
+        {/* Zigzag edge mask - covers the right edge with zigzag patterns */}
+        <View style={{
+          position: 'absolute',
+          right: -5,
+          top: 0,
+          bottom: 0,
+          width: 15,
+          overflow: 'hidden',
+        }}>
+          {/* Create individual zigzag teeth */}
+          {Array(12).fill(0).map((_, i) => {
+            const height = targetDimensions.height / 12;
+            const isEven = i % 2 === 0;
+            return (
+              <View
+                key={`left-tooth-${i}`}
+                style={{
+                  position: 'absolute',
+                  right: isEven ? 0 : 8, // Alternate between in and out
+                  top: i * height,
+                  width: isEven ? 15 : 10,
+                  height: height,
+                  backgroundColor: '#FFF4ED', // Same as polaroid color
+                  // Triangle shape pointing inward for even, outward for odd
+                  transform: [
+                    { rotate: isEven ? '0deg' : '0deg' }
+                  ]
+                }}
+              />
+            );
+          })}
+        </View>
+      </Animated.View>
+
+      {/* Right half of torn polaroid */}
+      <Animated.View style={getRightPieceStyles()}>
+        {/* Main right container */}
+        <View style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#FFF4ED',
+          borderTopRightRadius: 8,
+          borderBottomRightRadius: 8,
+          overflow: 'hidden',
+        }}>
+          {/* Right half of photo */}
+          <View style={{
+            position: 'absolute',
+            width: targetDimensions.photoWidth,
+            height: targetDimensions.photoHeight,
+            top: FRAME_EDGE_PADDING,
+            right: FRAME_EDGE_PADDING,
+            overflow: 'hidden',
+          }}>
+            <Image
+              source={{ uri: photoUri }}
+              style={{
+                width: targetDimensions.photoWidth,
+                height: targetDimensions.photoHeight,
+                position: 'absolute',
+                top: 0,
+                right: 0,
+              }}
+              resizeMode="cover"
+            />
+          </View>
+        </View>
+
+        {/* Zigzag edge mask - covers the left edge with zigzag patterns */}
+        <View style={{
+          position: 'absolute',
+          left: -5,
+          top: 0,
+          bottom: 0,
+          width: 15,
+          overflow: 'hidden',
+        }}>
+          {/* Create individual zigzag teeth */}
+          {Array(12).fill(0).map((_, i) => {
+            const height = targetDimensions.height / 12;
+            const isEven = i % 2 === 0;
+            return (
+              <View
+                key={`right-tooth-${i}`}
+                style={{
+                  position: 'absolute',
+                  left: isEven ? 0 : 8, // Alternate between in and out
+                  top: i * height,
+                  width: isEven ? 15 : 10,
+                  height: height,
+                  backgroundColor: '#FFF4ED', // Same as polaroid color
+                  // Triangle shape pointing outward for even, inward for odd
+                  transform: [
+                    { rotate: isEven ? '0deg' : '0deg' }
+                  ]
+                }}
+              />
+            );
+          })}
+        </View>
       </Animated.View>
     </View>
   );
