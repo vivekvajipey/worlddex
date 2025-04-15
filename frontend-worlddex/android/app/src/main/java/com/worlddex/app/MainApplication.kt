@@ -1,4 +1,4 @@
-package com.antqin.worlddexfrontend
+package com.worlddex.app
 
 import android.app.Application
 import android.content.res.Configuration

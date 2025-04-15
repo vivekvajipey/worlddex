@@ -4,10 +4,12 @@
   <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>frontend-worlddex</string>
+    <string>WorldDex</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -27,8 +29,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>myapp</string>
-          <string>com.antqin.worlddexfrontend</string>
+          <string>worlddex</string>
+          <string>com.worlddex.app</string>
         </array>
       </dict>
     </array>
@@ -45,9 +47,25 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Allow WorldDex to access your camera</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Allow WorldDex to save photos</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow WorldDex to access your photos</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
+    </array>
+    <key>UIAppFonts</key>
+    <array>
+      <string>LexendDeca-Regular.ttf</string>
+      <string>LexendDeca-Bold.ttf</string>
+      <string>LexendDeca-Light.ttf</string>
+      <string>LexendDeca-Medium.ttf</string>
+      <string>LexendDeca-SemiBold.ttf</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
@@ -75,11 +93,5 @@
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>NSCameraUsageDescription</key>
-    <string>WorldDex needs camera access to identify objects in your surroundings.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>WorldDex needs access to your photo library to save captured discoveries.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>WorldDex needs permission to save captured discoveries to your photo library.</string>
   </dict>
 </plist>

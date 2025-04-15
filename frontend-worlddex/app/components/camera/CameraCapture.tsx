@@ -208,15 +208,6 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                 />
               ) : null}
             </Svg>
-
-            {/* Instructions text */}
-            {!isCapturing && (
-              <View className="absolute bottom-12 left-0 right-0 items-center">
-                <Text className="text-white text-center font-lexend-medium px-6 py-2 bg-black/50 rounded-full">
-                  Draw with one finger to select an area
-                </Text>
-              </View>
-            )}
           </AnimatedCamera>
         </GestureDetector>
 

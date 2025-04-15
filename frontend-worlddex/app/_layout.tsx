@@ -1,21 +1,26 @@
 import { Stack } from "expo-router";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AuthProvider } from "../src/contexts/AuthContext";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    "LexendDeca-Regular": require("../assets/fonts/LexendDeca-Regular.ttf"),
-    "LexendDeca-Bold": require("../assets/fonts/LexendDeca-Bold.ttf"),
+    "LexendDeca-Thin": require("../assets/fonts/LexendDeca-Thin.ttf"),
+    "LexendDeca-ExtraLight": require("../assets/fonts/LexendDeca-ExtraLight.ttf"),
     "LexendDeca-Light": require("../assets/fonts/LexendDeca-Light.ttf"),
+    "LexendDeca-Regular": require("../assets/fonts/LexendDeca-Regular.ttf"),
     "LexendDeca-Medium": require("../assets/fonts/LexendDeca-Medium.ttf"),
     "LexendDeca-SemiBold": require("../assets/fonts/LexendDeca-SemiBold.ttf"),
+    "LexendDeca-Bold": require("../assets/fonts/LexendDeca-Bold.ttf"),
+    "LexendDeca-ExtraBold": require("../assets/fonts/LexendDeca-ExtraBold.ttf"),
+    "LexendDeca-Black": require("../assets/fonts/LexendDeca-Black.ttf"),
   });
 
   useEffect(() => {
@@ -32,30 +37,41 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: "none",
-        }}
-      >
-        <Stack.Screen
-          name="index"
-          options={{
-            contentStyle: {
-              backgroundColor: "transparent",
-            },
-          }}
-        />
-        <Stack.Screen
-          name="(screens)/camera"
-          options={{
+      <AuthProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
             animation: "none",
-            contentStyle: {
-              backgroundColor: "transparent",
-            },
           }}
-        />
-      </Stack>
+        >
+          <Stack.Screen
+            name="index"
+            options={{
+              contentStyle: {
+                backgroundColor: "transparent",
+              },
+            }}
+          />
+          <Stack.Screen
+            name="(screens)/camera"
+            options={{
+              animation: "none",
+              contentStyle: {
+                backgroundColor: "transparent",
+              },
+            }}
+          />
+          <Stack.Screen
+            name="(screens)/sign-in"
+            options={{
+              animation: "none",
+              contentStyle: {
+                backgroundColor: "transparent",
+              },
+            }}
+          />
+        </Stack>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }
