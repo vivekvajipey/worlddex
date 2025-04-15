@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "worlddex",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "plugins": [
@@ -48,7 +48,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.antqin.worlddexfrontend",
+      "bundleIdentifier": "com.worlddex.app",
       "infoPlist": {
         "NSCameraUsageDescription": "WorldDex needs access to your camera to take pictures",
         "NSPhotoLibraryUsageDescription": "WorldDex needs access to your photo library to save pictures",
@@ -60,7 +60,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.antqin.worlddexfrontend",
+      "package": "com.worlddex.app",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

@@ -1,4 +1,4 @@
-package com.antqin.worlddexfrontend
+package com.worlddex.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
