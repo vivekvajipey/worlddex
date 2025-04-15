@@ -6,7 +6,7 @@ declare const __DEV__: boolean;
 // In development, use localhost
 export const API_URL = __DEV__
   ? // ? 'http://10.0.0.195:3000/api'
-    "http://10.27.148.126:3000/api" // Stanford
+    "http://10.31.147.38:3000/api" // Stanford
   : "https://your-api-url.com/api"; // TODO: Update with real URL
 
 // Helper to check if we're running in Expo Go

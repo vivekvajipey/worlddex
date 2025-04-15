@@ -35,6 +35,16 @@ export interface ModelCostConfig {
       name: "Phi-3 Vision",
       inputCostPerMillionTokens: 0.20,
       outputCostPerMillionTokens: 0.20
+    },
+    "gpt-4.1-nano-2025-04-14": {
+      name: "GPT-4.1 Nano",
+      inputCostPerMillionTokens: 0.10,
+      outputCostPerMillionTokens: 0.40
+    },
+    "gpt-4.1-mini-2025-04-14": {
+      name: "GPT-4.1 Mini",
+      inputCostPerMillionTokens: 0.40,
+      outputCostPerMillionTokens: 1.60
     }
   };
   

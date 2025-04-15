@@ -4,21 +4,28 @@ import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 
 const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond
 
-if (!process.env.FIREWORKS_API_KEY) {
-    throw new Error("FIREWORKS_API_KEY env variable not set");
+// if (!process.env.FIREWORKS_API_KEY) {
+//     throw new Error("FIREWORKS_API_KEY env variable not set");
+// }
+
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY env variable not set");
 }
 
-const fireworksClient = new OpenAI({
-    baseURL: "https://api.fireworks.ai/inference/v1",
-    apiKey: process.env.FIREWORKS_API_KEY
+const vlmClient = new OpenAI({
+    // baseURL: "https://api.fireworks.ai/inference/v1",
+    // apiKey: process.env.FIREWORKS_API_KEY
+    apiKey: process.env.OPENAI_API_KEY
 });
 
-const VLM_MODEL_FIREWORKS = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
+// const VLM_MODEL = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
+// const VLM_MODEL = "gpt-4.1-nano-2025-04-14";
+const VLM_MODEL = "gpt-4.1-mini-2025-04-14";
 
 export class VlmService {
     // Updated prompt to handle unidentified subjects
     private getIdentificationPrompt(): string {
-        return `Identify the primary subject in the image. Respond with ONLY the most specific common name possible for the subject, using Title Case (keep it succinct). If no clear subject can be identified, respond with ONLY the word "${UNIDENTIFIED_RESPONSE}".`;
+        return `Identify the primary subject in the image. Respond with ONLY the most specific common name possible for the subject, using Title Case (keep it succinct). If there is no subject in the image, respond with ONLY the word "${UNIDENTIFIED_RESPONSE}".`;
     }
 
     async identifyImage(payload: VlmIdentificationRequest): Promise<VlmIdentificationResponse> {
@@ -44,9 +51,9 @@ export class VlmService {
         ];
 
         try {
-            console.log(`Calling VLM model: ${VLM_MODEL_FIREWORKS}`);
-            const response = await fireworksClient.chat.completions.create({
-                model: VLM_MODEL_FIREWORKS,
+            console.log(`Calling VLM model: ${VLM_MODEL}`);
+            const response = await vlmClient.chat.completions.create({
+                model: VLM_MODEL,
                 messages: messages,
                 max_tokens: 50,
                 temperature: 0.0
@@ -67,7 +74,7 @@ export class VlmService {
 
             // Calculate and log cost using the utility
             if (response.usage) {
-                const costResult = calculateCost(VLM_MODEL_FIREWORKS, {
+                const costResult = calculateCost(VLM_MODEL, {
                     promptTokens: response.usage.prompt_tokens || 0,
                     completionTokens: response.usage.completion_tokens || 0
                 });
