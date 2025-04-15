@@ -1,15 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Image, Animated, Dimensions, TouchableWithoutFeedback } from "react-native";
+import { View, Image, Animated, Dimensions, TouchableWithoutFeedback, Text } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
-import { backgroundColor } from "../../utils/colors";
+import { backgroundColor } from "../../../src/utils/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Polaroid dimensions for the final preview state
 const POLAROID_MAX_WIDTH = SCREEN_WIDTH * 0.95;
 const FRAME_EDGE_PADDING = POLAROID_MAX_WIDTH * 0.06;
-const FRAME_BOTTOM_PADDING = POLAROID_MAX_WIDTH * 0.12;
+const FRAME_BOTTOM_PADDING = POLAROID_MAX_WIDTH * 0.18; // larger bottom padding for label
 const MAX_FRAME_HEIGHT = SCREEN_HEIGHT * 0.8;
 
 // Initial blur intensity (lower at the beginning)
@@ -29,14 +29,16 @@ interface PolaroidDevelopmentProps {
     aspectRatio: number;
   };
   onDismiss: () => void;
-  captureSuccess: boolean;
+  captureSuccess: boolean | null;
+  label?: string; // Optional string for the identified subject
 }
 
 export default function PolaroidDevelopment({
   photoUri,
   captureBox,
   onDismiss,
-  captureSuccess
+  captureSuccess,
+  label
 }: PolaroidDevelopmentProps) {
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -62,6 +64,7 @@ export default function PolaroidDevelopment({
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isRipping, setIsRipping] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [initialAnimationDone, setInitialAnimationDone] = useState(false);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -119,16 +122,25 @@ export default function PolaroidDevelopment({
           useNativeDriver: false,
         })
       ]).start(() => {
-        // After development, either show the final preview or run the failure animation
-        if (captureSuccess) {
-          setIsCompleted(true);
-        } else {
-          // Run failure animation after a short delay
-          runRipAnimation();
-        }
+        // Mark initial development animation as done
+        setInitialAnimationDone(true);
       });
     });
   }
+
+  // Effect to handle final state (success/failure) only after initial animation and VLM result
+  useEffect(() => {
+    if (initialAnimationDone) {
+      if (captureSuccess === true) {
+        setIsCompleted(true);
+      } else if (captureSuccess === false) {
+        if (!isRipping && !isMinimizing) {
+          runRipAnimation();
+        }
+      }
+      // If captureSuccess is null, do nothing - wait for VLM result
+    }
+  }, [captureSuccess, initialAnimationDone, isRipping, isMinimizing]);
 
   // Run minimize animation for when user dismisses
   const runMinimizeAnimation = () => {
@@ -441,8 +453,14 @@ export default function PolaroidDevelopment({
           )}
         </View>
 
-        {/* Bottom space */}
-        <View style={{ height: FRAME_BOTTOM_PADDING }} />
+        {/* Bottom space with label text */}
+        <View className="flex items-center justify-center" style={{ height: FRAME_BOTTOM_PADDING }}>
+          {captureSuccess === true && label && (
+            <Text className="font-shadows text-black text-center text-3xl">
+              {label}
+            </Text>
+          )}
+        </View>
       </Animated.View>
 
       {/* Left half of torn polaroid */}

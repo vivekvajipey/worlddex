@@ -7,11 +7,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
+import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-// Used to simulate API response - set to false to test failure animation
-const CAPTURE_SUCCESS = false;
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -25,23 +23,29 @@ export default function CameraScreen() {
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
-  // Process the captured area
+  // VLM
+  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
+  const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
     if (!cameraRef.current || points.length < 3) return;
 
+    // Reset VLM state for new capture
+    resetVlm(); 
+    setVlmCaptureSuccess(null);
+
     // Start capture state - freeze UI
     setIsCapturing(true);
 
     try {
-      // First take a picture of the entire view
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1, skipProcessing: false });
-
-      if (!photo) {
-        throw new Error("Failed to capture photo");
-      }
+      const photo = await cameraRef.current.takePictureAsync({ 
+        quality: 1, 
+        base64: true, // Need base64 for VLM
+        skipProcessing: false 
+      });
 
       // Calculate the image scale factor (photo dimensions vs screen dimensions)
       const scaleX = photo.width / SCREEN_WIDTH;
@@ -101,7 +105,7 @@ export default function CameraScreen() {
             },
           },
         ],
-        { compress: 0.95 }
+        { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
 
       // Save cropped image
@@ -110,21 +114,51 @@ export default function CameraScreen() {
       // Store the captured URI for the animation
       setCapturedUri(manipResult.uri);
 
+      // VLM Identification
+      if (manipResult.base64) { 
+        console.log("Sending cropped image for VLM identification...");
+        try {
+          const vlmResult = await identifyPhoto({
+            base64Data: manipResult.base64,
+            contentType: "image/jpeg"
+          });
+          console.log("VLM Identification Result:", vlmResult);          
+          if (vlmResult?.label) {
+            setVlmCaptureSuccess(true);
+            setIdentifiedLabel(vlmResult.label);
+          } else {
+            setVlmCaptureSuccess(false);
+            setIdentifiedLabel(null);
+          }
+        } catch (vlmApiError) {
+          console.error("VLM Identification API Error:", vlmApiError);
+          setVlmCaptureSuccess(false);
+        }
+      } else {
+        console.warn("No base64 data available for VLM identification.");
+        setVlmCaptureSuccess(false); // Treating missing base64 as capture failure
+      }
+      // ----------------------------------------------------
+
     } catch (error) {
       console.error("Error capturing selected area:", error);
-      // Reset on error
       setIsCapturing(false);
       setCapturedUri(null);
       cameraCaptureRef.current?.resetLasso();
+      resetVlm();
+      setVlmCaptureSuccess(null);
     }
-  }, []);
+  }, [identifyPhoto, resetVlm]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(() => {
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
-  }, []);
+    resetVlm();
+    setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
+  }, [resetVlm]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -171,10 +205,11 @@ export default function CameraScreen() {
             photoUri={capturedUri}
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
-            captureSuccess={CAPTURE_SUCCESS}
+            captureSuccess={vlmCaptureSuccess}
+            label={identifiedLabel || ""}
           />
         )}
       </View>
     </GestureHandlerRootView>
   );
-} 
+}

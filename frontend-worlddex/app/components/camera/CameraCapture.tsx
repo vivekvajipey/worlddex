@@ -1,11 +1,11 @@
-import React, { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle, useEffect } from "react";
 import { View, Text, TouchableOpacity, Dimensions, Platform } from "react-native";
 import { CameraView, CameraType } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import AnimatedReanimated, { useAnimatedProps } from "react-native-reanimated";
 import Svg, { Path, Polygon } from "react-native-svg";
-import { backgroundColor } from "../../utils/colors";
+import { backgroundColor } from "../../../src/utils/colors";
 
 const AnimatedCamera = AnimatedReanimated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -95,32 +95,36 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           if (!isDrawing || isCapturing) return;
 
           const newPoint = { x: event.x, y: event.y };
-          setPoints(current => {
-            const updated = [...current, newPoint];
-            setPathString(updatePathString(updated));
-            return updated;
-          });
+          // Update points first
+          const updated = [...points, newPoint];
+          setPoints(updated);
+          // Then update path string separately - not inside a state updater callback
+          setPathString(updatePathString(updated));
         })
         .onEnd(() => {
           if (isCapturing) return;
+          
+          // Stop drawing immediately to prevent further updates
+          setIsDrawing(false);
 
           if (points.length > 2) {
-            // Close the path
-            const closedPoints = [...points, points[0]];
+            // Create a local copy of points to avoid race conditions
+            const pointsCopy = [...points];
+            const closedPoints = [...pointsCopy, pointsCopy[0]];
+            
             setPathString(updatePathString(closedPoints));
             setPolygonPoints(updatePolygonPoints(closedPoints));
-
-            // Trigger capture with the points
-            onCapture(points, cameraRef);
-
-            // Reset will be handled by parent after capture processing
+            
+            // Capture using the point copy
+            // Note: We don't reset state here - the parent will do it 
+            // and our UI elements stay mounted regardless
+            onCapture(pointsCopy, cameraRef);
           } else {
             // Not enough points to form an area
             setPoints([]);
             setPathString("");
             setPolygonPoints("");
           }
-          setIsDrawing(false);
         }),
       [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing]
     );
@@ -186,27 +190,31 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             animateShutter={true}
             enableTorch={torchEnabled}
           >
-            {/* SVG overlay for drawing lasso */}
-            <Svg width="100%" height="100%" className="absolute inset-0">
-              {/* Filled polygon area */}
-              {polygonPoints && !isCapturing ? (
-                <Polygon
-                  points={polygonPoints}
-                  fill={`${backgroundColor}33`}
-                  stroke="none"
-                />
-              ) : null}
-
-              {/* Lasso path */}
-              {pathString && !isCapturing ? (
-                <Path
-                  d={pathString}
-                  stroke={backgroundColor}
-                  strokeWidth={3}
-                  strokeDasharray="6,4"
-                  fill="none"
-                />
-              ) : null}
+            {/* Avoiding any conditional rendering that could cause view hierarchy changes */}
+            {/* Instead using empty/transparent SVG elements that are always present */}
+            <Svg 
+              width="100%" 
+              height="100%" 
+              className="absolute inset-0"
+              key="lasso-svg-container"
+            >
+              {/* Always render the polygon but with empty or real points */}
+              <Polygon
+                key="lasso-polygon"
+                points={isCapturing ? "0,0" : (polygonPoints || "0,0")}
+                fill={isCapturing || !polygonPoints ? "transparent" : `${backgroundColor}33`}
+                stroke="none"
+              />
+              
+              {/* Always render the path but with empty or real path data */}
+              <Path
+                key="lasso-path"
+                d={isCapturing ? "M0,0" : (pathString || "M0,0")}
+                stroke={isCapturing || !pathString ? "transparent" : backgroundColor}
+                strokeWidth={3}
+                strokeDasharray="6,4"
+                fill="none"
+              />
             </Svg>
           </AnimatedCamera>
         </GestureDetector>
@@ -244,4 +252,4 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
 
 CameraCapture.displayName = 'CameraCapture';
 
-export default CameraCapture; 
+export default CameraCapture;

@@ -1,5 +1,49 @@
 # WorldDex
 
+## Getting Started (Backend)
+
+Follow these steps to set up and run the backend server:
+
+1. **Navigate to the backend directory:**
+
+   ```bash
+   cd worlddex/backend-worlddex
+   ```
+
+2. **Install Node modules:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+
+   Create a `.env` file in the `backend-worlddex` directory with your Fireworks API key:
+
+   ```
+   FIREWORKS_API_KEY=your_fireworks_api_key_here
+   ```
+
+4. **Update API URL in frontend config:**
+
+   In `frontend-worlddex/src/config.ts`, replace the IP address with your machine's local IP address:
+
+   ```typescript
+   export const API_URL = __DEV__ 
+     ? 'http://YOUR_IP_ADDRESS:3000/api'  // e.g., 'http://192.168.1.5:3000/api'
+     : 'https://your-api-url.com/api';
+   ```
+
+   This is necessary because mobile devices cannot access your computer via `localhost`.
+
+5. **Start the backend server:**
+
+   ```bash
+   npm run dev
+   ```
+
+   The server will start at http://localhost:3000
+
 ## Getting Started (Frontend - iOS)
 
 Follow these steps to set up and run the React Native frontend application on an iOS simulator or device:
