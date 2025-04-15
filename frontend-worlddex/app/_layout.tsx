@@ -1,14 +1,72 @@
 import { Stack } from "expo-router";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AuthProvider } from "../src/contexts/AuthContext";
+import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+function SplashScreenComponent() {
+  return (
+    <View className="flex-1 bg-background justify-center items-center">
+      <Text className="text-3xl font-['LexendDeca-Bold'] text-text-primary mb-4">WorldDex</Text>
+      <ActivityIndicator size="small" color="#F97316" />
+    </View>
+  );
+}
+
+function AppLayoutContent() {
+  const { isLoading } = useAuth();
+
+  if (isLoading) {
+    return <SplashScreenComponent />;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="index"
+        options={{
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="(screens)/camera"
+        options={{
+          animation: "none",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="(screens)/sign-in"
+        options={{
+          animation: "none",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/terms-modal"
+        options={{
+          presentation: "modal",
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/privacy-modal"
+        options={{
+          presentation: "modal",
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -32,45 +90,13 @@ export default function RootLayout() {
 
   // Don't render until fonts are loaded
   if (!fontsLoaded) {
-    return null;
+    return <SplashScreenComponent />;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: "none",
-          }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{
-              contentStyle: {
-                backgroundColor: "transparent",
-              },
-            }}
-          />
-          <Stack.Screen
-            name="(screens)/camera"
-            options={{
-              animation: "none",
-              contentStyle: {
-                backgroundColor: "transparent",
-              },
-            }}
-          />
-          <Stack.Screen
-            name="(screens)/sign-in"
-            options={{
-              animation: "none",
-              contentStyle: {
-                backgroundColor: "transparent",
-              },
-            }}
-          />
-        </Stack>
+        <AppLayoutContent />
       </AuthProvider>
     </GestureHandlerRootView>
   );
