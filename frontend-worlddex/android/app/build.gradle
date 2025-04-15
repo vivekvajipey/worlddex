@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.antqin.worlddexfrontend'
+    namespace 'com.worlddex.app'
     defaultConfig {
-        applicationId 'com.antqin.worlddexfrontend'
+        applicationId 'com.worlddex.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
