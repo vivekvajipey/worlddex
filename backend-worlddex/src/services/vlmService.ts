@@ -1,0 +1,95 @@
+import { OpenAI } from "openai";
+import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../../shared/types/vlm";
+import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
+
+const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond
+
+if (!process.env.FIREWORKS_API_KEY) {
+    throw new Error("FIREWORKS_API_KEY env variable not set");
+}
+
+const fireworksClient = new OpenAI({
+    baseURL: "https://api.fireworks.ai/inference/v1",
+    apiKey: process.env.FIREWORKS_API_KEY
+});
+
+const VLM_MODEL_FIREWORKS = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
+
+export class VlmService {
+    // Updated prompt to handle unidentified subjects
+    private getIdentificationPrompt(): string {
+        return `Identify the primary subject in the image. Respond with ONLY the most specific common name possible for the subject, using Title Case (keep it succinct). If no clear subject can be identified, respond with ONLY the word "${UNIDENTIFIED_RESPONSE}".`;
+    }
+
+    async identifyImage(payload: VlmIdentificationRequest): Promise<VlmIdentificationResponse> {
+        const { base64Data, contentType } = payload;
+
+        if (!base64Data || !contentType) {
+            throw new Error("Missing base64Data or contentType for VLM identification");
+        }
+
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            {
+                "role": "user",
+                "content": [
+                    { "type": "text", "text": this.getIdentificationPrompt() },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": `data:${contentType};base64,${base64Data}`
+                        }
+                    }
+                ]
+            }
+        ];
+
+        try {
+            console.log(`Calling VLM model: ${VLM_MODEL_FIREWORKS}`);
+            const response = await fireworksClient.chat.completions.create({
+                model: VLM_MODEL_FIREWORKS,
+                messages: messages,
+                max_tokens: 50,
+                temperature: 0.0
+            });
+
+            console.log("VLM Response:\n", response);
+
+            let identifiedLabel: string | null = response?.choices?.[0]?.message?.content?.trim() || null;
+            console.log("Original VLM Identified Label:", identifiedLabel);
+            // Check if the response contains the specific "Unidentified" keyword
+            if (identifiedLabel?.includes(UNIDENTIFIED_RESPONSE)) {
+                identifiedLabel = null; // Set label to null for frontend failure case
+            } else if (identifiedLabel) {
+                // Strip trailing punctuation
+                identifiedLabel = identifiedLabel.replace(/[.,;:!?]$/, '').trim();
+            }
+            console.log("Processed VLM Identified Label:", identifiedLabel);
+
+            // Calculate and log cost using the utility
+            if (response.usage) {
+                const costResult = calculateCost(VLM_MODEL_FIREWORKS, {
+                    promptTokens: response.usage.prompt_tokens || 0,
+                    completionTokens: response.usage.completion_tokens || 0
+                });
+                logCostDetails(costResult);
+            } else {
+                console.log("Could not calculate cost: Usage data not found in response.");
+            }
+
+            return { label: identifiedLabel };
+
+        } catch (error: unknown) {
+            console.error("Error calling VLM service:", error);
+            
+            if (error instanceof Error) {
+                const apiError = (error as any).error;
+                if (apiError?.message) {
+                    throw new Error(`VLM API error: ${apiError.message}`);
+                }
+                throw new Error(`VLM error: ${error.message}`);
+            }
+            throw new Error("VLM identification failed due to an unknown error");
+        }
+    }
+
+}
