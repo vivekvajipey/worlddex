@@ -34,18 +34,22 @@ export default function CameraScreen() {
     if (!cameraRef.current || points.length < 3) return;
 
     // Reset VLM state for new capture
-    resetVlm(); 
+    resetVlm();
     setVlmCaptureSuccess(null);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
 
     try {
-      const photo = await cameraRef.current.takePictureAsync({ 
-        quality: 1, 
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 1,
         base64: true, // Need base64 for VLM
-        skipProcessing: false 
+        skipProcessing: false
       });
+
+      if (!photo) {
+        throw new Error("Failed to capture photo");
+      }
 
       // Calculate the image scale factor (photo dimensions vs screen dimensions)
       const scaleX = photo.width / SCREEN_WIDTH;
@@ -115,14 +119,14 @@ export default function CameraScreen() {
       setCapturedUri(manipResult.uri);
 
       // VLM Identification
-      if (manipResult.base64) { 
+      if (manipResult.base64) {
         console.log("Sending cropped image for VLM identification...");
         try {
           const vlmResult = await identifyPhoto({
             base64Data: manipResult.base64,
             contentType: "image/jpeg"
           });
-          console.log("VLM Identification Result:", vlmResult);          
+          console.log("VLM Identification Result:", vlmResult);
           if (vlmResult?.label) {
             setVlmCaptureSuccess(true);
             setIdentifiedLabel(vlmResult.label);
