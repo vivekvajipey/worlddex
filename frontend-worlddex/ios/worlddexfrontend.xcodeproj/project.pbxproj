@@ -10,15 +10,22 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
+		328F710300304BEEB4EF758F /* LexendDeca-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D2F66DAD366948F0A28AE6B3 /* LexendDeca-Medium.ttf */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		8E9162EE76AB47B4AC719CDA /* LexendDeca-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 124C14C2C4064274B4A4B721 /* LexendDeca-SemiBold.ttf */; };
 		71742DB3C7F90586A43ED19C /* libPods-worlddexfrontend.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 33835A2A6B771EBD951EA4B7 /* libPods-worlddexfrontend.a */; };
+		974B289B27594E6C846B1A27 /* LexendDeca-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B776A434D43F4A7FBDF0ECAE /* LexendDeca-Bold.ttf */; };
+		99C064027E754A1591F2C797 /* LexendDeca-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E2AA444222148319E4016DD /* LexendDeca-Light.ttf */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		BF9D3684C4FC47F594E84199 /* LexendDeca-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 04828B27F2AB464B8640B06C /* LexendDeca-Regular.ttf */; };
 		F37C510A09564ED8BCF8A7DF /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D53C36A336546358567A002 /* noop-file.swift */; };
 		F4C786B3B0C900E81DD2F8CB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1B480A7D6971A5385694415B /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		04828B27F2AB464B8640B06C /* LexendDeca-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "LexendDeca-Regular.ttf"; path = "../assets/fonts/LexendDeca-Regular.ttf"; sourceTree = "<group>"; };
+		124C14C2C4064274B4A4B721 /* LexendDeca-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "LexendDeca-SemiBold.ttf"; path = "../assets/fonts/LexendDeca-SemiBold.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* worlddexfrontend.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = worlddexfrontend.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = worlddexfrontend/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = worlddexfrontend/AppDelegate.mm; sourceTree = "<group>"; };
@@ -29,10 +36,13 @@
 		33835A2A6B771EBD951EA4B7 /* libPods-worlddexfrontend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-worlddexfrontend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7115993021C846B14B71C7F7 /* Pods-worlddexfrontend.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-worlddexfrontend.debug.xcconfig"; path = "Target Support Files/Pods-worlddexfrontend/Pods-worlddexfrontend.debug.xcconfig"; sourceTree = "<group>"; };
 		8D53C36A336546358567A002 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "worlddexfrontend/noop-file.swift"; sourceTree = "<group>"; };
+		8E2AA444222148319E4016DD /* LexendDeca-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "LexendDeca-Light.ttf"; path = "../assets/fonts/LexendDeca-Light.ttf"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = worlddexfrontend/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B776A434D43F4A7FBDF0ECAE /* LexendDeca-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "LexendDeca-Bold.ttf"; path = "../assets/fonts/LexendDeca-Bold.ttf"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C4109572CDD7A9FFD528F294 /* Pods-worlddexfrontend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-worlddexfrontend.release.xcconfig"; path = "Target Support Files/Pods-worlddexfrontend/Pods-worlddexfrontend.release.xcconfig"; sourceTree = "<group>"; };
 		C88EA402DED84763BA4C7CB6 /* worlddexfrontend-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "worlddexfrontend-Bridging-Header.h"; path = "worlddexfrontend/worlddexfrontend-Bridging-Header.h"; sourceTree = "<group>"; };
+		D2F66DAD366948F0A28AE6B3 /* LexendDeca-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "LexendDeca-Medium.ttf"; path = "../assets/fonts/LexendDeca-Medium.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-worlddexfrontend/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -91,6 +101,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				D65327D7A22EEC0BE12398D9 /* Pods */,
 				D7E4C46ADA2E9064B798F356 /* ExpoModulesProviders */,
+				A7EE0051AFD444F6BF3048A6 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -111,6 +122,19 @@
 				FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */,
 			);
 			name = worlddexfrontend;
+			sourceTree = "<group>";
+		};
+		A7EE0051AFD444F6BF3048A6 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				04828B27F2AB464B8640B06C /* LexendDeca-Regular.ttf */,
+				B776A434D43F4A7FBDF0ECAE /* LexendDeca-Bold.ttf */,
+				8E2AA444222148319E4016DD /* LexendDeca-Light.ttf */,
+				D2F66DAD366948F0A28AE6B3 /* LexendDeca-Medium.ttf */,
+				124C14C2C4064274B4A4B721 /* LexendDeca-SemiBold.ttf */,
+			);
+			name = Resources;
+			path = "";
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -204,6 +228,11 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				F4C786B3B0C900E81DD2F8CB /* PrivacyInfo.xcprivacy in Resources */,
+				BF9D3684C4FC47F594E84199 /* LexendDeca-Regular.ttf in Resources */,
+				974B289B27594E6C846B1A27 /* LexendDeca-Bold.ttf in Resources */,
+				99C064027E754A1591F2C797 /* LexendDeca-Light.ttf in Resources */,
+				328F710300304BEEB4EF758F /* LexendDeca-Medium.ttf in Resources */,
+				8E9162EE76AB47B4AC719CDA /* LexendDeca-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -291,12 +320,15 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-worlddexfrontend/Pods-worlddexfrontend-resources.sh",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoMediaLibrary/ExpoMediaLibrary_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoSystemUI/ExpoSystemUI_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
@@ -305,12 +337,15 @@
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoApplication_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoMediaLibrary_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoSystemUI_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
@@ -366,8 +401,8 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.antqin.worlddexfrontend;
-				PRODUCT_NAME = worlddexfrontend;
+				PRODUCT_BUNDLE_IDENTIFIER = com.worlddex.app;
+				PRODUCT_NAME = WorldDex;
 				SWIFT_OBJC_BRIDGING_HEADER = "worlddexfrontend/worlddexfrontend-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -398,8 +433,8 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.antqin.worlddexfrontend;
-				PRODUCT_NAME = worlddexfrontend;
+				PRODUCT_BUNDLE_IDENTIFIER = com.worlddex.app;
+				PRODUCT_NAME = WorldDex;
 				SWIFT_OBJC_BRIDGING_HEADER = "worlddexfrontend/worlddexfrontend-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
