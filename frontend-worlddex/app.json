@@ -36,15 +36,6 @@
           "savePhotosPermission": "Allow WorldDex to save photos",
           "isAccessMediaLocationEnabled": true
         }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
       ]
     ],
     "ios": {
