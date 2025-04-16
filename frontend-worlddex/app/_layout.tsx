@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Image } from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -12,9 +12,12 @@ SplashScreen.preventAutoHideAsync();
 
 function SplashScreenComponent() {
   return (
-    <View className="flex-1 bg-background justify-center items-center">
-      <Text className="text-3xl font-['LexendDeca-Bold'] text-text-primary mb-4">WorldDex</Text>
-      <ActivityIndicator size="small" color="#F97316" />
+    <View className="w-full h-full">
+      <Image
+        source={require("../assets/images/splash.png")}
+        className="w-full h-full absolute"
+        resizeMode="cover"
+      />
     </View>
   );
 }
