@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native";
-import { useAuth } from "../../src/contexts/AuthContext";
+import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { useUser } from "../../database/hooks/useUsers";
-import { isUsernameAvailable } from "../../database/hooks/useUsers";
-import { useCaptureCount } from "../../database/hooks/useCaptureCount";
+import { useUser } from "../../../database/hooks/useUsers";
+import { isUsernameAvailable } from "../../../database/hooks/useUsers";
+import { useCaptureCount } from "../../../database/hooks/useCaptureCount";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Colors from "../../src/utils/colors";
+import Colors from "../../../src/utils/colors";
 
-export default function Profile() {
+interface ProfileProps {
+  onOpenFeedback: () => void;
+}
+
+export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { session, signOut } = useAuth();
   const userId = session?.user?.id || null;
   const { user, loading, error, updateUser } = useUser(userId);
@@ -276,7 +280,10 @@ export default function Profile() {
 
                   <TouchableOpacity
                     className="flex-row items-center py-4 border-t border-gray-100"
-                    onPress={() => { }}
+                    onPress={() => {
+                      setModalVisible(false);
+                      onOpenFeedback();
+                    }}
                   >
                     <Ionicons name="help-circle-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
                     <Text className="text-text-primary font-lexend-medium">Help & Support</Text>
