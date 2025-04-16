@@ -44,7 +44,7 @@ export default function SignInScreen() {
       <View className="mb-10 items-center">
         <Image
           source={require("../../assets/images/icon.png")}
-          className="w-32 h-32 mb-4"
+          className="w-32 h-32 mb-1"
           resizeMode="contain"
         />
         <Text className="text-3xl font-['LexendDeca-Black'] text-text-primary mb-2">
