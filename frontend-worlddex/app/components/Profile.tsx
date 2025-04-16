@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoiding
 import { useAuth } from "../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../database/hooks/useUsers";
+import { isUsernameAvailable } from "../../database/hooks/useUsers";
 import { useCaptureCount } from "../../database/hooks/useCaptureCount";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -17,12 +18,16 @@ export default function Profile() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [profilePictureUri, setProfilePictureUri] = useState<string | null>(null);
 
   // Load user data and profile picture
   useEffect(() => {
     if (user) {
       setUsername(user.username || "");
+      setOriginalUsername(user.username || "");
 
       // Load profile picture from local storage if available
       loadProfilePicture();
@@ -52,15 +57,67 @@ export default function Profile() {
     }
   };
 
-  const saveUserData = async () => {
-    if (!user) return;
+  const checkUsername = async (newUsername: string) => {
+    if (!userId) return false;
+
+    // Clear previous errors
+    setUsernameError("");
+
+    // If username hasn't changed, no need to check
+    if (newUsername === originalUsername) return true;
+
+    // Basic validation
+    if (!newUsername || newUsername.trim().length < 3) {
+      setUsernameError("Username must be at least 3 characters");
+      return false;
+    }
+
+    // No special characters except underscore
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      setUsernameError("Username can only contain letters, numbers, and underscores");
+      return false;
+    }
+
+    setIsCheckingUsername(true);
 
     try {
+      const isAvailable = await isUsernameAvailable(newUsername, userId);
+
+      if (!isAvailable) {
+        setUsernameError("Username is already taken");
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameError("Error checking username availability");
+      return false;
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
+  const saveUserData = async () => {
+    if (!user || !userId) return;
+
+    try {
+      // Validate username before saving
+      const isValid = await checkUsername(username);
+
+      if (!isValid) return;
+
       await updateUser({ username });
       setIsEditing(false);
+      setOriginalUsername(username);
     } catch (error) {
       console.error("Error updating profile:", error);
     }
+  };
+
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    setUsernameError(""); // Clear error when typing
   };
 
   const pickImage = async () => {
@@ -159,14 +216,18 @@ export default function Profile() {
 
                     <View className="flex-1">
                       {isEditing ? (
-                        <TextInput
-                          value={username}
-                          onChangeText={setUsername}
-                          className="text-text-primary font-lexend-bold text-xl border-b border-primary pb-1 mb-1"
-                          placeholder="Enter username"
-                          onBlur={saveUserData}
-                          autoFocus
-                        />
+                        <View>
+                          <TextInput
+                            value={username}
+                            onChangeText={handleUsernameChange}
+                            className={`text-text-primary font-lexend-bold text-xl border-b ${usernameError ? 'border-error' : 'border-primary'} pb-1 mb-1`}
+                            placeholder="Enter username"
+                            autoFocus
+                          />
+                          {usernameError ? (
+                            <Text className="text-error text-xs">{usernameError}</Text>
+                          ) : null}
+                        </View>
                       ) : (
                         <View className="flex-row items-center">
                           <Text className="text-text-primary font-lexend-bold text-xl mr-2">
@@ -185,7 +246,8 @@ export default function Profile() {
                     {isEditing && (
                       <TouchableOpacity
                         onPress={saveUserData}
-                        className="ml-2 p-2 bg-primary rounded-full"
+                        className={`ml-2 p-2 rounded-full ${isCheckingUsername ? 'bg-gray-300' : 'bg-primary'}`}
+                        disabled={isCheckingUsername || !!usernameError}
                       >
                         <Ionicons name="checkmark" size={20} color={Colors.background.surface} />
                       </TouchableOpacity>
