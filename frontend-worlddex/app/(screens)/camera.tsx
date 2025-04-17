@@ -260,7 +260,7 @@ export default function CameraScreen() {
             label={identifiedLabel || ""}
           />
         )}
-        <TouchableOpacity className="absolute bottom-8 left-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md" onPress={() => router.push("/(screens)/collection") }>
+        <TouchableOpacity className="absolute bottom-8 left-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md" onPress={() => router.push("/(screens)/personal_captures") }>
           <Ionicons name="albums-outline" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
