@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from "react";
-import { View, Button, Text, Dimensions } from "react-native";
+import { View, Button, Text, Dimensions, ActivityIndicator } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -8,6 +8,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
+import { useAuth } from "../../src/contexts/AuthContext";
+import { useItems } from "../../database/hooks/useItems";
+import type { Capture } from "../../database/types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -25,8 +29,12 @@ export default function CameraScreen() {
 
   // VLM
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
+  const { session } = useAuth();
+  const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
+
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
@@ -155,14 +163,43 @@ export default function CameraScreen() {
   }, [identifyPhoto, resetVlm]);
 
   // Handle dismiss of the preview
-  const handleDismissPreview = useCallback(() => {
+  const handleDismissPreview = useCallback(async () => {
+    if (capturedUri && session) {
+      try {
+        const label = identifiedLabel;
+        if (!label) throw new Error("Missing label for capture");
+
+        const item = await incrementOrCreateItem(label);
+        if (!item) {
+          console.warn(`Failed to create or increment item for label: ${label}`);
+          throw new Error("No matching item");
+        }
+
+        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
+          user_id: session.user.id,
+          item_id: item.id,
+          item_name: item.name,
+          capture_number: item.total_captures,
+          image_key: ""
+        };
+
+        await uploadPhoto(
+          capturedUri,
+          "image/jpeg",
+          `${Date.now()}.jpg`,
+          capturePayload
+        );
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
+    }
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
     resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
-  }, [resetVlm]);
+  }, [capturedUri, session, identifiedLabel, uploadPhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -196,6 +233,12 @@ export default function CameraScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
+        {isUploadingPhoto && (
+          <View className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+            <ActivityIndicator size="large" color="#FFF" />
+            <Text className="mt-2 text-white">Uploading photo...</Text>
+          </View>
+        )}
         {/* Camera capture component */}
         <CameraCapture
           ref={cameraCaptureRef}
