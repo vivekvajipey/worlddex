@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Session, User, AuthResponse } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../database/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import * as AppleAuthentication from 'expo-apple-authentication';
