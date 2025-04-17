@@ -1,5 +1,5 @@
 import { OpenAI } from "openai";
-import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../../shared/types/vlm";
+import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../shared/types/vlm";
 import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 
 const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond

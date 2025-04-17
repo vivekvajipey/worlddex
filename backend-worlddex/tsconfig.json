@@ -15,12 +15,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@worlddex/shared": ["../shared/types"]
+      "@worlddex/shared": ["./shared/dist"]  // Point to dist, not types
     }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
-    { "path": "../shared" }
+    { "path": "./shared" }
   ]
 } 

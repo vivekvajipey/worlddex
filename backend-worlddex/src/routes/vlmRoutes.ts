@@ -1,6 +1,6 @@
 import { Router, RequestHandler } from "express";
 import { VlmService } from "../services/vlmService";
-import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../../shared/types/vlm";
+import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../shared/types/vlm";
 
 const router = Router();
 const vlmService = new VlmService();

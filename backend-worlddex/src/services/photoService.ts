@@ -1,5 +1,5 @@
 import { S3Service } from './s3Service';
-import { PhotoUpload, PhotoUploadResponse } from '../../../shared/types/photo';
+import { PhotoUpload, PhotoUploadResponse, UploadUrlResponse, DownloadUrlResponse } from '../../shared/types/photo';
 import { AWS_CONFIG } from '../config/aws';
 
 export class PhotoService {
@@ -38,5 +38,28 @@ export class PhotoService {
       url: result.url,
       key: result.key
     };
+  }
+
+  /**
+   * Get a presigned PUT URL for direct S3 uploads
+   */
+  async getUploadUrl(
+    key: string,
+    contentType: string,
+    expiresIn: number = 300
+  ): Promise<UploadUrlResponse> {
+    const uploadUrl = await this.s3Service.getSignedPutUrl(key, contentType, expiresIn);
+    return { uploadUrl, key };
+  }
+
+  /**
+   * Get a presigned GET URL for direct S3 downloads
+   */
+  async getDownloadUrl(
+    key: string,
+    expiresIn: number = 3600
+  ): Promise<DownloadUrlResponse> {
+    const downloadUrl = await this.s3Service.getSignedUrl(key, expiresIn);
+    return { downloadUrl };
   }
 } 
