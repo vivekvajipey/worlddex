@@ -1,9 +1,11 @@
 import React, { useRef, useState, useCallback } from "react";
-import { View, Button, Text, Dimensions, ActivityIndicator } from "react-native";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -34,6 +36,8 @@ export default function CameraScreen() {
   const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
+
+  const router = useRouter();
 
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
@@ -256,6 +260,9 @@ export default function CameraScreen() {
             label={identifiedLabel || ""}
           />
         )}
+        <TouchableOpacity className="absolute bottom-8 left-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md" onPress={() => router.push("/(screens)/collection") }>
+          <Ionicons name="albums-outline" size={28} color="#fff" />
+        </TouchableOpacity>
       </View>
     </GestureHandlerRootView>
   );
