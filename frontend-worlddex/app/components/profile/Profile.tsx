@@ -17,7 +17,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { session, signOut } = useAuth();
   const userId = session?.user?.id || null;
   const { user, loading, error, updateUser } = useUser(userId);
-  const { totalCaptures } = useCaptureCount(userId);
+  const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -45,8 +45,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   useEffect(() => {
     if (modalVisible && userId) {
       refreshUserData();
+      refreshCaptureCount();
     }
-  }, [modalVisible, userId]);
+  }, [modalVisible, userId, refreshCaptureCount]);
 
   const refreshUserData = useCallback(async () => {
     if (!userId) return;

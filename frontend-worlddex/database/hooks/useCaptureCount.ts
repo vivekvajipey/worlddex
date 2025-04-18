@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase, Tables } from "../supabase-client";
 
 // Function to get the total number of captures for a user
@@ -29,12 +29,34 @@ export const useCaptureCount = (userId: string | null) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const refreshCaptureCount = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const count = await fetchCaptureCount(userId);
+      setTotalCaptures(count);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err
+          : new Error("Unknown error fetching captures")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     let isMounted = true;
 
     const fetchCaptures = async () => {
       if (!userId) {
-        setLoading(false);
+        if (isMounted) setLoading(false);
         return;
       }
 
@@ -86,5 +108,5 @@ export const useCaptureCount = (userId: string | null) => {
     };
   }, [userId]);
 
-  return { totalCaptures, loading, error };
+  return { totalCaptures, loading, error, refreshCaptureCount };
 };
