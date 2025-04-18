@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TouchableOpacity, Image, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { Capture } from "../../../database/types";
+import { fetchItem } from "../../../database/hooks/useItems";
 
 interface CaptureDetailsModalProps {
   visible: boolean;
@@ -18,6 +19,28 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   onDelete,
 }) => {
   const { downloadUrl, loading } = useDownloadUrl(capture?.image_key || "");
+  const [totalCaptures, setTotalCaptures] = useState<number | null>(null);
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
+
+  useEffect(() => {
+    const loadItemData = async () => {
+      if (capture?.item_id) {
+        setIsLoadingItem(true);
+        try {
+          const itemData = await fetchItem(capture.item_id);
+          if (itemData) {
+            setTotalCaptures(itemData.total_captures);
+          }
+        } catch (error) {
+          console.error("Error fetching item data:", error);
+        } finally {
+          setIsLoadingItem(false);
+        }
+      }
+    };
+
+    loadItemData();
+  }, [capture?.item_id]);
 
   if (!capture) return null;
 
@@ -25,6 +48,20 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
     if (onDelete && capture) {
       onDelete(capture);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "Unknown date";
+
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -59,16 +96,33 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
               />
             )}
           </View>
-          <View className="p-6 bg-background flex-1">
-            <Text className="text-text-primary text-2xl font-lexend-bold mb-4 text-center">
+
+          {/* Content area - reduced top padding to be closer to image */}
+          <View className="pt-2 px-6 pb-6 bg-background flex-1">
+            <Text className="text-text-primary text-2xl font-lexend-bold mb-2 text-center">
               {capture.item_name}
             </Text>
+
+            {/* Capture number / total captures */}
+            <View className="flex-row justify-center mb-3">
+              <View className="bg-gray-200 px-3 py-1 rounded-full">
+                <Text className="text-text-primary font-lexend-medium">
+                  {isLoadingItem ? (
+                    "Loading..."
+                  ) : (
+                    `Capture #${capture.capture_number} of ${totalCaptures || '?'}`
+                  )}
+                </Text>
+              </View>
+            </View>
+
             <View className="flex-row justify-center mb-2">
               <Ionicons name="time-outline" size={18} color="#000" />
               <Text className="text-text-primary ml-2 font-lexend-regular">
-                Captured at: {new Date(capture.captured_at || "").toLocaleString()}
+                Captured: {formatDate(capture.captured_at || "")}
               </Text>
             </View>
+
             {capture.location && (
               <View className="flex-row justify-center">
                 <Ionicons name="location-outline" size={18} color="#000" />
