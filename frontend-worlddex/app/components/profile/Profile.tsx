@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../../database/hooks/useUsers";
-import { isUsernameAvailable } from "../../../database/hooks/useUsers";
+import { isUsernameAvailable, fetchUser } from "../../../database/hooks/useUsers";
 import { useCaptureCount } from "../../../database/hooks/useCaptureCount";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,17 +26,48 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [profilePictureUri, setProfilePictureUri] = useState<string | null>(null);
+  const [refreshedUser, setRefreshedUser] = useState(user);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load user data and profile picture
   useEffect(() => {
     if (user) {
       setUsername(user.username || "");
       setOriginalUsername(user.username || "");
+      setRefreshedUser(user);
 
       // Load profile picture from local storage if available
       loadProfilePicture();
     }
   }, [user]);
+
+  // Force refresh user data when modal becomes visible
+  useEffect(() => {
+    if (modalVisible && userId) {
+      refreshUserData();
+    }
+  }, [modalVisible, userId]);
+
+  const refreshUserData = useCallback(async () => {
+    if (!userId) return;
+
+    setIsRefreshing(true);
+    try {
+      const freshUserData = await fetchUser(userId);
+      if (freshUserData) {
+        setRefreshedUser(freshUserData);
+        // Also update username if needed
+        if (freshUserData.username && !isEditing) {
+          setUsername(freshUserData.username);
+          setOriginalUsername(freshUserData.username);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [userId, isEditing]);
 
   const loadProfilePicture = async () => {
     if (!userId) return;
@@ -103,7 +134,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   };
 
   const saveUserData = async () => {
-    if (!user || !userId) return;
+    if (!refreshedUser || !userId) return;
 
     try {
       // Validate username before saving
@@ -114,6 +145,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
       await updateUser({ username });
       setIsEditing(false);
       setOriginalUsername(username);
+      // Refresh user data after update
+      await refreshUserData();
     } catch (error) {
       console.error("Error updating profile:", error);
     }
@@ -156,9 +189,13 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
     }
   };
 
-  const userInitial = user?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
+  const handleOpenModal = () => {
+    setModalVisible(true);
+  };
+
+  const userInitial = refreshedUser?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
   const userEmail = session?.user?.email || "User";
-  const dailyCapturesRemaining = user ? Math.max(0, 10 - (user.daily_captures_used || 0)) : 0;
+  const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
 
   const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
   const displayProfilePic = profilePictureUri || oauthProfilePic;
@@ -166,16 +203,18 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   return (
     <>
       <TouchableOpacity
-        className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md"
-        onPress={() => setModalVisible(true)}
+        className="absolute bottom-8 right-8 w-16 h-16 rounded-full flex justify-center items-center"
+        onPress={handleOpenModal}
       >
         {displayProfilePic ? (
           <Image
             source={{ uri: displayProfilePic }}
-            className="w-14 h-14 rounded-full"
+            className="w-16 h-16 rounded-full"
           />
         ) : (
-          <Text className="text-surface font-lexend-bold text-2xl">{userInitial}</Text>
+          <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
+            <Text className="text-surface font-lexend-bold text-2xl">{userInitial}</Text>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -197,7 +236,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
             <View className="bg-surface rounded-t-3xl p-6 pb-10">
               <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
 
-              {loading ? (
+              {loading || isRefreshing ? (
                 <View className="py-8" />
               ) : (
                 <>
@@ -235,7 +274,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                       ) : (
                         <View className="flex-row items-center">
                           <Text className="text-text-primary font-lexend-bold text-xl mr-2">
-                            {user?.username || "Set Username"}
+                            {refreshedUser?.username || "Set Username"}
                           </Text>
                           <TouchableOpacity onPress={() => setIsEditing(true)}>
                             <Ionicons name="pencil" size={16} color={Colors.text.secondary} />
@@ -266,7 +305,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
                     <View className="items-center">
                       <View className="flex-row items-center">
-                        <Text className="text-primary font-lexend-bold text-xl mr-1">{user?.capture_streak || 0}</Text>
+                        <Text className="text-primary font-lexend-bold text-xl mr-1">{refreshedUser?.capture_streak || 0}</Text>
                         <Text className="text-xl">🔥</Text>
                       </View>
                       <Text className="text-text-secondary font-lexend-medium text-xs">Day Streak</Text>

@@ -1,13 +1,20 @@
-import React, { useRef, useState, useCallback } from "react";
-import { View, Button, Text, Dimensions } from "react-native";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
+import { useAuth } from "../../src/contexts/AuthContext";
+import { useItems } from "../../database/hooks/useItems";
+import { incrementUserField } from "../../database/hooks/useUsers";
+import { useUser } from "../../database/hooks/useUsers";
+import type { Capture } from "../../database/types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -25,13 +32,32 @@ export default function CameraScreen() {
 
   // VLM
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
+  const { session } = useAuth();
+  const { user } = useUser(session?.user?.id || null);
+  const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
+
+  const router = useRouter();
+
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
     if (!cameraRef.current || points.length < 3) return;
+
+    // Check if user has reached their daily capture limit
+    if (user && user.daily_captures_used >= 11) {
+      Alert.alert(
+        "Daily Limit Reached",
+        "You have used up all of your daily captures! They will reset at midnight PST.",
+        [{ text: "OK", style: "default" }]
+      );
+      // Make sure to reset the lasso before returning
+      cameraCaptureRef.current?.resetLasso();
+      return;
+    }
 
     // Reset VLM state for new capture
     resetVlm();
@@ -152,17 +178,49 @@ export default function CameraScreen() {
       resetVlm();
       setVlmCaptureSuccess(null);
     }
-  }, [identifyPhoto, resetVlm]);
+  }, [identifyPhoto, resetVlm, user]);
 
   // Handle dismiss of the preview
-  const handleDismissPreview = useCallback(() => {
+  const handleDismissPreview = useCallback(async () => {
+    if (capturedUri && session) {
+      try {
+        const label = identifiedLabel;
+        if (!label) throw new Error("Missing label for capture");
+
+        const item = await incrementOrCreateItem(label);
+        if (!item) {
+          console.warn(`Failed to create or increment item for label: ${label}`);
+          throw new Error("No matching item");
+        }
+
+        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
+          user_id: session.user.id,
+          item_id: item.id,
+          item_name: item.name,
+          capture_number: item.total_captures,
+          image_key: ""
+        };
+
+        await uploadPhoto(
+          capturedUri,
+          "image/jpeg",
+          `${Date.now()}.jpg`,
+          capturePayload
+        );
+
+        // Increment daily_captures_used for the user
+        await incrementUserField(session.user.id, "daily_captures_used", 1);
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
+    }
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
     resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
-  }, [resetVlm]);
+  }, [capturedUri, session, identifiedLabel, uploadPhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading

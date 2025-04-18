@@ -112,6 +112,22 @@ export class S3Service {
     }
   }
 
+  /**
+   * Returns a presigned PUT URL for uploading directly to S3.
+   */
+  async getSignedPutUrl(
+    key: string,
+    contentType: string,
+    expiresIn: number = 300
+  ): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+    return getSignedUrl(s3Client, command, { expiresIn });
+  }
+
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,

@@ -25,7 +25,7 @@ export const fetchItemByName = async (
     .from(Tables.ALL_ITEMS)
     .select("*")
     .eq("name", name)
-    .single();
+    .maybeSingle(); // allow zero rows without error
 
   if (error) {
     console.error("Error fetching item by name:", error);
@@ -101,6 +101,28 @@ export const incrementCaptures = async (
   }
 
   return true;
+};
+
+export const incrementOrCreateItem = async (
+  name: string
+): Promise<AllItem | null> => {
+  const existing = await fetchItemByName(name);
+  if (existing) {
+    // Increment total_captures via update
+    const updated = await updateItem(existing.id, { total_captures: existing.total_captures + 1 });
+    if (!updated) {
+      console.error("Error updating capture count for item:", name);
+      return null;
+    }
+    return updated;
+  }
+  // Create new item with initial capture count
+  const newItem = await createItem({ name, total_captures: 1 });
+  if (!newItem) {
+    console.error("Failed to create item for name:", name);
+    return null;
+  }
+  return newItem;
 };
 
 // React hooks
@@ -210,5 +232,5 @@ export const useItems = (limit: number = 20) => {
     };
   }, [limit]);
 
-  return { items, loading, error };
+  return { items, loading, error, incrementOrCreateItem };
 };

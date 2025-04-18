@@ -31,10 +31,11 @@ Follow these steps to set up and run the backend server:
    ```typescript
    export const API_URL = __DEV__ 
      ? 'http://YOUR_IP_ADDRESS:3000/api'  // e.g., 'http://192.168.1.5:3000/api'
-     : 'https://your-api-url.com/api';
+     : 'https://backend-worlddex.fly.dev/api';
    ```
 
    This is necessary because mobile devices cannot access your computer via `localhost`.
+   To test the production server, use `https://backend-worlddex.fly.dev/api`.
 
 5. **Start the backend server:**
 

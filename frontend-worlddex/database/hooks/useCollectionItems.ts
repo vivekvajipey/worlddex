@@ -129,6 +129,23 @@ export const deleteCollectionItem = async (
   return true;
 };
 
+export const fetchCollectionItemsByCollectionId = async (
+  collectionId: string
+): Promise<CollectionItem[]> => {
+  const { data, error } = await supabase
+    .from(Tables.COLLECTION_ITEMS)
+    .select("*")
+    .eq("collection_id", collectionId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching collection items:", error);
+    return [];
+  }
+
+  return data || [];
+};
+
 // React hooks
 export const useCollectionItem = (itemId: string | null) => {
   const [item, setItem] = useState<CollectionItem | null>(null);
@@ -200,14 +217,14 @@ export const useCollectionItem = (itemId: string | null) => {
 };
 
 export const useCollectionItems = (collectionId: string | null) => {
-  const [items, setItems] = useState<CollectionItem[]>([]);
+  const [collectionItems, setCollectionItems] = useState<CollectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadItems = async () => {
+    const loadCollectionItems = async () => {
       if (!collectionId) {
         setLoading(false);
         return;
@@ -215,10 +232,10 @@ export const useCollectionItems = (collectionId: string | null) => {
 
       try {
         setLoading(true);
-        const data = await fetchCollectionItems(collectionId);
+        const data = await fetchCollectionItemsByCollectionId(collectionId);
 
         if (isMounted) {
-          setItems(data);
+          setCollectionItems(data);
           setError(null);
         }
       } catch (err) {
@@ -236,14 +253,14 @@ export const useCollectionItems = (collectionId: string | null) => {
       }
     };
 
-    loadItems();
+    loadCollectionItems();
 
     return () => {
       isMounted = false;
     };
   }, [collectionId]);
 
-  return { items, loading, error };
+  return { collectionItems, loading, error };
 };
 
 export const useNearbyCollectionItems = (

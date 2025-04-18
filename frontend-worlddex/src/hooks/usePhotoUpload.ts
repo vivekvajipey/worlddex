@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { Platform } from 'react-native';
-import { PhotoUpload, PhotoUploadResponse } from '../../../shared/types';
-import { API_URL } from '../config';
-
-// Add type declaration for fetch response
-interface ErrorResponse {
-  error: string;
-}
+import { useState } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { createCapture } from "../../database/hooks/useCaptures";
+import { getUploadUrl } from "../api/s3";
+import type { Capture } from "../../database/types";
 
 interface UsePhotoUploadReturn {
-  uploadPhoto: (photo: PhotoUpload) => Promise<PhotoUploadResponse>;
+  uploadPhoto: (
+    fileUri: string,
+    contentType: string,
+    fileName: string,
+    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key">
+  ) => Promise<Capture>;
   isUploading: boolean;
   error: Error | null;
   reset: () => void;
@@ -24,45 +25,49 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     setIsUploading(false);
   };
 
-  const uploadPhoto = async (photo: PhotoUpload): Promise<PhotoUploadResponse> => {
+  const uploadPhoto = async (
+    fileUri: string,
+    contentType: string,
+    fileName: string,
+    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key">
+  ): Promise<Capture> => {
     try {
       setIsUploading(true);
       setError(null);
 
-      const baseUrl = Platform.select({
-        ios: API_URL,
-        default: API_URL,
+      // Generate a unique S3 key
+      const key = `${captureData.user_id}/${captureData.item_id}/${uuidv4()}-${fileName}`;
+
+      // Insert Supabase row and get back capture
+      const created = await createCapture({
+        ...captureData,
+        image_key: key,
+        segmented_image_key: "",
       });
+      if (!created) throw new Error("Failed to create capture row");
 
-      const response = await fetch(`${baseUrl}/photos/upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(photo),
+      // Get signed upload URL for S3
+      const { uploadUrl } = await getUploadUrl(key, contentType);
+
+      // Fetch and upload file directly to S3
+      const fileResponse = await fetch(fileUri);
+      const blob = await fileResponse.blob();
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: blob,
       });
+      if (!putRes.ok) throw new Error("S3 upload failed");
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Network error' })) as ErrorResponse;
-        throw new Error(errorData.error || 'Failed to upload photo');
-      }
-
-      const data = await response.json();
-      return data as PhotoUploadResponse;
+      return created;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to upload photo');
-      setError(error);
-      throw error;
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      setError(errObj);
+      throw errObj;
     } finally {
       setIsUploading(false);
     }
   };
 
-  return {
-    uploadPhoto,
-    isUploading,
-    error,
-    reset,
-  };
-}; 
+  return { uploadPhoto, isUploading, error, reset };
+};

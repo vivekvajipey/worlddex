@@ -38,6 +38,7 @@ export type CollectionItem = {
   collection_rarity?: string;
   created_at?: string;
   location?: any; // Geography point type
+  display_name: string;
 };
 
 export type Capture = {
