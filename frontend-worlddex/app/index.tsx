@@ -6,7 +6,7 @@ import CameraScreen from './(screens)/camera';
 import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
-import CapturesModal from './components/captures/CapturesModal';
+import CapturesModal from './(screens)/personal-captures';
 
 // This is the home route component at "/"
 export default function HomeScreen() {
