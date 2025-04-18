@@ -1,10 +1,9 @@
-import React, { useRef, useState, useCallback } from "react";
-import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity } from "react-native";
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
@@ -13,6 +12,8 @@ import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
+import { incrementUserField } from "../../database/hooks/useUsers";
+import { useUser } from "../../database/hooks/useUsers";
 import type { Capture } from "../../database/types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -33,6 +34,7 @@ export default function CameraScreen() {
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
   const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
+  const { user } = useUser(session?.user?.id || null);
   const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
@@ -44,6 +46,16 @@ export default function CameraScreen() {
     cameraRef: React.RefObject<CameraView>
   ) => {
     if (!cameraRef.current || points.length < 3) return;
+
+    // Check if user has reached their daily capture limit
+    if (user && user.daily_captures_used >= 10) {
+      Alert.alert(
+        "Daily Limit Reached",
+        "You have used up all of your daily captures! They will reset at midnight PST.",
+        [{ text: "OK", style: "default" }]
+      );
+      return;
+    }
 
     // Reset VLM state for new capture
     resetVlm();
@@ -164,7 +176,7 @@ export default function CameraScreen() {
       resetVlm();
       setVlmCaptureSuccess(null);
     }
-  }, [identifyPhoto, resetVlm]);
+  }, [identifyPhoto, resetVlm, user]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -193,6 +205,9 @@ export default function CameraScreen() {
           `${Date.now()}.jpg`,
           capturePayload
         );
+
+        // Increment daily_captures_used for the user
+        await incrementUserField(session.user.id, "daily_captures_used", 1);
       } catch (err) {
         console.error("Upload failed:", err);
       }
@@ -237,12 +252,6 @@ export default function CameraScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
-        {isUploadingPhoto && (
-          <View className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
-            <ActivityIndicator size="large" color="#FFF" />
-            <Text className="mt-2 text-white">Uploading photo...</Text>
-          </View>
-        )}
         {/* Camera capture component */}
         <CameraCapture
           ref={cameraCaptureRef}
@@ -260,9 +269,6 @@ export default function CameraScreen() {
             label={identifiedLabel || ""}
           />
         )}
-        <TouchableOpacity className="absolute bottom-8 left-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md" onPress={() => router.push("/(screens)/personal_captures") }>
-          <Ionicons name="albums-outline" size={28} color="#fff" />
-        </TouchableOpacity>
       </View>
     </GestureHandlerRootView>
   );
