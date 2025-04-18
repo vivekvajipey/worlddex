@@ -1,0 +1,307 @@
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useUser } from "../../../database/hooks/useUsers";
+import { isUsernameAvailable } from "../../../database/hooks/useUsers";
+import { useCaptureCount } from "../../../database/hooks/useCaptureCount";
+import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Colors from "../../../src/utils/colors";
+
+interface ProfileProps {
+  onOpenFeedback: () => void;
+}
+
+export default function Profile({ onOpenFeedback }: ProfileProps) {
+  const { session, signOut } = useAuth();
+  const userId = session?.user?.id || null;
+  const { user, loading, error, updateUser } = useUser(userId);
+  const { totalCaptures } = useCaptureCount(userId);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [username, setUsername] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [profilePictureUri, setProfilePictureUri] = useState<string | null>(null);
+
+  // Load user data and profile picture
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username || "");
+      setOriginalUsername(user.username || "");
+
+      // Load profile picture from local storage if available
+      loadProfilePicture();
+    }
+  }, [user]);
+
+  const loadProfilePicture = async () => {
+    if (!userId) return;
+
+    try {
+      // Try to get locally stored profile picture
+      const storedUri = await AsyncStorage.getItem(`profile_pic_${userId}`);
+      if (storedUri) {
+        setProfilePictureUri(storedUri);
+      }
+    } catch (error) {
+      console.error("Error loading profile picture:", error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setModalVisible(false);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  const checkUsername = async (newUsername: string) => {
+    if (!userId) return false;
+
+    // Clear previous errors
+    setUsernameError("");
+
+    // If username hasn't changed, no need to check
+    if (newUsername === originalUsername) return true;
+
+    // Basic validation
+    if (!newUsername || newUsername.trim().length < 3) {
+      setUsernameError("Username must be at least 3 characters");
+      return false;
+    }
+
+    // No special characters except underscore
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      setUsernameError("Username can only contain letters, numbers, and underscores");
+      return false;
+    }
+
+    setIsCheckingUsername(true);
+
+    try {
+      const isAvailable = await isUsernameAvailable(newUsername, userId);
+
+      if (!isAvailable) {
+        setUsernameError("Username is already taken");
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameError("Error checking username availability");
+      return false;
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
+  const saveUserData = async () => {
+    if (!user || !userId) return;
+
+    try {
+      // Validate username before saving
+      const isValid = await checkUsername(username);
+
+      if (!isValid) return;
+
+      await updateUser({ username });
+      setIsEditing(false);
+      setOriginalUsername(username);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
+  };
+
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    setUsernameError(""); // Clear error when typing
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        const uri = result.assets[0].uri;
+        await saveProfilePicture(uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+    }
+  };
+
+  const saveProfilePicture = async (uri: string) => {
+    if (!userId) return;
+
+    try {
+      // Save the URI to local storage
+      await AsyncStorage.setItem(`profile_pic_${userId}`, uri);
+
+      // Update state
+      setProfilePictureUri(uri);
+    } catch (error) {
+      console.error("Error saving profile picture:", error);
+    }
+  };
+
+  const userInitial = user?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
+  const userEmail = session?.user?.email || "User";
+  const dailyCapturesRemaining = user ? Math.max(0, 10 - (user.daily_captures_used || 0)) : 0;
+
+  const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
+  const displayProfilePic = profilePictureUri || oauthProfilePic;
+
+  return (
+    <>
+      <TouchableOpacity
+        className="absolute bottom-8 right-8 w-16 h-16 rounded-full bg-primary flex justify-center items-center shadow-md"
+        onPress={() => setModalVisible(true)}
+      >
+        {displayProfilePic ? (
+          <Image
+            source={{ uri: displayProfilePic }}
+            className="w-14 h-14 rounded-full"
+          />
+        ) : (
+          <Text className="text-surface font-lexend-bold text-2xl">{userInitial}</Text>
+        )}
+      </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <View className="flex-1 justify-end">
+            <TouchableOpacity
+              className="absolute inset-0 bg-black/40"
+              onPress={() => setModalVisible(false)}
+            />
+            <View className="bg-surface rounded-t-3xl p-6 pb-10">
+              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
+
+              {loading ? (
+                <View className="py-8" />
+              ) : (
+                <>
+                  <View className="flex-row items-center mb-8">
+                    <TouchableOpacity onPress={pickImage} className="relative mr-4">
+                      {displayProfilePic ? (
+                        <Image
+                          source={{ uri: displayProfilePic }}
+                          className="w-20 h-20 rounded-full"
+                        />
+                      ) : (
+                        <View className="w-20 h-20 rounded-full bg-primary flex justify-center items-center">
+                          <Text className="text-surface font-lexend-bold text-3xl">{userInitial}</Text>
+                        </View>
+                      )}
+                      <View className="absolute bottom-0 right-0 bg-primary rounded-full p-1">
+                        <Ionicons name="camera" size={16} color={Colors.background.surface} />
+                      </View>
+                    </TouchableOpacity>
+
+                    <View className="flex-1">
+                      {isEditing ? (
+                        <View>
+                          <TextInput
+                            value={username}
+                            onChangeText={handleUsernameChange}
+                            className={`text-text-primary font-lexend-bold text-xl border-b ${usernameError ? 'border-error' : 'border-primary'} pb-1 mb-1`}
+                            placeholder="Enter username"
+                            autoFocus
+                          />
+                          {usernameError ? (
+                            <Text className="text-error text-xs">{usernameError}</Text>
+                          ) : null}
+                        </View>
+                      ) : (
+                        <View className="flex-row items-center">
+                          <Text className="text-text-primary font-lexend-bold text-xl mr-2">
+                            {user?.username || "Set Username"}
+                          </Text>
+                          <TouchableOpacity onPress={() => setIsEditing(true)}>
+                            <Ionicons name="pencil" size={16} color={Colors.text.secondary} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      <Text className="text-text-secondary font-lexend-medium">
+                        {userEmail}
+                      </Text>
+                    </View>
+
+                    {isEditing && (
+                      <TouchableOpacity
+                        onPress={saveUserData}
+                        className={`ml-2 p-2 rounded-full ${isCheckingUsername ? 'bg-gray-300' : 'bg-primary'}`}
+                        disabled={isCheckingUsername || !!usernameError}
+                      >
+                        <Ionicons name="checkmark" size={20} color={Colors.background.surface} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View className="flex-row justify-between mb-6 px-2">
+                    <View className="items-center">
+                      <Text className="text-primary font-lexend-bold text-xl">{dailyCapturesRemaining}</Text>
+                      <Text className="text-text-secondary font-lexend-medium text-xs">Daily Captures Left</Text>
+                    </View>
+
+                    <View className="items-center">
+                      <View className="flex-row items-center">
+                        <Text className="text-primary font-lexend-bold text-xl mr-1">{user?.capture_streak || 0}</Text>
+                        <Text className="text-xl">🔥</Text>
+                      </View>
+                      <Text className="text-text-secondary font-lexend-medium text-xs">Day Streak</Text>
+                    </View>
+
+                    <View className="items-center">
+                      <Text className="text-primary font-lexend-bold text-xl">{totalCaptures}</Text>
+                      <Text className="text-text-secondary font-lexend-medium text-xs">Total Captures</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    className="flex-row items-center py-4 border-t border-gray-100"
+                    onPress={() => {
+                      setModalVisible(false);
+                      onOpenFeedback();
+                    }}
+                  >
+                    <Ionicons name="help-circle-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
+                    <Text className="text-text-primary font-lexend-medium">Help & Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="flex-row items-center py-4 border-t border-gray-100"
+                    onPress={handleSignOut}
+                  >
+                    <Ionicons name="log-out-outline" size={24} color={Colors.error.DEFAULT} style={{ marginRight: 12 }} />
+                    <Text className="text-error font-lexend-medium">Sign Out</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
+  );
+} 
