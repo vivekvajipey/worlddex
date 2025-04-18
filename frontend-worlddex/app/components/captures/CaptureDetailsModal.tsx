@@ -8,16 +8,24 @@ interface CaptureDetailsModalProps {
   visible: boolean;
   capture: Capture | null;
   onClose: () => void;
+  onDelete?: (capture: Capture) => void;
 }
 
 const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   visible,
   capture,
   onClose,
+  onDelete,
 }) => {
   const { downloadUrl, loading } = useDownloadUrl(capture?.image_key || "");
 
   if (!capture) return null;
+
+  const handleDelete = () => {
+    if (onDelete && capture) {
+      onDelete(capture);
+    }
+  };
 
   return (
     <Modal
@@ -68,6 +76,15 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
                   Location: {JSON.stringify(capture.location)}
                 </Text>
               </View>
+            )}
+
+            {onDelete && (
+              <TouchableOpacity
+                className="mt-auto bg-red-500 py-3 rounded-lg items-center"
+                onPress={handleDelete}
+              >
+                <Text className="text-white font-lexend-bold">Delete Capture</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>

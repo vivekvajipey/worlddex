@@ -36,7 +36,10 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
         data={displayCaptures}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <CaptureThumbnail capture={item} onPress={() => onCapturePress(item)} />
+          <CaptureThumbnail
+            capture={item}
+            onPress={() => onCapturePress(item)}
+          />
         )}
         numColumns={3}
         columnWrapperStyle={{ justifyContent: 'flex-start', paddingHorizontal: 8 }}

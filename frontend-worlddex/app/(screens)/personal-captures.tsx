@@ -9,10 +9,11 @@ import {
   ScrollView,
   SafeAreaView,
   Text,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { useUserCaptures, fetchUserCaptures } from "../../database/hooks/useCaptures";
+import { useUserCaptures, fetchUserCaptures, deleteCapture } from "../../database/hooks/useCaptures";
 import { useCollections, fetchAllCollections } from "../../database/hooks/useCollections";
 import { Capture, Collection } from "../../database/types";
 
@@ -131,6 +132,45 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     setCaptureModalVisible(false);
   };
 
+  const handleDeleteCapture = (capture: Capture) => {
+    // Show confirmation alert every time
+    Alert.alert(
+      "Delete Capture",
+      "Are you sure you want to delete this capture? This action can not be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => performDeleteCapture(capture)
+        }
+      ]
+    );
+  };
+
+  const performDeleteCapture = async (capture: Capture) => {
+    if (!capture.id) return;
+
+    try {
+      const success = await deleteCapture(capture.id);
+      if (success) {
+        // Close modal if we're deleting currently viewed capture
+        if (selectedCapture?.id === capture.id) {
+          setCaptureModalVisible(false);
+        }
+
+        // Update the captures list
+        setRefreshedCaptures(prev => prev.filter(c => c.id !== capture.id));
+      }
+    } catch (error) {
+      console.error("Error deleting capture:", error);
+      Alert.alert("Error", "Failed to delete capture. Please try again.");
+    }
+  };
+
   // Create pan responder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
@@ -246,6 +286,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             visible={captureModalVisible}
             capture={selectedCapture}
             onClose={handleCaptureDetailsClose}
+            onDelete={handleDeleteCapture}
           />
         )}
       </SafeAreaView>
