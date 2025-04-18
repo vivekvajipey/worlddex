@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,9 +16,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../src/contexts/AuthContext";
-import { useUserCaptures } from "../../../database/hooks/useCaptures";
-import { useCollections } from "../../../database/hooks/useCollections";
-import { useCollectionItems } from "../../../database/hooks/useCollectionItems";
+import { useUserCaptures, fetchUserCaptures } from "../../../database/hooks/useCaptures";
+import { useCollections, fetchAllCollections } from "../../../database/hooks/useCollections";
+import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { Capture, Collection, CollectionItem } from "../../../database/types";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 
@@ -203,9 +203,37 @@ const CollectionDetailScreen = ({
   collectionId: string;
   onClose: () => void;
 }) => {
-  const { collectionItems, loading, error } = useCollectionItems(collectionId);
+  const { collectionItems, loading: hookLoading, error: hookError } = useCollectionItems(collectionId);
+  const [refreshedItems, setRefreshedItems] = useState<CollectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  if (loading) {
+  // Refresh collection items when the screen is shown
+  useEffect(() => {
+    const refreshCollectionItems = async () => {
+      try {
+        setLoading(true);
+        const freshItems = await fetchCollectionItems(collectionId);
+        setRefreshedItems(freshItems);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Failed to load collection items"));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    refreshCollectionItems();
+  }, [collectionId]);
+
+  // Use the hook data as fallback if refresh hasn't completed
+  useEffect(() => {
+    if (collectionItems.length > 0 && refreshedItems.length === 0 && !loading) {
+      setRefreshedItems(collectionItems);
+    }
+  }, [collectionItems, refreshedItems, loading]);
+
+  if (loading || hookLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
         <ActivityIndicator size="large" color="#FFF" />
@@ -213,15 +241,17 @@ const CollectionDetailScreen = ({
     );
   }
 
-  if (error) {
+  if (error || hookError) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
-        <Text className="text-error">{error.message}</Text>
+        <Text className="text-error">{(error || hookError)?.message}</Text>
       </View>
     );
   }
 
-  if (!collectionItems.length) {
+  const displayItems = refreshedItems.length > 0 ? refreshedItems : collectionItems;
+
+  if (!displayItems.length) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
         <Text className="text-text-primary font-lexend-medium">No items in this collection.</Text>
@@ -233,13 +263,13 @@ const CollectionDetailScreen = ({
     <View className="flex-1 bg-background">
       <View className="flex-1">
         <FlatList
-          data={collectionItems}
+          data={displayItems}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <CollectionItemThumbnail item={item} onPress={() => { }} />
           )}
           numColumns={3}
-          columnWrapperStyle={{ justifyContent: 'space-between', paddingHorizontal: 8 }}
+          columnWrapperStyle={{ justifyContent: 'flex-start', paddingHorizontal: 8 }}
           contentContainerStyle={{ paddingVertical: 8 }}
           showsVerticalScrollIndicator={false}
           style={{ width: '100%', flex: 1 }}
@@ -267,6 +297,9 @@ const CapturesModal = ({
   const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [refreshedCaptures, setRefreshedCaptures] = useState<Capture[]>([]);
+  const [refreshedCollections, setRefreshedCollections] = useState<Collection[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -276,7 +309,27 @@ const CapturesModal = ({
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
   const { collections, loading: collectionsLoading } = useCollections(true);
 
-  // Reset to WorldDex tab when modal opens
+  // Function to refresh data from Supabase
+  const refreshData = useCallback(async () => {
+    if (!userId) return;
+
+    setIsRefreshing(true);
+    try {
+      // Fetch fresh captures data
+      const freshCaptures = await fetchUserCaptures(userId, 100);
+      setRefreshedCaptures(freshCaptures);
+
+      // Fetch fresh collections data
+      const freshCollections = await fetchAllCollections(20, true);
+      setRefreshedCollections(freshCollections);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [userId]);
+
+  // Reset to WorldDex tab and refresh data when modal opens
   useEffect(() => {
     if (visible) {
       setActiveTab("WorldDex");
@@ -285,8 +338,21 @@ const CapturesModal = ({
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({ x: 0, animated: false });
       }, 100);
+
+      // Refresh data from Supabase
+      refreshData();
     }
-  }, [visible]);
+  }, [visible, refreshData]);
+
+  // Initialize refreshed data with hook data
+  useEffect(() => {
+    if (captures.length > 0 && refreshedCaptures.length === 0) {
+      setRefreshedCaptures(captures);
+    }
+    if (collections.length > 0 && refreshedCollections.length === 0) {
+      setRefreshedCollections(collections);
+    }
+  }, [captures, collections, refreshedCaptures, refreshedCollections]);
 
   // Effect to update active tab based on scroll position
   useEffect(() => {
@@ -346,7 +412,7 @@ const CapturesModal = ({
 
   // Render WorldDex tab content (user captures)
   const renderWorldDexTab = () => {
-    if (capturesLoading) {
+    if (capturesLoading || isRefreshing) {
       return (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#FFF" />
@@ -354,7 +420,9 @@ const CapturesModal = ({
       );
     }
 
-    if (!captures.length) {
+    const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
+
+    if (!displayCaptures.length) {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-text-primary font-lexend-medium">No captures yet.</Text>
@@ -365,13 +433,13 @@ const CapturesModal = ({
     return (
       <View className="flex-1">
         <FlatList
-          data={captures}
+          data={displayCaptures}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <CaptureThumbnail capture={item} onPress={() => handleCapturePress(item)} />
           )}
           numColumns={3}
-          columnWrapperStyle={{ justifyContent: 'space-between', paddingHorizontal: 8 }}
+          columnWrapperStyle={{ justifyContent: 'flex-start', paddingHorizontal: 8 }}
           contentContainerStyle={{ paddingVertical: 8, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
           style={{ width: '100%', flex: 1 }}
@@ -382,7 +450,7 @@ const CapturesModal = ({
 
   // Render Collections tab content
   const renderCollectionsTab = () => {
-    if (collectionsLoading) {
+    if (collectionsLoading || isRefreshing) {
       return (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#FFF" />
@@ -390,7 +458,9 @@ const CapturesModal = ({
       );
     }
 
-    if (!collections.length) {
+    const displayCollections = refreshedCollections.length > 0 ? refreshedCollections : collections;
+
+    if (!displayCollections.length) {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-text-primary font-lexend-medium">No featured collections yet.</Text>
@@ -401,7 +471,7 @@ const CapturesModal = ({
     return (
       <View className="flex-1">
         <FlatList
-          data={collections}
+          data={displayCollections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <CollectionThumbnail

@@ -48,12 +48,14 @@ export default function CameraScreen() {
     if (!cameraRef.current || points.length < 3) return;
 
     // Check if user has reached their daily capture limit
-    if (user && user.daily_captures_used >= 10) {
+    if (user && user.daily_captures_used >= 11) {
       Alert.alert(
         "Daily Limit Reached",
         "You have used up all of your daily captures! They will reset at midnight PST.",
         [{ text: "OK", style: "default" }]
       );
+      // Make sure to reset the lasso before returning
+      cameraCaptureRef.current?.resetLasso();
       return;
     }
 
