@@ -79,6 +79,33 @@ export const incrementUserField = async (
   return await updateUserField(userId, field, newValue);
 };
 
+export const isUsernameAvailable = async (
+  username: string,
+  currentUserId: string
+): Promise<boolean> => {
+  if (!username || !username.trim()) return false;
+
+  try {
+    const { data, error } = await supabase
+      .from(Tables.USERS)
+      .select("id")
+      .ilike("username", username.trim())
+      .neq("id", currentUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error checking username availability:", error);
+      return false;
+    }
+
+    // If data is null, username is available; if data exists, username is taken
+    return data === null;
+  } catch (error) {
+    console.error("Error in isUsernameAvailable:", error);
+    return false;
+  }
+};
+
 // React hook
 export const useUser = (userId: string | null) => {
   const [user, setUser] = useState<User | null>(null);
