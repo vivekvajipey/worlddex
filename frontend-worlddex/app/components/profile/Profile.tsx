@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../../database/hooks/useUsers";
@@ -8,6 +8,7 @@ import { useCaptureCount } from "../../../database/hooks/useCaptureCount";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "../../../src/utils/colors";
+import { deleteAllUserData } from "../../../database/supabase";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -194,6 +195,38 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
     setModalVisible(true);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This action cannot be undone. All your data, including your captures, will be permanently deleted.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!userId) return;
+
+            try {
+              // Delete all user data using the utility function
+              await deleteAllUserData(userId);
+
+              // Clear local storage
+              await AsyncStorage.removeItem(`profile_pic_${userId}`);
+
+              // Sign out user
+              await signOut();
+              setModalVisible(false);
+            } catch (error) {
+              console.error("Error deleting account:", error);
+              Alert.alert("Error", "Failed to delete account. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const userInitial = refreshedUser?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
   const userEmail = session?.user?.email || "User";
   const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
@@ -242,6 +275,10 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               ) : (
                 <>
                   <View className="flex-row items-center mb-8">
+                    <TouchableOpacity className="absolute top-0 right-0" onPress={handleDeleteAccount}>
+                      <Ionicons name="trash-outline" size={24} color={Colors.error.DEFAULT} />
+                    </TouchableOpacity>
+
                     <TouchableOpacity onPress={pickImage} className="relative mr-4">
                       {displayProfilePic ? (
                         <Image
