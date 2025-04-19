@@ -138,9 +138,6 @@ export default function CameraScreen() {
         { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
 
-      // Save cropped image
-      await MediaLibrary.saveToLibraryAsync(manipResult.uri);
-
       // Store the captured URI for the animation
       setCapturedUri(manipResult.uri);
 
