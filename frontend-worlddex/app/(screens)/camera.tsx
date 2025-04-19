@@ -38,6 +38,7 @@ export default function CameraScreen() {
   const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
+  const isRejectedRef = useRef(false);
 
   const router = useRouter();
 
@@ -143,7 +144,6 @@ export default function CameraScreen() {
 
       // VLM Identification
       if (manipResult.base64) {
-        console.log("Sending cropped image for VLM identification...");
         try {
           const vlmResult = await identifyPhoto({
             base64Data: manipResult.base64,
@@ -179,7 +179,7 @@ export default function CameraScreen() {
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
-    if (capturedUri && session) {
+    if (capturedUri && session && !isRejectedRef.current) {
       try {
         const label = identifiedLabel;
         if (!label) throw new Error("Missing label for capture");
@@ -211,12 +211,15 @@ export default function CameraScreen() {
         console.error("Upload failed:", err);
       }
     }
+
+    // Reset all states regardless of whether it was accepted or rejected
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
     resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
+    isRejectedRef.current = false;
   }, [capturedUri, session, identifiedLabel, uploadPhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
@@ -266,6 +269,10 @@ export default function CameraScreen() {
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
             label={identifiedLabel || ""}
+            onReject={() => {
+              // Mark as rejected so handleDismissPreview won't save it
+              isRejectedRef.current = true;
+            }}
           />
         )}
       </View>

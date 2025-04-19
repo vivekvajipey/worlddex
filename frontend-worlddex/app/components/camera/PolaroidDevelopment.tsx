@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Image, Animated, Dimensions, TouchableWithoutFeedback, Text } from "react-native";
+import { View, Image, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -31,6 +32,7 @@ interface PolaroidDevelopmentProps {
   onDismiss: () => void;
   captureSuccess: boolean | null;
   label?: string; // Optional string for the identified subject
+  onReject?: () => void; // Optional function to reject the capture
 }
 
 export default function PolaroidDevelopment({
@@ -38,7 +40,8 @@ export default function PolaroidDevelopment({
   captureBox,
   onDismiss,
   captureSuccess,
-  label
+  label,
+  onReject
 }: PolaroidDevelopmentProps) {
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -185,6 +188,18 @@ export default function PolaroidDevelopment({
     });
   };
 
+  // Function to manually reject the capture
+  const handleReject = () => {
+    if (!isRipping && !isMinimizing && initialAnimationDone) {
+      // Set rejection flag first
+      if (onReject) {
+        onReject();
+      }
+
+      runRipAnimation();
+    }
+  };
+
   // Run rip animation for failure case
   const runRipAnimation = () => {
     // Ensure initial state
@@ -224,7 +239,6 @@ export default function PolaroidDevelopment({
         }),
       ])
     ]).start(() => {
-      // After shaking, show the torn pieces and animate them falling
       setIsRipping(true);
 
       // Small delay to ensure the torn pieces are visible
@@ -570,6 +584,29 @@ export default function PolaroidDevelopment({
           </Svg>
         </View>
       </Animated.View>
+
+      {/* Control buttons - only show after initial animation is done */}
+      {initialAnimationDone && !isRipping && !isMinimizing && (
+        <View className="absolute bottom-28 left-0 right-0 flex flex-row justify-center items-center z-10">
+          {/* Reject button */}
+          <TouchableOpacity
+            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
+            onPress={handleReject}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={36} color="red" />
+          </TouchableOpacity>
+
+          {/* Accept button */}
+          <TouchableOpacity
+            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
+            onPress={handleBackgroundPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark" size={36} color="green" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
