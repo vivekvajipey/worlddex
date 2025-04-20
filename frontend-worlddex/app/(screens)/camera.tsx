@@ -177,6 +177,91 @@ export default function CameraScreen() {
     }
   }, [identifyPhoto, resetVlm, user]);
 
+  // Handle full screen capture
+  const handleFullScreenCapture = useCallback(async () => {
+    if (!cameraCaptureRef.current) return;
+
+    // Check if user has reached their daily capture limit
+    if (user && user.daily_captures_used >= 11) {
+      Alert.alert(
+        "Daily Limit Reached",
+        "You have used up all of your daily captures! They will reset at midnight PST.",
+        [{ text: "OK", style: "default" }]
+      );
+      return;
+    }
+
+    // Reset VLM state for new capture
+    resetVlm();
+    setVlmCaptureSuccess(null);
+
+    // Start capture state - freeze UI
+    setIsCapturing(true);
+
+    const cameraRef = cameraCaptureRef.current.getCameraRef();
+
+    if (!cameraRef.current) {
+      setIsCapturing(false);
+      return;
+    }
+
+    try {
+      // Take a photo of the entire screen
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 1,
+        base64: true,
+        skipProcessing: false
+      });
+
+      if (!photo) {
+        throw new Error("Failed to capture photo");
+      }
+
+      // Set full screen capture box dimensions to allow for polaroid animation
+      // Center the capture box on the screen
+      setCaptureBox({
+        x: SCREEN_WIDTH * 0.1,
+        y: SCREEN_HEIGHT * 0.2,
+        width: SCREEN_WIDTH * 0.8,
+        height: SCREEN_WIDTH * 0.8, // Make it square by default
+        aspectRatio: 1
+      });
+
+      // Store the captured URI for the animation
+      setCapturedUri(photo.uri);
+
+      // VLM Identification with the full photo
+      if (photo.base64) {
+        try {
+          const vlmResult = await identifyPhoto({
+            base64Data: photo.base64,
+            contentType: "image/jpeg"
+          });
+
+          if (vlmResult?.label) {
+            setVlmCaptureSuccess(true);
+            setIdentifiedLabel(vlmResult.label);
+          } else {
+            setVlmCaptureSuccess(false);
+            setIdentifiedLabel(null);
+          }
+        } catch (vlmApiError) {
+          console.error("VLM Identification API Error:", vlmApiError);
+          setVlmCaptureSuccess(false);
+        }
+      } else {
+        console.warn("No base64 data available for VLM identification.");
+        setVlmCaptureSuccess(false);
+      }
+    } catch (error) {
+      console.error("Error capturing full screen:", error);
+      setIsCapturing(false);
+      setCapturedUri(null);
+      resetVlm();
+      setVlmCaptureSuccess(null);
+    }
+  }, [identifyPhoto, resetVlm, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
+
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
     if (capturedUri && session && !isRejectedRef.current) {
@@ -259,6 +344,7 @@ export default function CameraScreen() {
           ref={cameraCaptureRef}
           onCapture={handleCapture}
           isCapturing={isCapturing}
+          onFullScreenCapture={handleFullScreenCapture}
         />
 
         {/* Polaroid development and animation overlay */}

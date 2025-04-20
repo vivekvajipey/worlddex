@@ -18,10 +18,11 @@ export interface CameraCaptureHandle {
 interface CameraCaptureProps {
   onCapture: (points: { x: number; y: number }[], cameraRef: React.RefObject<CameraView>) => void;
   isCapturing: boolean;
+  onFullScreenCapture?: () => void;
 }
 
 const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
-  ({ onCapture, isCapturing }, ref) => {
+  ({ onCapture, isCapturing, onFullScreenCapture }, ref) => {
     const [facing, setFacing] = useState<CameraType>("back");
     const [torchEnabled, setTorchEnabled] = useState(false);
     const cameraRef = useRef<CameraView>(null);
@@ -103,7 +104,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
         })
         .onEnd(() => {
           if (isCapturing) return;
-          
+
           // Stop drawing immediately to prevent further updates
           setIsDrawing(false);
 
@@ -111,10 +112,10 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             // Create a local copy of points to avoid race conditions
             const pointsCopy = [...points];
             const closedPoints = [...pointsCopy, pointsCopy[0]];
-            
+
             setPathString(updatePathString(closedPoints));
             setPolygonPoints(updatePolygonPoints(closedPoints));
-            
+
             // Capture using the point copy
             // Note: We don't reset state here - the parent will do it 
             // and our UI elements stay mounted regardless
@@ -163,10 +164,40 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       [zoom, lastZoom, isDrawing, isCapturing]
     );
 
+    // Method to capture full screen photo
+    const captureFullScreen = useCallback(() => {
+      if (isCapturing || !onFullScreenCapture) return;
+
+      // Trigger full screen capture
+      onFullScreenCapture();
+    }, [isCapturing, onFullScreenCapture]);
+
+    // Double tap gesture for full screen capture
+    const doubleTapGesture = useMemo(
+      () => Gesture.Tap()
+        .runOnJS(true)
+        .numberOfTaps(2)
+        .onEnd(() => {
+          if (isCapturing) return;
+
+          // Clear any in-progress lasso
+          if (isDrawing || points.length > 0) {
+            setIsDrawing(false);
+            setPoints([]);
+            setPathString("");
+            setPolygonPoints("");
+          }
+
+          captureFullScreen();
+        }),
+      [isCapturing, isDrawing, points.length, captureFullScreen]
+    );
+
     // Let the gestures compete to handle the touch
     const gestures = Gesture.Race(
       panGesture,
-      pinchGesture
+      pinchGesture,
+      doubleTapGesture
     );
 
     // Toggle camera facing
@@ -192,9 +223,9 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           >
             {/* Avoiding any conditional rendering that could cause view hierarchy changes */}
             {/* Instead using empty/transparent SVG elements that are always present */}
-            <Svg 
-              width="100%" 
-              height="100%" 
+            <Svg
+              width="100%"
+              height="100%"
               className="absolute inset-0"
               key="lasso-svg-container"
             >
@@ -205,7 +236,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                 fill={isCapturing || !polygonPoints ? "transparent" : `${backgroundColor}33`}
                 stroke="none"
               />
-              
+
               {/* Always render the path but with empty or real path data */}
               <Path
                 key="lasso-path"
