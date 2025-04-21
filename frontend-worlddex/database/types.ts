@@ -60,3 +60,10 @@ export type UserCollectionItem = {
   capture_id: string;
   collected_at?: string;
 };
+
+export type UserCollection = {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  added_at?: string;
+};

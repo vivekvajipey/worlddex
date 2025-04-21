@@ -28,7 +28,7 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
   if (!displayCollections.length) {
     return (
       <View className="flex-1 justify-center items-center p-4">
-        <Text className="text-text-primary font-lexend-medium">No featured collections yet.</Text>
+        <Text className="text-text-primary font-lexend-medium">No added collections yet.</Text>
 
         <FABGroup />
       </View>

@@ -7,6 +7,7 @@ export const Tables = {
   COLLECTION_ITEMS: "collection_items",
   CAPTURES: "captures",
   USER_COLLECTION_ITEMS: "user_collection_items",
+  USER_COLLECTIONS: "user_collections",
 };
 
 export { supabase };

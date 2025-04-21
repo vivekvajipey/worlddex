@@ -14,7 +14,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useUserCaptures, fetchUserCaptures, deleteCapture } from "../../database/hooks/useCaptures";
-import { useCollections, fetchAllCollections } from "../../database/hooks/useCollections";
+import { fetchAllCollections } from "../../database/hooks/useCollections";
+import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
 
 // Import the extracted components
@@ -36,7 +37,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [refreshedCaptures, setRefreshedCaptures] = useState<Capture[]>([]);
-  const [refreshedCollections, setRefreshedCollections] = useState<Collection[]>([]);
+  const [userCollectionsData, setUserCollectionsData] = useState<Collection[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -45,7 +46,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const userId = session?.user?.id || null;
 
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
-  const { collections, loading: collectionsLoading } = useCollections(true);
+  const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
+
+  // Function to fetch full collection details for user collections
+  const fetchUserCollectionDetails = useCallback(async () => {
+    if (!userCollections.length) return [];
+
+    try {
+      // Get all collections
+      const allCollections = await fetchAllCollections(100);
+
+      // Filter to only include collections that the user has added
+      const collectionIds = userCollections.map(uc => uc.collection_id);
+      return allCollections.filter(collection => collectionIds.includes(collection.id));
+    } catch (error) {
+      console.error("Error fetching user collection details:", error);
+      return [];
+    }
+  }, [userCollections]);
 
   // Function to refresh data from Supabase
   const refreshData = useCallback(async () => {
@@ -57,9 +75,17 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       const freshCaptures = await fetchUserCaptures(userId, 100);
       setRefreshedCaptures(freshCaptures);
 
-      // Fetch fresh collections data
-      const freshCollections = await fetchAllCollections(20, true);
-      setRefreshedCollections(freshCollections);
+      // Fetch fresh user collections data
+      const userCollectionEntries = await fetchUserCollectionsByUser(userId);
+      const allCollections = await fetchAllCollections(100);
+
+      // Filter collections to only those the user has added
+      const collectionIds = userCollectionEntries.map(uc => uc.collection_id);
+      const userAddedCollections = allCollections.filter(
+        collection => collectionIds.includes(collection.id)
+      );
+
+      setUserCollectionsData(userAddedCollections);
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
@@ -82,15 +108,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     }
   }, [visible, refreshData]);
 
+  // Load user collections when they change
+  useEffect(() => {
+    const loadCollectionDetails = async () => {
+      if (userCollections.length > 0) {
+        const collections = await fetchUserCollectionDetails();
+        setUserCollectionsData(collections);
+      }
+    };
+
+    loadCollectionDetails();
+  }, [userCollections, fetchUserCollectionDetails]);
+
   // Initialize refreshed data with hook data
   useEffect(() => {
     if (captures.length > 0 && refreshedCaptures.length === 0) {
       setRefreshedCaptures(captures);
     }
-    if (collections.length > 0 && refreshedCollections.length === 0) {
-      setRefreshedCollections(collections);
-    }
-  }, [captures, collections, refreshedCaptures, refreshedCollections]);
+  }, [captures, refreshedCaptures]);
 
   // Effect to update active tab based on scroll position
   useEffect(() => {
@@ -189,7 +224,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   // Determine which captures and collections to display
   const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
-  const displayCollections = refreshedCollections.length > 0 ? refreshedCollections : collections;
+  const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
   // If a collection is selected, show the collection detail screen
   if (selectedCollectionId) {
@@ -265,7 +300,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             <View style={{ width, height: '100%' }}>
               <CollectionsTab
                 displayCollections={displayCollections}
-                loading={collectionsLoading || isRefreshing}
+                loading={userCollectionsLoading || isRefreshing}
                 onCollectionPress={handleCollectionPress}
               />
             </View>
