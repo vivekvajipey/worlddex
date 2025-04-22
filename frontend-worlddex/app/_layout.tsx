@@ -52,6 +52,13 @@ function AppLayoutContent() {
         }}
       />
       <Stack.Screen
+        name="(screens)/social"
+        options={{
+          animation: "slide_from_bottom",
+          contentStyle: { backgroundColor: "transparent" },
+        }}
+      />
+      <Stack.Screen
         name="(modals)/terms-modal"
         options={{
           presentation: "modal",

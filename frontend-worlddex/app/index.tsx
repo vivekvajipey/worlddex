@@ -7,12 +7,14 @@ import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
 import CapturesModal from './(screens)/personal-captures';
+import SocialModal from './(screens)/social';
 
 // This is the home route component at "/"
 export default function HomeScreen() {
   const { session, isLoading } = useAuth();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [capturesModalVisible, setCapturesModalVisible] = useState(false);
+  const [socialModalVisible, setSocialModalVisible] = useState(false);
 
   // If loading, show nothing 
   // (the splash screen is handled by _layout.tsx)
@@ -35,6 +37,20 @@ export default function HomeScreen() {
         onClose={() => setFeedbackVisible(false)}
       />
 
+      {/* Social button (bottom left) */}
+      <View className="absolute bottom-8 left-8 items-center">
+        <TouchableOpacity
+          className="w-16 h-16 rounded-full bg-background justify-center items-center shadow-lg overflow-hidden"
+          onPress={() => setSocialModalVisible(true)}
+        >
+          <Image
+            source={require('../assets/images/Social Icon.png')}
+            className="w-16 h-16"
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Center app logo button */}
       <View className="absolute bottom-8 left-0 right-0 items-center">
         <TouchableOpacity
@@ -53,6 +69,12 @@ export default function HomeScreen() {
       <CapturesModal
         visible={capturesModalVisible}
         onClose={() => setCapturesModalVisible(false)}
+      />
+
+      {/* Social Modal */}
+      <SocialModal
+        visible={socialModalVisible}
+        onClose={() => setSocialModalVisible(false)}
       />
     </View>
   );
