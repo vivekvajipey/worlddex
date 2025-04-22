@@ -7,14 +7,19 @@
     "build:shared": "cd shared && tsc",
     "build": "npm run build:shared && tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn src/index.ts"
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "worker": "ts-node-dev src/workers/tier2Worker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "axios": "^1.8.4",
+    "bullmq": "^5.49.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "form-data": "^4.0.2",
+    "ioredis": "^5.6.1",
     "openai": "^4.93.0",
     "react-native-get-random-values": "^1.11.0"
   },

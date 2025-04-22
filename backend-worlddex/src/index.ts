@@ -2,7 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import photoRoutes from './routes/photoRoutes';
-import vlmRoutes from './routes/vlmRoutes';
+// import vlmRoutes from './routes/vlmRoutes';
+import identifyRoutes from './routes/identifyRoutes';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -19,7 +20,8 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/photos', photoRoutes);
-app.use('/api/vlm', vlmRoutes);
+// app.use('/api/vlm', vlmRoutes);
+app.use('/api/identify', identifyRoutes);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

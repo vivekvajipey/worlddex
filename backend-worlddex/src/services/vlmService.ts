@@ -19,8 +19,8 @@ const vlmClient = new OpenAI({
 });
 
 // const VLM_MODEL = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
-// const VLM_MODEL = "gpt-4.1-nano-2025-04-14";
-const VLM_MODEL = "gpt-4.1-mini-2025-04-14";
+const VLM_MODEL = "gpt-4.1-nano-2025-04-14";
+// const VLM_MODEL = "gpt-4.1-mini-2025-04-14";
 
 export class VlmService {
     // Updated prompt to handle unidentified subjects
