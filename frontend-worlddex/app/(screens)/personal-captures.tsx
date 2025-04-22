@@ -20,9 +20,9 @@ import { Capture, Collection } from "../../database/types";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
-import CollectionsTab from "../components/captures/CollectionsTab";
+import CollectionsTab from "../components/collections/CollectionsTab";
 import CaptureDetailsModal from "../components/captures/CaptureDetailsModal";
-import CollectionDetailScreen from "../components/captures/CollectionDetailScreen";
+import CollectionDetailScreen from "../components/collections/CollectionDetailScreen";
 
 const { width } = Dimensions.get("window");
 
@@ -36,6 +36,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [collectionDetailVisible, setCollectionDetailVisible] = useState(false);
   const [refreshedCaptures, setRefreshedCaptures] = useState<Capture[]>([]);
   const [userCollectionsData, setUserCollectionsData] = useState<Collection[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -66,14 +67,16 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   }, [userCollections]);
 
   // Function to refresh data from Supabase
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (showLoadingIndicator = true) => {
     if (!userId) return;
 
-    setIsRefreshing(true);
+    if (showLoadingIndicator) {
+      setIsRefreshing(true);
+    }
+
     try {
       // Fetch fresh captures data
       const freshCaptures = await fetchUserCaptures(userId, 100);
-      setRefreshedCaptures(freshCaptures);
 
       // Fetch fresh user collections data
       const userCollectionEntries = await fetchUserCollectionsByUser(userId);
@@ -85,11 +88,15 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         collection => collectionIds.includes(collection.id)
       );
 
+      // Update state with the fresh data
+      setRefreshedCaptures(freshCaptures);
       setUserCollectionsData(userAddedCollections);
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
-      setIsRefreshing(false);
+      if (showLoadingIndicator) {
+        setIsRefreshing(false);
+      }
     }
   }, [userId]);
 
@@ -149,6 +156,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const handleCollectionPress = (collectionId: string) => {
     setSelectedCollectionId(collectionId);
+    setCollectionDetailVisible(true);
   };
 
   const handleTabPress = (tab: string) => {
@@ -160,7 +168,15 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   };
 
   const handleCollectionClose = () => {
-    setSelectedCollectionId(null);
+    setCollectionDetailVisible(false);
+
+    // Use silent refresh to update data without showing loading indicator
+    refreshData(false);
+
+    // Keep this timeout to ensure the modal is fully closed before resetting the ID
+    setTimeout(() => {
+      setSelectedCollectionId(null);
+    }, 300);
   };
 
   const handleCaptureDetailsClose = () => {
@@ -226,18 +242,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
   const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
-  // If a collection is selected, show the collection detail screen
-  if (selectedCollectionId) {
-    return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <CollectionDetailScreen
-          collectionId={selectedCollectionId}
-          onClose={handleCollectionClose}
-        />
-      </Modal>
-    );
-  }
-
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
@@ -300,8 +304,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             <View style={{ width, height: '100%' }}>
               <CollectionsTab
                 displayCollections={displayCollections}
-                loading={userCollectionsLoading || isRefreshing}
+                loading={isRefreshing || userCollectionsLoading}
                 onCollectionPress={handleCollectionPress}
+                refreshCollections={refreshData}
               />
             </View>
           </Animated.ScrollView>
@@ -309,7 +314,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
         {/* Close Button */}
         <TouchableOpacity
-          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-gray-800 justify-center items-center"
+          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
           onPress={onClose}
         >
           <Ionicons name="close" size={24} color="#FFF" />
@@ -322,6 +327,15 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             capture={selectedCapture}
             onClose={handleCaptureDetailsClose}
             onDelete={handleDeleteCapture}
+          />
+        )}
+
+        {/* Collection Detail Screen - slides up over the current screen */}
+        {selectedCollectionId && (
+          <CollectionDetailScreen
+            collectionId={selectedCollectionId}
+            onClose={handleCollectionClose}
+            visible={collectionDetailVisible}
           />
         )}
       </SafeAreaView>

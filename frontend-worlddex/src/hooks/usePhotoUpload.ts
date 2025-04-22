@@ -5,12 +5,18 @@ import { getUploadUrl } from "../api/s3";
 import type { Capture } from "../../database/types";
 
 interface UsePhotoUploadReturn {
-  uploadPhoto: (
+  uploadCapturePhoto: (
     fileUri: string,
     contentType: string,
     fileName: string,
     captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key">
   ) => Promise<Capture>;
+  uploadPhoto: (
+    fileUri: string,
+    contentType: string,
+    fileName: string,
+    folder?: string
+  ) => Promise<string>;
   isUploading: boolean;
   error: Error | null;
   reset: () => void;
@@ -25,7 +31,46 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     setIsUploading(false);
   };
 
+  // Generic photo upload function that just uploads to S3
   const uploadPhoto = async (
+    fileUri: string,
+    contentType: string,
+    fileName: string,
+    folder: string = "uploads"
+  ): Promise<string> => {
+    try {
+      setIsUploading(true);
+      setError(null);
+
+      // Generate a unique S3 key
+      const key = `${folder}/${uuidv4()}-${fileName}`;
+
+      // Get signed upload URL for S3
+      const { uploadUrl } = await getUploadUrl(key, contentType);
+
+      // Fetch and upload file directly to S3
+      const fileResponse = await fetch(fileUri);
+      const blob = await fileResponse.blob();
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: blob,
+      });
+
+      if (!putRes.ok) throw new Error("S3 upload failed");
+
+      return key; // Return the S3 key
+    } catch (err) {
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      setError(errObj);
+      throw errObj;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Original function renamed to uploadCapturePhoto
+  const uploadCapturePhoto = async (
     fileUri: string,
     contentType: string,
     fileName: string,
@@ -36,7 +81,9 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
       setError(null);
 
       // Generate a unique S3 key
-      const key = `${captureData.user_id}/${captureData.item_id}/${uuidv4()}-${fileName}`;
+      const key = `${captureData.user_id}/${
+        captureData.item_id
+      }/${uuidv4()}-${fileName}`;
 
       // Insert Supabase row and get back capture
       const created = await createCapture({
@@ -69,5 +116,5 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     }
   };
 
-  return { uploadPhoto, isUploading, error, reset };
+  return { uploadCapturePhoto, uploadPhoto, isUploading, error, reset };
 };

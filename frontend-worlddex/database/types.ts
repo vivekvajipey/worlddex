@@ -39,6 +39,7 @@ export type CollectionItem = {
   created_at?: string;
   location?: any; // Geography point type
   display_name: string;
+  name: string;
 };
 
 export type Capture = {

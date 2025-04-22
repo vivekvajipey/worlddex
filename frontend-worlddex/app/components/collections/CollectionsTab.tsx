@@ -3,19 +3,71 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Animated, Di
 import { Collection } from "../../../database/types";
 import CollectionThumbnail from "./CollectionThumbnail";
 import { Ionicons } from "@expo/vector-icons";
+import AllCollectionsScreen from "./AllCollectionsScreen";
+import CreateCollectionScreen from "./CreateCollectionScreen";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 
 interface CollectionsTabProps {
   displayCollections: Collection[];
   loading: boolean;
   onCollectionPress: (collectionId: string) => void;
+  refreshCollections?: () => void;
 }
 
 const CollectionsTab: React.FC<CollectionsTabProps> = ({
   displayCollections,
   loading,
   onCollectionPress,
+  refreshCollections
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [allCollectionsVisible, setAllCollectionsVisible] = useState(false);
+  const [createCollectionVisible, setCreateCollectionVisible] = useState(false);
+  const isFocused = useIsFocused();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (refreshCollections) {
+        refreshCollections();
+      }
+    }, [refreshCollections])
+  );
+
+  // Additional effect to refresh when modals close
+  const handleCloseAllCollections = () => {
+    setAllCollectionsVisible(false);
+    if (refreshCollections) {
+      refreshCollections();
+    }
+  };
+
+  const handleCloseCreateCollection = () => {
+    setCreateCollectionVisible(false);
+    if (refreshCollections) {
+      refreshCollections();
+    }
+  };
+
+  // Refresh when collection is pressed (as this will affect the collection detail view)
+  const handleCollectionPress = (collectionId: string) => {
+    onCollectionPress(collectionId);
+    // After user returns from collection detail view, refresh the collection list
+    if (refreshCollections) {
+      setTimeout(() => {
+        refreshCollections();
+      }, 300); // Small delay to ensure the data has time to update
+    }
+  };
+
+  // Sort collections: featured first, then alphabetically
+  const sortedCollections = [...displayCollections].sort((a, b) => {
+    // First by featured status (featured items first)
+    if (a.is_featured && !b.is_featured) return -1;
+    if (!a.is_featured && b.is_featured) return 1;
+
+    // Then alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
 
   if (loading) {
     return (
@@ -31,6 +83,15 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
         <Text className="text-text-primary font-lexend-medium">No added collections yet.</Text>
 
         <FABGroup />
+        <AllCollectionsScreen
+          visible={allCollectionsVisible}
+          onClose={handleCloseAllCollections}
+          onCollectionPress={onCollectionPress}
+        />
+        <CreateCollectionScreen
+          visible={createCollectionVisible}
+          onClose={handleCloseCreateCollection}
+        />
       </View>
     );
   }
@@ -38,13 +99,22 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
   return (
     <View className="flex-1">
       <FlatList
-        data={displayCollections}
+        data={sortedCollections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <CollectionThumbnail
-            collection={item}
-            onPress={() => onCollectionPress(item.id)}
-          />
+          <View className="relative">
+            <CollectionThumbnail
+              collection={item}
+              onPress={() => handleCollectionPress(item.id)}
+            />
+            {item.is_featured && (
+              <View className="absolute right-6 top-4 bg-orange-500 px-2 py-1 rounded-full">
+                <Text className="text-white text-xs font-lexend-medium">
+                  Featured
+                </Text>
+              </View>
+            )}
+          </View>
         )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingVertical: 8, paddingBottom: 80 }}
@@ -52,6 +122,15 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
       />
 
       <FABGroup />
+      <AllCollectionsScreen
+        visible={allCollectionsVisible}
+        onClose={handleCloseAllCollections}
+        onCollectionPress={onCollectionPress}
+      />
+      <CreateCollectionScreen
+        visible={createCollectionVisible}
+        onClose={handleCloseCreateCollection}
+      />
     </View>
   );
 
@@ -236,7 +315,8 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
           <TouchableOpacity
             className="w-16 h-16 rounded-full bg-orange-500 justify-center items-center shadow-lg"
             onPress={() => {
-              // Handle search action
+              // Open the all collections screen
+              setAllCollectionsVisible(true);
               toggleExpand();
             }}
           >
@@ -260,7 +340,8 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
           <TouchableOpacity
             className="w-16 h-16 rounded-full bg-orange-500 justify-center items-center shadow-lg"
             onPress={() => {
-              // Handle edit action
+              // Open the create collection screen
+              setCreateCollectionVisible(true);
               toggleExpand();
             }}
           >
