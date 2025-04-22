@@ -4,18 +4,15 @@ import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 
 const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond
 
-// if (!process.env.FIREWORKS_API_KEY) {
-//     throw new Error("FIREWORKS_API_KEY env variable not set");
-// }
-
-if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY env variable not set");
+// Get API key - with logging to help debug
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+console.log("VlmService - OpenAI API Key available:", OPENAI_API_KEY ? "Yes" : "No");
+if (!OPENAI_API_KEY) {
+    console.warn("OPENAI_API_KEY env variable not set - this will cause errors when calling the VLM");
 }
 
 const vlmClient = new OpenAI({
-    // baseURL: "https://api.fireworks.ai/inference/v1",
-    // apiKey: process.env.FIREWORKS_API_KEY
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: OPENAI_API_KEY
 });
 
 // const VLM_MODEL = "accounts/fireworks/models/llama-v3p2-11b-vision-instruct";
@@ -23,9 +20,14 @@ const VLM_MODEL = "gpt-4.1-nano-2025-04-14";
 // const VLM_MODEL = "gpt-4.1-mini-2025-04-14";
 
 export class VlmService {
-    // Updated prompt to handle unidentified subjects
+    // Updated prompt to return structured data
     private getIdentificationPrompt(): string {
-        return `Identify the primary subject in the image. Respond with ONLY the most specific common name possible for the subject, using Title Case (keep it succinct). If there is no subject in the image, respond with ONLY the word "${UNIDENTIFIED_RESPONSE}".`;
+        return `Identify the primary subject in the image. Return a JSON object with:
+- label: The most specific common name for the subject in Title Case (keep it succinct)
+- category: One of ["plant", "animal", "landmark", "object", "food", "person", "scene", "other"]
+- subcategory: A more specific category (e.g., "tree", "bird", "building", "vehicle", etc.)
+
+If there is no clear subject, set label to "${UNIDENTIFIED_RESPONSE}" and category to "other".`;
     }
 
     async identifyImage(payload: VlmIdentificationRequest): Promise<VlmIdentificationResponse> {
@@ -33,6 +35,10 @@ export class VlmService {
 
         if (!base64Data || !contentType) {
             throw new Error("Missing base64Data or contentType for VLM identification");
+        }
+
+        if (!OPENAI_API_KEY) {
+            throw new Error("Cannot identify image: OPENAI_API_KEY is not set in environment variables");
         }
 
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -55,22 +61,42 @@ export class VlmService {
             const response = await vlmClient.chat.completions.create({
                 model: VLM_MODEL,
                 messages: messages,
-                max_tokens: 50,
-                temperature: 0.0
+                max_tokens: 250,
+                temperature: 0.0,
+                response_format: { type: "json_object" }
             });
 
             console.log("VLM Response:\n", response);
 
-            let identifiedLabel: string | null = response?.choices?.[0]?.message?.content?.trim() || null;
-            console.log("Original VLM Identified Label:", identifiedLabel);
-            // Check if the response contains the specific "Unidentified" keyword
-            if (identifiedLabel?.includes(UNIDENTIFIED_RESPONSE)) {
-                identifiedLabel = null; // Set label to null for frontend failure case
-            } else if (identifiedLabel) {
-                // Strip trailing punctuation
-                identifiedLabel = identifiedLabel.replace(/[.,;:!?]$/, '').trim();
+            let identifiedLabel: string | null = null;
+            let category: string | null = null;
+            let subcategory: string | null = null;
+            
+            try {
+                // Parse the JSON response
+                const content = response?.choices?.[0]?.message?.content?.trim() || "";
+                const parsedResponse = JSON.parse(content);
+                
+                console.log("Parsed VLM Response:", parsedResponse);
+                
+                identifiedLabel = parsedResponse.label || null;
+                category = parsedResponse.category || null;
+                subcategory = parsedResponse.subcategory || null;
+                
+                // Check if the response is "Unidentified"
+                if (identifiedLabel?.includes(UNIDENTIFIED_RESPONSE)) {
+                    identifiedLabel = null;
+                }
+            } catch (parseError) {
+                console.error("Error parsing VLM JSON response:", parseError);
+                // If JSON parsing fails, try to extract label directly
+                identifiedLabel = response?.choices?.[0]?.message?.content?.trim() || null;
+                if (identifiedLabel?.includes(UNIDENTIFIED_RESPONSE)) {
+                    identifiedLabel = null;
+                }
             }
-            console.log("Processed VLM Identified Label:", identifiedLabel);
+
+            console.log("Processed VLM Results:", { identifiedLabel, category, subcategory });
 
             // Calculate and log cost using the utility
             if (response.usage) {
@@ -83,7 +109,11 @@ export class VlmService {
                 console.log("Could not calculate cost: Usage data not found in response.");
             }
 
-            return { label: identifiedLabel };
+            return { 
+                label: identifiedLabel,
+                category: category,
+                subcategory: subcategory
+            };
 
         } catch (error: unknown) {
             console.error("Error calling VLM service:", error);
@@ -98,5 +128,4 @@ export class VlmService {
             throw new Error("VLM identification failed due to an unknown error");
         }
     }
-
 }

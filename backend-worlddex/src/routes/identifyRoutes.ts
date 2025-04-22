@@ -15,7 +15,14 @@ const identifyHandler:RequestHandler = async (req,res) => {
     contentType: body.contentType
   });
 
-  const routing = decideTier2(tier1.label, body.activeCollections, body.gps);
+  const routing = decideTier2(
+    tier1.label, 
+    body.activeCollections, 
+    body.gps,
+    tier1.category,
+    tier1.subcategory
+  );
+  
   if (!routing.run){
     const response:IdentifyResponse = { status:"done", tier1 };
     res.json(response);

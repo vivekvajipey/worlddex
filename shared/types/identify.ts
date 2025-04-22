@@ -5,7 +5,11 @@ export interface IdentifyRequest {
     activeCollections?: string[];
 }
   
-export interface Tier1Result { label: string | null }
+export interface Tier1Result { 
+    label: string | null;
+    category?: string | null;
+    subcategory?: string | null;
+}
   
 export interface Tier2Result {
     label: string | null;

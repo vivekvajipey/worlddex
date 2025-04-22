@@ -10,10 +10,8 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 console.log("plantService - API Key available:", process.env.PLANT_ID_API_KEY ? "Yes" : "No");
 
 export async function identifyPlant(base64Data: string): Promise<Tier2Result> {
-  // Get API key directly from environment when function is called
-  const API_KEY = process.env.PLANT_ID_API_KEY;
-  
-  if (!API_KEY) {
+  // Check for API key
+  if (!PLANT_ID_API_KEY) {
     throw new Error("PLANT_ID_API_KEY is not set in environment variables");
   }
 
@@ -35,7 +33,7 @@ export async function identifyPlant(base64Data: string): Promise<Tier2Result> {
       {
         headers: {
           "Content-Type": "application/json",
-          "Api-Key": API_KEY,
+          "Api-Key": PLANT_ID_API_KEY,
         },
       }
     );
