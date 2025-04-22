@@ -32,7 +32,7 @@ export default function CameraScreen() {
 
   // VLM
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
-  const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
+  const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
   const { user } = useUser(session?.user?.id || null);
   const { items, incrementOrCreateItem } = useItems();
@@ -283,7 +283,7 @@ export default function CameraScreen() {
           image_key: ""
         };
 
-        await uploadPhoto(
+        await uploadCapturePhoto(
           capturedUri,
           "image/jpeg",
           `${Date.now()}.jpg`,
@@ -305,7 +305,7 @@ export default function CameraScreen() {
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadPhoto, resetVlm, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading

@@ -39,6 +39,7 @@ export type CollectionItem = {
   created_at?: string;
   location?: any; // Geography point type
   display_name: string;
+  name: string;
 };
 
 export type Capture = {
@@ -59,4 +60,11 @@ export type UserCollectionItem = {
   collection_item_id: string;
   capture_id: string;
   collected_at?: string;
+};
+
+export type UserCollection = {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  added_at?: string;
 };

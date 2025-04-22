@@ -143,17 +143,7 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
           </View>
         </View>
         <TouchableOpacity
-          style={{
-            position: "absolute",
-            top: 50,
-            right: 16,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: "#333",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
           onPress={onClose}
         >
           <Ionicons name="close" size={24} color="#FFF" />
