@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, ImageBackground, Image } from "react-native";
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, ImageBackground, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { useCollection } from "../../../database/hooks/useCollections";
@@ -9,6 +9,7 @@ import { CollectionItem } from "../../../database/types";
 import CollectionItemThumbnail from "./CollectionItemThumbnail";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
+import { deleteCollection } from "../../../database/hooks/useCollections";
 
 interface CollectionDetailScreenProps {
   collectionId: string;
@@ -32,6 +33,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [collectionProgress, setCollectionProgress] = useState({ collected: 0, total: 0 });
   const [isInUserCollection, setIsInUserCollection] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { downloadUrl, loading: coverLoading } = useDownloadUrl(collection?.cover_photo_key || "");
   const [coverImageError, setCoverImageError] = useState(false);
@@ -137,6 +139,45 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
     }
   };
 
+  // Check if current user is the creator of this collection
+  const isCollectionCreator = userId && collection && collection.created_by === userId;
+
+  const handleDeleteCollection = () => {
+    if (!collection) return;
+
+    Alert.alert(
+      "Delete Collection",
+      `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleteLoading(true);
+            try {
+              const success = await deleteCollection(collectionId);
+              if (success) {
+                // Close the detail screen and navigate back
+                onClose();
+              } else {
+                Alert.alert("Error", "Failed to delete the collection. Please try again.");
+              }
+            } catch (error) {
+              console.error("Error deleting collection:", error);
+              Alert.alert("Error", "An unexpected error occurred.");
+            } finally {
+              setDeleteLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const isLoading = loading || itemsLoading || collectionLoading;
   const hasError = error || itemsError || collectionError;
 
@@ -211,6 +252,21 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
             >
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
+
+            {/* Delete button (trash can) in top left - only shown if user is the creator */}
+            {isCollectionCreator && (
+              <TouchableOpacity
+                className="absolute top-8 left-4 z-10 w-10 h-10 rounded-full bg-red-500/80 justify-center items-center"
+                onPress={handleDeleteCollection}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="trash" size={20} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Collection header */}
             <View className="absolute inset-0 flex-1 px-4 pt-8 pb-2 justify-end">
