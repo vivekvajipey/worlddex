@@ -1,52 +1,77 @@
 import axios from "axios";
 import { Tier2Result } from "../../../shared/types/identify";
+import * as dotenv from "dotenv";
+import path from "path";
 
-// Check if API key is available
-if (!process.env.PLANT_ID_API_KEY) {
-  console.warn("PLANT_ID_API_KEY env variable not set");
-}
+// Ensure environment variables are loaded
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+// Debug API key availability
+console.log("plantService - API Key available:", process.env.PLANT_ID_API_KEY ? "Yes" : "No");
 
 export async function identifyPlant(base64Data: string): Promise<Tier2Result> {
-  if (!process.env.PLANT_ID_API_KEY) {
+  // Get API key directly from environment when function is called
+  const API_KEY = process.env.PLANT_ID_API_KEY;
+  
+  if (!API_KEY) {
     throw new Error("PLANT_ID_API_KEY is not set in environment variables");
   }
 
   try {
-    // Prepare the request payload
+    // Prepare the request payload according to the v3 API requirements
     const payload = {
       images: [base64Data],
-      // Request specific details about the plant
-      details: ["common_names", "taxonomy", "url"],
-      classification_level: "all", // for genus, species, infraspecies
+      // Use supported modifiers based on the API error message
+      classification_level: "species", // One of: all, genus, species
+      similar_images: true
     };
 
-    // Send the POST request to Kindwise Plant ID API
+    console.log("Making request to Plant.id API v3...");
+    
+    // Send the POST request to Plant.id API v3
     const response = await axios.post(
       "https://api.plant.id/v3/identification",
       payload,
       {
         headers: {
           "Content-Type": "application/json",
-          "Api-Key": process.env.PLANT_ID_API_KEY,
+          "Api-Key": API_KEY,
         },
       }
     );
 
+    console.log("Plant.id API response received!");
+    
     // Extract the result - we'll take the first suggestion
     const result = response.data;
-    const topSuggestion = result.suggestions?.[0];
     
-    if (!topSuggestion) {
+    // Check if we have suggestions in the response
+    if (!result.result || 
+        !result.result.classification || 
+        !result.result.classification.suggestions ||
+        result.result.classification.suggestions.length === 0) {
+      console.log("No identification suggestions found in API response");
       return {
         label: null,
         provider: "Plant.id",
         confidence: 0
       };
     }
-
-    // Get the common name if available, otherwise use scientific name
-    const plantName = topSuggestion.plant_details?.common_names?.[0] || 
-                     topSuggestion.plant_name;
+    
+    const suggestions = result.result.classification.suggestions;
+    console.log(`Number of suggestions: ${suggestions.length}`);
+    
+    // Get the top suggestion
+    const topSuggestion = suggestions[0];
+    
+    // Get the plant name (prefer common name if available)
+    // For the v3 API, if details were requested in a subsequent call
+    const plantName = topSuggestion.name;
+    
+    console.log("Plant identification details:", {
+      scientificName: plantName,
+      confidence: topSuggestion.probability || 0
+    });
     
     return {
       label: plantName || null,
@@ -55,6 +80,9 @@ export async function identifyPlant(base64Data: string): Promise<Tier2Result> {
     };
   } catch (error) {
     console.error("Error identifying plant:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("API error response:", error.response.data);
+    }
     throw error;
   }
 } 

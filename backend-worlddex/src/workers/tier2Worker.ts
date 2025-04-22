@@ -8,7 +8,7 @@ new Worker("tier2", async job => {
   const { base64Data, module, gps } = job.data;
   
   // Use plantService instead of speciesService for plant identification
-  if (module === "plant") return await identifyPlant(base64Data);
+  if (module === "species") return await identifyPlant(base64Data);
   if (module === "landmark") return await identifyLandmark(base64Data);
   
   throw new Error("Unknown module");
