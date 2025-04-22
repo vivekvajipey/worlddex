@@ -9,7 +9,7 @@ new Worker("tier2", async job => {
   
   // Use plantService instead of speciesService for plant identification
   if (module === "species") return await identifyPlant(base64Data);
-  if (module === "landmark") return await identifyLandmark(base64Data);
+  if (module === "landmark") return await identifyLandmark(base64Data, gps);
   
   throw new Error("Unknown module");
 }, { connection });
