@@ -13,6 +13,13 @@ export function decideTier2(
 ) {
   if (!tier1Label) return { run:false };
 
+  // Stanford landmark identification takes priority over plant/animal identification
+  // If GPS is within Stanford and Stanford collection is active, use landmark module
+  if (collections.includes("Stanford") && gpsInStanford(gps)) {
+    return { run:true, module:"landmark" };
+  }
+
+  // Then check for plant/animal identification
   // Use category information if available
   if (category) {
     // Route plants to the plant identification service
@@ -29,10 +36,6 @@ export function decideTier2(
   // Fall back to keyword-based routing if category is not available
   else if (collections.includes("Organisms") && LIFE_WORDS.some(w => tier1Label.toLowerCase().includes(w))) {
     return { run:true, module:"species" };
-  }
-
-  if (collections.includes("Stanford") && gpsInStanford(gps)) {
-    return { run:true, module:"landmark" };
   }
 
   return { run:false };

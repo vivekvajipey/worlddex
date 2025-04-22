@@ -6,8 +6,12 @@ import path from "path";
 // Ensure environment variables are loaded
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-// Debug API key availability
-console.log("plantService - API Key available:", process.env.PLANT_ID_API_KEY ? "Yes" : "No");
+// Get API key - with logging to help debug
+const PLANT_ID_API_KEY = process.env.PLANT_ID_API_KEY;
+console.log("plantService - API Key available:", PLANT_ID_API_KEY ? "Yes" : "No");
+if (!PLANT_ID_API_KEY) {
+  console.warn("PLANT_ID_API_KEY env variable not set - this will cause errors when identifying plants");
+}
 
 export async function identifyPlant(base64Data: string): Promise<Tier2Result> {
   // Check for API key

@@ -27,7 +27,7 @@ interface StanfordLandmark {
 const STANFORD_LANDMARKS: StanfordLandmark[] = [
   {
     id: "the-claw",
-    name: "The Claw",
+    name: "The Claw (White Memorial Fountain)",
     coordinates: { lat: 37.425148859146304, lng: -122.16927807280942 },
     radius: 30 // meters
   },
