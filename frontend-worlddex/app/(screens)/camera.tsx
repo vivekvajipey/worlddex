@@ -8,7 +8,8 @@ import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
-import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+// import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
@@ -30,8 +31,9 @@ export default function CameraScreen() {
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
-  // VLM
-  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  // Identification
+  // const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const { tier1, tier2, loading: vlmLoading, identify } = useIdentify();
   const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
   const { user } = useUser(session?.user?.id || null);
@@ -61,8 +63,8 @@ export default function CameraScreen() {
     }
 
     // Reset VLM state for new capture
-    resetVlm();
     setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
@@ -145,14 +147,18 @@ export default function CameraScreen() {
       // VLM Identification
       if (manipResult.base64) {
         try {
-          const vlmResult = await identifyPhoto({
+          // Use new identify function instead of identifyPhoto
+          await identify({
             base64Data: manipResult.base64,
-            contentType: "image/jpeg"
+            contentType: "image/jpeg",
+            activeCollections: [],
+            gps: null
           });
-          console.log("VLM Identification Result:", vlmResult);
-          if (vlmResult?.label) {
+          
+          // Use tier1 from the hook
+          if (tier1) {
             setVlmCaptureSuccess(true);
-            setIdentifiedLabel(vlmResult.label);
+            setIdentifiedLabel(tier1);
           } else {
             setVlmCaptureSuccess(false);
             setIdentifiedLabel(null);
@@ -172,10 +178,10 @@ export default function CameraScreen() {
       setIsCapturing(false);
       setCapturedUri(null);
       cameraCaptureRef.current?.resetLasso();
-      resetVlm();
       setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
     }
-  }, [identifyPhoto, resetVlm, user]);
+  }, [identify, tier1, user]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -192,8 +198,8 @@ export default function CameraScreen() {
     }
 
     // Reset VLM state for new capture
-    resetVlm();
     setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
@@ -233,14 +239,18 @@ export default function CameraScreen() {
       // VLM Identification with the full photo
       if (photo.base64) {
         try {
-          const vlmResult = await identifyPhoto({
+          // Use new identify function instead of identifyPhoto
+          await identify({
             base64Data: photo.base64,
-            contentType: "image/jpeg"
+            contentType: "image/jpeg",
+            activeCollections: [],
+            gps: null
           });
 
-          if (vlmResult?.label) {
+          // Use tier1 from the hook
+          if (tier1) {
             setVlmCaptureSuccess(true);
-            setIdentifiedLabel(vlmResult.label);
+            setIdentifiedLabel(tier1);
           } else {
             setVlmCaptureSuccess(false);
             setIdentifiedLabel(null);
@@ -257,10 +267,10 @@ export default function CameraScreen() {
       console.error("Error capturing full screen:", error);
       setIsCapturing(false);
       setCapturedUri(null);
-      resetVlm();
       setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
     }
-  }, [identifyPhoto, resetVlm, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
+  }, [identify, tier1, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -301,11 +311,18 @@ export default function CameraScreen() {
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
-    resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadPhoto, resetVlm, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadPhoto, incrementOrCreateItem]);
+
+  // Update identified label whenever tier1 changes
+  useEffect(() => {
+    if (tier1) {
+      setIdentifiedLabel(tier1);
+      setVlmCaptureSuccess(true);
+    }
+  }, [tier1]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
