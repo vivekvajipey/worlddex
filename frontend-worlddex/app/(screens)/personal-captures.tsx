@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { useUserCaptures, fetchUserCaptures, deleteCapture } from "../../database/hooks/useCaptures";
+import { useUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from "../../database/hooks/useCaptures";
 import { fetchAllCollections } from "../../database/hooks/useCollections";
 import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
@@ -222,6 +222,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     }
   };
 
+  // Handle updating a capture
+  const handleUpdateCapture = async (capture: Capture, updates: Partial<Capture>) => {
+    if (!capture.id) return;
+
+    try {
+      const updatedCapture = await updateCapture(capture.id, updates);
+      if (updatedCapture) {
+        // Update the captures list with the updated capture
+        setRefreshedCaptures(prev => 
+          prev.map(c => c.id === updatedCapture.id ? updatedCapture : c)
+        );
+      }
+    } catch (error) {
+      console.error("Error updating capture:", error);
+      Alert.alert("Error", "Failed to update capture. Please try again.");
+    }
+  };
+
   // Create pan responder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
@@ -327,6 +345,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             capture={selectedCapture}
             onClose={handleCaptureDetailsClose}
             onDelete={handleDeleteCapture}
+            onUpdate={handleUpdateCapture}
           />
         )}
 

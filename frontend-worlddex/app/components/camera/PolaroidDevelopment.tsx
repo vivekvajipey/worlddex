@@ -31,8 +31,10 @@ interface PolaroidDevelopmentProps {
   };
   onDismiss: () => void;
   captureSuccess: boolean | null;
+  isIdentifying?: boolean;
   label?: string; // Optional string for the identified subject
   onReject?: () => void; // Optional function to reject the capture
+  onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
 }
 
 export default function PolaroidDevelopment({
@@ -40,8 +42,10 @@ export default function PolaroidDevelopment({
   captureBox,
   onDismiss,
   captureSuccess,
+  isIdentifying = false,
   label,
-  onReject
+  onReject,
+  onSetPublic
 }: PolaroidDevelopmentProps) {
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -49,6 +53,11 @@ export default function PolaroidDevelopment({
   const expandAnim = useRef(new Animated.Value(0)).current;
   const blurIntensityRef = useRef({ value: INITIAL_BLUR });
   const blurIntensity = useRef(new Animated.Value(INITIAL_BLUR)).current;
+
+  // Loading animation values
+  const dot1Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot2Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot3Opacity = useRef(new Animated.Value(0.3)).current;
 
   // Minimizing animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -69,6 +78,9 @@ export default function PolaroidDevelopment({
   const [isCompleted, setIsCompleted] = useState(false);
   const [initialAnimationDone, setInitialAnimationDone] = useState(false);
 
+  // Public/private toggle state
+  const [isPublic, setIsPublic] = useState(false);
+
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
 
@@ -87,6 +99,73 @@ export default function PolaroidDevelopment({
       blurIntensity.removeListener(listener);
     };
   }, []);
+
+  // Loading dots animation
+  useEffect(() => {
+    if (isIdentifying && captureSuccess === null) {
+      // Create animations for the loading dots
+      const dot1Animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot1Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot1Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          })
+        ])
+      );
+      
+      const dot2Animation = Animated.loop(
+        Animated.sequence([
+          Animated.delay(150),
+          Animated.timing(dot2Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot2Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.delay(150)
+        ])
+      );
+      
+      const dot3Animation = Animated.loop(
+        Animated.sequence([
+          Animated.delay(300),
+          Animated.timing(dot3Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot3Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.delay(300)
+        ])
+      );
+      
+      // Start all animations
+      dot1Animation.start();
+      dot2Animation.start();
+      dot3Animation.start();
+      
+      // Clean up on component unmount or when identification is done
+      return () => {
+        dot1Animation.stop();
+        dot2Animation.stop();
+        dot3Animation.stop();
+      };
+    }
+  }, [isIdentifying, captureSuccess]);
 
   // Animation sequence for Polaroid development
   function runDevelopmentAnimation() {
@@ -401,6 +480,13 @@ export default function PolaroidDevelopment({
     };
   };
 
+  // Update parent component when isPublic changes
+  useEffect(() => {
+    if (onSetPublic) {
+      onSetPublic(isPublic);
+    }
+  }, [isPublic, onSetPublic]);
+
   return (
     <View className="absolute inset-0">
       {/* Blurred background - gets touchable in final state */}
@@ -473,6 +559,27 @@ export default function PolaroidDevelopment({
             <Text className="font-shadows text-black text-center text-3xl">
               {label}
             </Text>
+          )}
+          {captureSuccess === null && isIdentifying && (
+            <View className="flex-row items-center justify-center space-x-2">
+              <Text className="font-shadows text-black text-center text-2xl">
+                Identifying
+              </Text>
+              <View className="flex-row">
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot1Opacity }}
+                />
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot2Opacity }}
+                />
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot3Opacity }}
+                />
+              </View>
+            </View>
           )}
         </View>
       </Animated.View>
@@ -587,24 +694,47 @@ export default function PolaroidDevelopment({
 
       {/* Control buttons - only show after initial animation is done */}
       {initialAnimationDone && !isRipping && !isMinimizing && (
-        <View className="absolute bottom-28 left-0 right-0 flex flex-row justify-center items-center z-10">
-          {/* Reject button */}
-          <TouchableOpacity
-            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
-            onPress={handleReject}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close" size={36} color="red" />
-          </TouchableOpacity>
+        <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
+          {/* Public/Private toggle */}
+          {captureSuccess === true && (
+            <View className="flex-row items-center justify-center mb-6 bg-background/80 py-2 px-4 rounded-full">
+              <TouchableOpacity
+                onPress={() => setIsPublic(true)}
+                className={`flex-row items-center mr-4 ${isPublic ? 'opacity-100' : 'opacity-50'}`}
+              >
+                <Ionicons name="globe-outline" size={20} color="#000" />
+                <Text className="ml-1 font-lexend-medium text-black">Public</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setIsPublic(false)}
+                className={`flex-row items-center ${!isPublic ? 'opacity-100' : 'opacity-50'}`}
+              >
+                <Ionicons name="lock-closed-outline" size={20} color="#000" />
+                <Text className="ml-1 font-lexend-medium text-black">Private</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          {/* Reject/Accept buttons */}
+          <View className="flex flex-row justify-center items-center">
+            {/* Reject button */}
+            <TouchableOpacity
+              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
+              onPress={handleReject}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={36} color="red" />
+            </TouchableOpacity>
 
-          {/* Accept button */}
-          <TouchableOpacity
-            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
-            onPress={handleBackgroundPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="checkmark" size={36} color="green" />
-          </TouchableOpacity>
+            {/* Accept button */}
+            <TouchableOpacity
+              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
+              onPress={handleBackgroundPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark" size={36} color="green" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>

@@ -52,6 +52,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const [hasCapture, setHasCapture] = useState(false);
   const [showingCaptureReview, setShowingCaptureReview] = useState(false);
 
+  // Add a state for tracking public/private status
+  const [isCapturePublic, setIsCapturePublic] = useState(false);
+
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
@@ -61,7 +64,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   
   // Check if onboarding should be shown
   useEffect(() => {
-    if (user && !user.isOnboarded) {
+    if (user && !user.is_onboarded) {
       setShowOnboarding(true);
     }
   }, [user]);
@@ -73,7 +76,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     // Update user record if we have a session
     if (session?.user?.id) {
       try {
-        await updateUser({ isOnboarded: true });
+        await updateUser({ is_onboarded: true });
       } catch (error) {
         console.error("Failed to update onboarding status:", error);
       }
@@ -327,7 +330,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           item_id: item.id,
           item_name: item.name,
           capture_number: item.total_captures,
-          image_key: ""
+          image_key: "",
+          is_public: isCapturePublic,
+          total_upvotes: 0,
+          daily_upvotes: 0
         };
 
         await uploadCapturePhoto(
@@ -351,10 +357,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
+    setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-    
-    isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem, isCapturePublic]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -403,11 +408,13 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
+            isIdentifying={vlmLoading}
             label={identifiedLabel || ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
             }}
+            onSetPublic={setIsCapturePublic}
           />
         )}
         
