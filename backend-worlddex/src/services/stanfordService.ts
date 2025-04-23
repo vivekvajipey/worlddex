@@ -23,43 +23,44 @@ interface StanfordLandmark {
 
 /**
  * List of Stanford landmarks with their coordinates and identification radii
+ * Radii are increased to account for landmark visibility from a distance
  */
 const STANFORD_LANDMARKS: StanfordLandmark[] = [
   {
     id: "the-claw",
     name: "The Claw (White Memorial Fountain)",
     coordinates: { lat: 37.425148859146304, lng: -122.16927807280942 },
-    radius: 30 // meters
+    radius: 100 // meters - increased from 30
   },
   {
     id: "hoover-tower",
     name: "Hoover Tower",
     coordinates: { lat: 37.427467, lng: -122.166962 },
-    radius: 50 // meters
+    radius: 300 // meters - significantly increased since visible from far away
   },
   {
     id: "memorial-church",
     name: "Memorial Church",
     coordinates: { lat: 37.426751, lng: -122.170054 },
-    radius: 40 // meters
+    radius: 200 // meters - increased from 40
   },
   {
     id: "cantor-museum",
     name: "Cantor Museum",
     coordinates: { lat: 37.430919, lng: -122.167281 },
-    radius: 40 // meters
+    radius: 150 // meters - increased from 40
   },
   {
     id: "main-quad",
     name: "Main Quad",
     coordinates: { lat: 37.427238, lng: -122.169438 },
-    radius: 80 // meters - larger area
+    radius: 200 // meters - increased from 80
   },
   {
     id: "green-library",
     name: "Green Library",
     coordinates: { lat: 37.426933, lng: -122.165844 },
-    radius: 40 // meters
+    radius: 150 // meters - increased from 40
   }
 ];
 
