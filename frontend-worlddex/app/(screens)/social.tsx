@@ -11,6 +11,8 @@ import {
   Text,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import CaptureLeaderboard from "../components/leaderboard/CaptureLeaderboard";
+import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderboards";
 
 const { width } = Dimensions.get("window");
 
@@ -21,11 +23,19 @@ interface SocialModalProps {
 
 const LeaderboardTab = () => {
   return (
-    <View className="flex-1 justify-center items-center">
-      <Ionicons name="podium-outline" size={48} color="#ccc" />
-      <Text className="text-lg font-lexend-medium text-gray-400 mt-4">
-        Leaderboard Coming Soon
-      </Text>
+    <View className="flex-1 p-2">
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <CaptureLeaderboard />
+
+        <View className="px-4 py-6">
+          <View className="border-t border-gray-200" />
+        </View>
+
+        <View>
+          <Text className="text-xl font-lexend-bold mb-4 text-center">Collection Leaderboards</Text>
+          <CollectionLeaderboards />
+        </View>
+      </ScrollView>
     </View>
   );
 };

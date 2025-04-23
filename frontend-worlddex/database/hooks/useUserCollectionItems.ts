@@ -71,7 +71,7 @@ export const fetchUserCollectionItemsByCollection = async (
     `
     )
     .eq("user_id", userId)
-    .eq(`${Tables.COLLECTION_ITEMS}.collection_id`, collectionId);
+    .eq("collection_id", collectionId);
 
   if (error) {
     console.error("Error fetching user collection items by collection:", error);
@@ -141,7 +141,7 @@ export const countUserCollectionItemsByCollection = async (
     .from(Tables.USER_COLLECTION_ITEMS)
     .select("id", { count: "exact" })
     .eq("user_id", userId)
-    .eq(`${Tables.COLLECTION_ITEMS}.collection_id`, collectionId);
+    .eq("collection_id", collectionId);
 
   if (error) {
     console.error("Error counting user collection items by collection:", error);
@@ -198,7 +198,8 @@ export const useUserCollectionItems = (userId: string | null) => {
 
   const addItem = async (
     collectionItemId: string,
-    captureId: string
+    captureId: string,
+    collectionId: string
   ): Promise<boolean> => {
     if (!userId) return false;
 
@@ -207,6 +208,7 @@ export const useUserCollectionItems = (userId: string | null) => {
         user_id: userId,
         collection_item_id: collectionItemId,
         capture_id: captureId,
+        collection_id: collectionId,
       });
 
       if (newItem) {

@@ -59,6 +59,7 @@ export type UserCollectionItem = {
   user_id: string;
   collection_item_id: string;
   capture_id: string;
+  collection_id: string;
   collected_at?: string;
 };
 
