@@ -8,17 +8,22 @@ import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
+import CameraOnboarding from "../components/camera/CameraOnboarding";
 import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
-import { incrementUserField } from "../../database/hooks/useUsers";
+import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture } from "../../database/types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function CameraScreen() {
+interface CameraScreenProps {
+  capturesButtonClicked?: boolean;
+}
+
+export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
@@ -34,13 +39,55 @@ export default function CameraScreen() {
   const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
-  const { user } = useUser(session?.user?.id || null);
+  const { user, updateUser } = useUser(session?.user?.id || null);
   const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
+  const [resetCounter, setResetCounter] = useState(0);
+
+  
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasCapture, setHasCapture] = useState(false);
+  const [showingCaptureReview, setShowingCaptureReview] = useState(false);
+
+  const handleOnboardingReset = useCallback(() => {
+    setResetCounter((n) => n + 1);   // new key → unmount + mount
+  }, []);
+
 
   const router = useRouter();
+  
+  // Check if onboarding should be shown
+  useEffect(() => {
+    if (user && !user.isOnboarded) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
+  
+  // Handle onboarding completion
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false);
+    
+    // Update user record if we have a session
+    if (session?.user?.id) {
+      try {
+        await updateUser({ isOnboarded: true });
+      } catch (error) {
+        console.error("Failed to update onboarding status:", error);
+      }
+    }
+  }, [session, updateUser]);
+
+  // Track when a capture review is shown or dismissed
+  useEffect(() => {
+    setShowingCaptureReview(isCapturing && capturedUri !== null);
+    // Set hasCapture to true when capture is initiated
+    if (isCapturing && capturedUri !== null) {
+      setHasCapture(true);
+    }
+  }, [isCapturing, capturedUri]);
 
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
@@ -64,15 +111,15 @@ export default function CameraScreen() {
     resetVlm();
     setVlmCaptureSuccess(null);
 
-    // Start capture state - freeze UI
-    setIsCapturing(true);
-
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 1,
         base64: true, // Need base64 for VLM
         skipProcessing: false
       });
+
+      // Start capture state - freeze UI
+      setIsCapturing(true);
 
       if (!photo) {
         throw new Error("Failed to capture photo");
@@ -305,6 +352,8 @@ export default function CameraScreen() {
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     isRejectedRef.current = false;
+    
+    isRejectedRef.current = false;
   }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
@@ -359,6 +408,19 @@ export default function CameraScreen() {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
             }}
+          />
+        )}
+        
+        {/* Camera onboarding overlay */}
+        {showOnboarding && (
+          <CameraOnboarding 
+            key={resetCounter}
+            onComplete={handleOnboardingComplete} 
+            capturesButtonClicked={capturesButtonClicked}
+            hasCapture={hasCapture}
+            showingCaptureReview={showingCaptureReview}
+            captureLabel={identifiedLabel || ""}
+            onRequestReset={handleOnboardingReset}
           />
         )}
       </View>
