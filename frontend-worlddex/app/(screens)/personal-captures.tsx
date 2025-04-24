@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Modal,
@@ -17,6 +17,7 @@ import { useUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from
 import { fetchAllCollections } from "../../database/hooks/useCollections";
 import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
+import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
@@ -48,6 +49,35 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
+
+  // Collect all image keys for batch loading
+  const captureImageKeys = useMemo(() => {
+    const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
+    return displayCaptures.map(capture => capture.image_key).filter(Boolean) as string[];
+  }, [refreshedCaptures, captures]);
+
+  // Fetch all image URLs in one batch
+  const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(captureImageKeys);
+
+  // Create a map from image keys to download URLs
+  const imageUrlMap = useMemo(() => {
+    return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [imageUrlItems]);
+
+  // Similarly for collections, collect cover photo keys
+  const collectionCoverKeys = useMemo(() => {
+    return userCollectionsData
+      .map(collection => collection.cover_photo_key)
+      .filter(Boolean) as string[];
+  }, [userCollectionsData]);
+
+  // Fetch all collection cover URLs in one batch
+  const { items: coverUrlItems, loading: coverUrlsLoading } = useDownloadUrls(collectionCoverKeys);
+
+  // Create a map from cover keys to download URLs
+  const coverUrlMap = useMemo(() => {
+    return Object.fromEntries(coverUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [coverUrlItems]);
 
   // Function to fetch full collection details for user collections
   const fetchUserCollectionDetails = useCallback(async () => {
@@ -314,6 +344,8 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
               <WorldDexTab
                 displayCaptures={displayCaptures}
                 loading={capturesLoading || isRefreshing}
+                urlsLoading={imageUrlsLoading}
+                urlMap={imageUrlMap}
                 onCapturePress={handleCapturePress}
               />
             </View>
@@ -325,6 +357,8 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
                 loading={isRefreshing || userCollectionsLoading}
                 onCollectionPress={handleCollectionPress}
                 refreshCollections={refreshData}
+                urlsLoading={coverUrlsLoading}
+                urlMap={coverUrlMap}
               />
             </View>
           </Animated.ScrollView>

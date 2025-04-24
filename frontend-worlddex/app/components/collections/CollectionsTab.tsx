@@ -10,6 +10,8 @@ import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 interface CollectionsTabProps {
   displayCollections: Collection[];
   loading: boolean;
+  urlsLoading?: boolean;
+  urlMap?: Record<string, string>;
   onCollectionPress: (collectionId: string) => void;
   refreshCollections?: () => void;
 }
@@ -17,6 +19,8 @@ interface CollectionsTabProps {
 const CollectionsTab: React.FC<CollectionsTabProps> = ({
   displayCollections,
   loading,
+  urlsLoading = false,
+  urlMap = {},
   onCollectionPress,
   refreshCollections
 }) => {

@@ -1,10 +1,10 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { formatDistanceToNow } from "date-fns";
 import { CaptureComment } from "../../../database/types";
 import { useUser } from "../../../database/hooks/useUsers";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
-
+import { Image } from "expo-image";
 interface CommentProps {
   comment: CaptureComment;
   onUserPress?: (userId: string) => void;
@@ -49,7 +49,9 @@ const Comment: React.FC<CommentProps> = ({
               ? { uri: profileImageUrl }
               : require("../../../assets/images/icon.png")
           }
-          className="w-8 h-8 rounded-full bg-gray-200"
+          style={{ width: 32, height: 32, borderRadius: 16 }}
+          contentFit="cover"
+          transition={200}
         />
       </TouchableOpacity>
 

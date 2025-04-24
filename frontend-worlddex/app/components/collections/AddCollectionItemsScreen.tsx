@@ -8,11 +8,11 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
-  Image,
   Alert,
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Collection, CollectionItem, AllItem, Capture } from "../../../database/types";
@@ -64,7 +64,7 @@ const CaptureListItem = ({ capture, isSelected, onPress }: {
         <Image
           source={{ uri: downloadUrl || undefined }}
           className="w-16 h-16 rounded-md mr-3"
-          resizeMode="cover"
+          contentFit="cover"
         />
       )}
       <View className="flex-1">
@@ -471,7 +471,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
             <Image
               source={{ uri: newItemForm.silhouetteImage }}
               className="w-full h-full"
-              resizeMode="contain"
+              contentFit="contain"
             />
           ) : (
             <View className="flex-1 justify-center items-center">

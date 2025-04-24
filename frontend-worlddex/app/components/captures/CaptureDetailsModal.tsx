@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Modal, TouchableOpacity, Image, ActivityIndicator, Switch } from "react-native";
+import { View, Text, Modal, TouchableOpacity, ActivityIndicator, Switch } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { Capture } from "../../../database/types";
@@ -108,8 +109,9 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
             ) : (
               <Image
                 source={{ uri: downloadUrl || undefined }}
-                className="w-full h-full"
-                resizeMode="contain"
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                transition={300}
               />
             )}
           </View>

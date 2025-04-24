@@ -8,10 +8,10 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
-  Image,
   Platform,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Collection } from "../../../database/types";
@@ -226,16 +226,16 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
               {coverImage ? (
                 <Image
                   source={{ uri: coverImage }}
-                  className="w-full h-full"
-                  resizeMode="cover"
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  transition={300}
                 />
               ) : (
                 <View className="flex-1 justify-center items-center">
                   <Image
                     source={require("../../../assets/images/WorldDex Horizontal.png")}
-                    className="w-3/4 h-1/2"
-                    resizeMode="contain"
-                    style={{ opacity: 0.5 }}
+                    style={{ width: '75%', height: '50%', opacity: 0.5 }}
+                    contentFit="contain"
                   />
                   <Text className="text-gray-400 mt-2 font-lexend">
                     Tap to select custom cover image

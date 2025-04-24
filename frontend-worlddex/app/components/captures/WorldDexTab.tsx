@@ -6,12 +6,16 @@ import CaptureThumbnail from "./CaptureThumbnail";
 interface WorldDexTabProps {
   displayCaptures: Capture[];
   loading: boolean;
+  urlsLoading?: boolean;
+  urlMap?: Record<string, string>;
   onCapturePress: (capture: Capture) => void;
 }
 
 const WorldDexTab: React.FC<WorldDexTabProps> = ({
   displayCaptures,
   loading,
+  urlsLoading = false,
+  urlMap = {},
   onCapturePress
 }) => {
   if (loading) {
@@ -39,6 +43,8 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
           <CaptureThumbnail
             capture={item}
             onPress={() => onCapturePress(item)}
+            downloadUrl={urlMap[item.image_key]}
+            loading={urlsLoading}
           />
         )}
         numColumns={3}

@@ -4,7 +4,7 @@ import { DownloadUrlResponse } from "../../../shared/types/photo";
 
 // Create a global cache to store download URLs across component instances
 // This ensures we don't refetch URLs we've already loaded
-const urlCache: Record<string, string> = {};
+export const urlCache: Record<string, string> = {};
 
 export function useDownloadUrl(key: string) {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);

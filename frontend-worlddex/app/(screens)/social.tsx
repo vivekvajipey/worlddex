@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Modal,
@@ -21,6 +21,7 @@ import { useTopCaptures } from "../../database/hooks/useCaptures";
 import CapturePost from "../components/social/CapturePost";
 import { Capture } from "../../database/types";
 import { useRouter } from "expo-router";
+import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 
 const { width } = Dimensions.get("window");
 
@@ -65,6 +66,19 @@ const SocialTab = () => {
     limit: 10,
     minUpvotes: 0
   });
+
+  // Collect all image keys from the captures for batch download
+  const imageKeys = useMemo(() => {
+    return captures.map(capture => capture.image_key).filter(Boolean) as string[];
+  }, [captures]);
+
+  // Fetch all image URLs in batch
+  const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(imageKeys);
+
+  // Create a mapping from image keys to download URLs
+  const imageUrlMap = useMemo(() => {
+    return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [imageUrlItems]);
 
   // Event handlers
   const handleUserPress = useCallback((userId: string) => {
@@ -119,6 +133,8 @@ const SocialTab = () => {
             capture={item}
             onUserPress={handleUserPress}
             onCapturePress={handleCapturePress}
+            imageUrl={imageUrlMap[item.image_key]}
+            imageLoading={imageUrlsLoading}
           />
         )}
         contentContainerStyle={{ 

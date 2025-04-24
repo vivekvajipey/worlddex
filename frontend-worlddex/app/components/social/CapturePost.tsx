@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, Image, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Capture } from "../../../database/types";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
@@ -14,6 +15,10 @@ interface CapturePostProps {
   onUserPress?: (userId: string) => void;
   onCapturePress?: (capture: Capture) => void;
   onCommentsPress?: (capture: Capture) => void;
+  imageUrl?: string | null;
+  profileImageUrl?: string | null;
+  imageLoading?: boolean;
+  profileLoading?: boolean;
 }
 
 const CapturePost: React.FC<CapturePostProps> = ({
@@ -21,13 +26,29 @@ const CapturePost: React.FC<CapturePostProps> = ({
   onUserPress,
   onCapturePress,
   onCommentsPress,
+  imageUrl = null,
+  profileImageUrl = null,
+  imageLoading = false,
+  profileLoading = false
 }) => {
-  const { downloadUrl, loading: imageLoading } = useDownloadUrl(capture.image_key);
   const { liked, toggle: toggleLike, busy: likeInProgress } = useLike(capture.id || null);
   const { session } = useAuth();
   const { user, loading: userLoading } = useUser(capture.user_id);
-  const { downloadUrl: profileImageUrl, loading: profileImageLoading } = 
-    useDownloadUrl(user?.profile_picture_key || "");
+  
+  // Only use useDownloadUrl for profile picture if not provided as prop
+  const { 
+    downloadUrl: fallbackProfileUrl, 
+    loading: fallbackProfileLoading 
+  } = useDownloadUrl(
+    !profileImageUrl && user?.profile_picture_key 
+      ? user.profile_picture_key 
+      : ""
+  );
+  
+  // Determine profile image URL and loading state
+  const finalProfileUrl = profileImageUrl || fallbackProfileUrl;
+  const isProfileLoading = profileLoading || (!profileImageUrl && fallbackProfileLoading);
+  
   const [likeCount, setLikeCount] = useState(capture.like_count || 0);
   const [commentCount, setCommentCount] = useState(capture.comment_count || 0);
   const [showComments, setShowComments] = useState(false);
@@ -84,18 +105,20 @@ const CapturePost: React.FC<CapturePostProps> = ({
             onPress={() => onUserPress?.(capture.user_id)}
             className="flex-row items-center flex-1"
           >
-            {userLoading || profileImageLoading ? (
+            {userLoading || isProfileLoading ? (
               <View className="w-10 h-10 rounded-full bg-gray-200 justify-center items-center">
                 <ActivityIndicator size="small" color="#999" />
               </View>
             ) : (
               <Image 
                 source={
-                  profileImageUrl
-                    ? { uri: profileImageUrl } 
+                  finalProfileUrl
+                    ? { uri: finalProfileUrl } 
                     : require("../../../assets/images/icon.png")
                 } 
-                className="w-10 h-10 rounded-full bg-gray-200"
+                style={{ width: 40, height: 40, borderRadius: 20 }}
+                contentFit="cover"
+                transition={200}
               />
             )}
             
@@ -122,9 +145,10 @@ const CapturePost: React.FC<CapturePostProps> = ({
               </View>
             ) : (
               <Image 
-                source={{ uri: downloadUrl || undefined }} 
-                className="w-full h-full"
-                resizeMode="cover"
+                source={{ uri: imageUrl || undefined }} 
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={300}
               />
             )}
           </View>

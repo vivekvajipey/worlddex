@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch } from "react-native";
+import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch } from "react-native";
+import { Image } from "expo-image";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../../database/hooks/useUsers";
@@ -263,7 +264,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         ) : displayProfilePic ? (
           <Image
             source={{ uri: displayProfilePic }}
-            className="w-16 h-16 rounded-full"
+            style={{ width: 64, height: 64, borderRadius: 32 }}
+            contentFit="cover"
+            transition={200}
           />
         ) : (
           <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
@@ -307,7 +310,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                       ) : displayProfilePic ? (
                         <Image
                           source={{ uri: displayProfilePic }}
-                          className="w-20 h-20 rounded-full"
+                          style={{ width: 80, height: 80, borderRadius: 40 }}
+                          contentFit="cover"
+                          transition={200}
                         />
                       ) : (
                         <View className="w-20 h-20 rounded-full bg-primary flex justify-center items-center">

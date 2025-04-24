@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Image, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
@@ -548,7 +549,7 @@ export default function PolaroidDevelopment({
               width: '100%',
               height: '100%'
             }}
-            resizeMode={isCompleted ? "contain" : "cover"}
+            contentFit={isCompleted ? "contain" : "cover"}
           />
 
           {/* White overlay that fades away */}
@@ -618,7 +619,7 @@ export default function PolaroidDevelopment({
               top: 0,
               left: 0,
             }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
 
@@ -672,7 +673,7 @@ export default function PolaroidDevelopment({
               top: 0,
               right: 0,
             }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
 
