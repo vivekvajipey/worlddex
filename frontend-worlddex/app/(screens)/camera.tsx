@@ -431,19 +431,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             onRequestReset={handleOnboardingReset}
           />
         )}
-
-        {/* Social feed button - only show when not capturing */}
-        {!isCapturing && (
-          <TouchableOpacity
-            onPress={() => {
-              // @ts-ignore - Type checking is strict, but this works in Expo Router
-              router.navigate("/social-feed");
-            }}
-            className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
-          >
-            <Ionicons name="people-outline" size={24} color="#FFF" />
-          </TouchableOpacity>
-        )}
+        
       </View>
     </GestureHandlerRootView>
   );
