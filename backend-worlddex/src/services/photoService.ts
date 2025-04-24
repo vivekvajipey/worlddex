@@ -31,14 +31,29 @@ export class PhotoService {
     const thumbKey = originalKey.replace(/^photos\//, 'thumbs/').replace(/\.(png|jpe?g)$/i, '.jpg');
 
     /* 3️⃣ async-parallel uploads */
-    const [originalResult, _] = await Promise.all([
-      this.s3Service.uploadFile(originalKey, buffer, photo.contentType),
-      sharp(buffer)
-        .resize({ width: 200 })
-        .jpeg({ mozjpeg: true, quality: 75 })
-        .toBuffer()
-        .then(tb => this.s3Service.uploadFile(thumbKey, tb, 'image/jpeg'))
-    ]);
+    let originalResult: any;
+    
+    try {
+      // Use destructuring to get the first result from Promise.all
+      [originalResult] = await Promise.all([
+        this.s3Service.uploadFile(originalKey, buffer, photo.contentType),
+        sharp(buffer)
+          .resize({ width: 200 })
+          .jpeg({ mozjpeg: true, quality: 75 })
+          .toBuffer()
+          .then(tb => this.s3Service.uploadFile(thumbKey, tb, 'image/jpeg'))
+          .catch(err => {
+            console.error("Thumbnail generation error:", err);
+            // Just log the error but don't rethrow - allow original upload to proceed
+            return null;
+          })
+      ]);
+      
+      console.log("Upload successful:", { originalKey, thumbKey });
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      throw error;
+    }
 
     /* 4️⃣ return both keys */
     return {
