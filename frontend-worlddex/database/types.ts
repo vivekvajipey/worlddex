@@ -42,6 +42,7 @@ export type CollectionItem = {
   location?: any; // Geography point type
   display_name: string;
   name: string;
+  thumb_key?: string;
 };
 
 export type Capture = {
@@ -58,6 +59,7 @@ export type Capture = {
   daily_upvotes?: number;
   is_public?: boolean;
   comment_count?: number;
+  thumb_key?: string;
 };
 
 export type UserCollectionItem = {

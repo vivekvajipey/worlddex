@@ -37,14 +37,14 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [toggleLoading, setToggleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Get keys for all collection items
-  const silhouetteKeys = useMemo(() => {
+  // Get keys for all collection items - use thumb_key with fallback to silhouette_key
+  const itemImageKeys = useMemo(() => {
     const displayItems = refreshedItems.length > 0 ? refreshedItems : collectionItems;
-    return displayItems.map(item => item.silhouette_key).filter(Boolean) as string[];
+    return displayItems.map(item => item.thumb_key || item.silhouette_key).filter(Boolean) as string[];
   }, [refreshedItems, collectionItems]);
 
   // Fetch all item image URLs in one batch request
-  const { items: itemUrlData, loading: itemUrlsLoading } = useDownloadUrls(silhouetteKeys);
+  const { items: itemUrlData, loading: itemUrlsLoading } = useDownloadUrls(itemImageKeys);
 
   // Create a mapping from keys to URLs for easy lookup
   const itemUrlMap = useMemo(() => {
@@ -321,7 +321,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
                   item={item}
                   onPress={() => { }}
                   isCollected={isItemCollected(item.id)}
-                  downloadUrl={itemUrlMap[item.silhouette_key]}
+                  downloadUrl={itemUrlMap[item.thumb_key || item.silhouette_key]}
                   loading={itemUrlsLoading}
                 />
               )}

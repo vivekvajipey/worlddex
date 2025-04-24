@@ -50,10 +50,10 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
-  // Collect all image keys for batch loading
+  // Collect all image keys for batch loading - use thumb_key with fallback to image_key
   const captureImageKeys = useMemo(() => {
     const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
-    return displayCaptures.map(capture => capture.image_key).filter(Boolean) as string[];
+    return displayCaptures.map(capture => capture.thumb_key || capture.image_key).filter(Boolean) as string[];
   }, [refreshedCaptures, captures]);
 
   // Fetch all image URLs in one batch

@@ -9,7 +9,7 @@ interface UsePhotoUploadReturn {
     fileUri: string,
     contentType: string,
     fileName: string,
-    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key">
+    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key">
   ) => Promise<Capture>;
   uploadPhoto: (
     fileUri: string,
@@ -74,7 +74,7 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     fileUri: string,
     contentType: string,
     fileName: string,
-    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key">
+    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key">
   ): Promise<Capture> => {
     try {
       setIsUploading(true);
@@ -84,12 +84,16 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
       const key = `${captureData.user_id}/${
         captureData.item_id
       }/${uuidv4()}-${fileName}`;
+      
+      // Generate thumb key following the same pattern used in backend
+      const thumbKey = key.replace(/^[^\/]+\//, 'thumbs/').replace(/\.(png|jpe?g)$/i, '.jpg');
 
       // Insert Supabase row and get back capture
       const created = await createCapture({
         ...captureData,
         image_key: key,
         segmented_image_key: "",
+        thumb_key: thumbKey,
       });
       if (!created) throw new Error("Failed to create capture row");
 
