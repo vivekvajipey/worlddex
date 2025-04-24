@@ -5,6 +5,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -332,7 +333,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           capture_number: item.total_captures,
           image_key: "",
           is_public: isCapturePublic,
-          total_upvotes: 0,
+          like_count: 0,
           daily_upvotes: 0
         };
 
@@ -429,6 +430,19 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             captureLabel={identifiedLabel || ""}
             onRequestReset={handleOnboardingReset}
           />
+        )}
+
+        {/* Social feed button - only show when not capturing */}
+        {!isCapturing && (
+          <TouchableOpacity
+            onPress={() => {
+              // @ts-ignore - Type checking is strict, but this works in Expo Router
+              router.navigate("/social-feed");
+            }}
+            className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
+          >
+            <Ionicons name="people-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
         )}
       </View>
     </GestureHandlerRootView>

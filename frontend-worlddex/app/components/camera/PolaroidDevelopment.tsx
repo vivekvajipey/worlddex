@@ -717,23 +717,23 @@ export default function PolaroidDevelopment({
           
           {/* Reject/Accept buttons */}
           <View className="flex flex-row justify-center items-center">
-            {/* Reject button */}
-            <TouchableOpacity
-              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
-              onPress={handleReject}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close" size={36} color="red" />
-            </TouchableOpacity>
+          {/* Reject button */}
+          <TouchableOpacity
+            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
+            onPress={handleReject}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={36} color="red" />
+          </TouchableOpacity>
 
-            {/* Accept button */}
-            <TouchableOpacity
-              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
-              onPress={handleBackgroundPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="checkmark" size={36} color="green" />
-            </TouchableOpacity>
+          {/* Accept button */}
+          <TouchableOpacity
+            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
+            onPress={handleBackgroundPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark" size={36} color="green" />
+          </TouchableOpacity>
           </View>
         </View>
       )}

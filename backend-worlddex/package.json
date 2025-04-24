@@ -16,7 +16,8 @@
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "openai": "^4.93.0",
-    "react-native-get-random-values": "^1.11.0"
+    "react-native-get-random-values": "^1.11.0",
+    "supabase": "^2.22.6"
   },
   "devDependencies": {
     "@flydotio/dockerfile": "^0.7.10",
