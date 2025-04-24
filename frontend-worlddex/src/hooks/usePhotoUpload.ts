@@ -87,7 +87,7 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
       }/${uuidv4()}-${fileName}`;
       
       // Generate thumb key - use similar pattern as proposed in backend
-      const thumbKey = key.replace(/^[^\/]+\//, 'thumbs/').replace(/\.(png|jpe?g)$/i, '.jpg');
+      const thumbKey = key.replace(/^.*\/([^\/]+)$/, 'thumbs/$1').replace(/\.(png|jpe?g)$/i, '.jpg');
 
       // 1. Create thumbnail image using ImageManipulator
       const thumbnailResult = await ImageManipulator.manipulateAsync(
