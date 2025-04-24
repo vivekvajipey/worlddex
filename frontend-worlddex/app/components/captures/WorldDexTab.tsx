@@ -43,7 +43,7 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
           <CaptureThumbnail
             capture={item}
             onPress={() => onCapturePress(item)}
-            downloadUrl={urlMap[item.image_key]}
+            downloadUrl={urlMap[item.thumb_key || item.image_key]}
             loading={urlsLoading}
           />
         )}
