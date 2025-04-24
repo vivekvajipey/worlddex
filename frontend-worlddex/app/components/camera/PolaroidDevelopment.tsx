@@ -4,6 +4,8 @@ import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { useUser } from "../../../database/hooks/useUsers";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -47,6 +49,11 @@ export default function PolaroidDevelopment({
   onReject,
   onSetPublic
 }: PolaroidDevelopmentProps) {
+  // Get user settings
+  const { session } = useAuth();
+  const userId = session?.user?.id || null;
+  const { user } = useUser(userId);
+
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -78,8 +85,15 @@ export default function PolaroidDevelopment({
   const [isCompleted, setIsCompleted] = useState(false);
   const [initialAnimationDone, setInitialAnimationDone] = useState(false);
 
-  // Public/private toggle state
+  // Public/private toggle state - initialize with user's default preference
   const [isPublic, setIsPublic] = useState(false);
+
+  // Set the initial public/private setting based on user's default preference
+  useEffect(() => {
+    if (user) {
+      setIsPublic(user.default_public_captures || false);
+    }
+  }, [user]);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -695,26 +709,6 @@ export default function PolaroidDevelopment({
       {/* Control buttons - only show after initial animation is done */}
       {initialAnimationDone && !isRipping && !isMinimizing && (
         <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
-          {/* Public/Private toggle */}
-          {captureSuccess === true && (
-            <View className="flex-row items-center justify-center mb-6 bg-background/80 py-2 px-4 rounded-full">
-              <TouchableOpacity
-                onPress={() => setIsPublic(true)}
-                className={`flex-row items-center mr-4 ${isPublic ? 'opacity-100' : 'opacity-50'}`}
-              >
-                <Ionicons name="globe-outline" size={20} color="#000" />
-                <Text className="ml-1 font-lexend-medium text-black">Public</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setIsPublic(false)}
-                className={`flex-row items-center ${!isPublic ? 'opacity-100' : 'opacity-50'}`}
-              >
-                <Ionicons name="lock-closed-outline" size={20} color="#000" />
-                <Text className="ml-1 font-lexend-medium text-black">Private</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          
           {/* Reject/Accept buttons */}
           <View className="flex flex-row justify-center items-center">
           {/* Reject button */}

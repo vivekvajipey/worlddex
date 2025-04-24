@@ -9,6 +9,7 @@ export type User = {
   daily_captures_used: number;
   capture_streak: number;
   is_onboarded?: boolean;
+  default_public_captures?: boolean;
 };
 
 export type Collection = {
