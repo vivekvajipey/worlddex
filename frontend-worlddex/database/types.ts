@@ -8,6 +8,7 @@ export type User = {
   capture_tier: number;
   daily_captures_used: number;
   capture_streak: number;
+  isOnboarded?: boolean;
 };
 
 export type Collection = {
