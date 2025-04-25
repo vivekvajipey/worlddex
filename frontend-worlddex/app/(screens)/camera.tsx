@@ -46,7 +46,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
 
-  
+
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCapture, setHasCapture] = useState(false);
@@ -58,22 +58,22 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
 
   const router = useRouter();
-  
+
   // Check if onboarding should be shown
   useEffect(() => {
-    if (user && !user.isOnboarded) {
+    if (user && !user.is_onboarded) {
       setShowOnboarding(true);
     }
   }, [user]);
-  
+
   // Handle onboarding completion
   const handleOnboardingComplete = useCallback(async () => {
     setShowOnboarding(false);
-    
+
     // Update user record if we have a session
     if (session?.user?.id) {
       try {
-        await updateUser({ isOnboarded: true });
+        await updateUser({ is_onboarded: true });
       } catch (error) {
         console.error("Failed to update onboarding status:", error);
       }
@@ -352,7 +352,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     isRejectedRef.current = false;
-    
+
     isRejectedRef.current = false;
   }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
@@ -410,12 +410,12 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             }}
           />
         )}
-        
+
         {/* Camera onboarding overlay */}
         {showOnboarding && (
-          <CameraOnboarding 
+          <CameraOnboarding
             key={resetCounter}
-            onComplete={handleOnboardingComplete} 
+            onComplete={handleOnboardingComplete}
             capturesButtonClicked={capturesButtonClicked}
             hasCapture={hasCapture}
             showingCaptureReview={showingCaptureReview}
