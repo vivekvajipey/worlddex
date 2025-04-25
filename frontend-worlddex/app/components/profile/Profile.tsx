@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from "react-native";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../../database/hooks/useUsers";
 import { isUsernameAvailable, fetchUser } from "../../../database/hooks/useUsers";
 import { useCaptureCount } from "../../../database/hooks/useCaptureCount";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Colors from "../../../src/utils/colors";
 import { deleteAllUserData } from "../../../database/supabase";
+import Colors from "../../../src/utils/colors";
+import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
+import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -19,26 +20,28 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const userId = session?.user?.id || null;
   const { user, loading, error, updateUser } = useUser(userId);
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
-
+  const { uploadPhoto, isUploading } = usePhotoUpload();
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
   const [originalUsername, setOriginalUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [profilePictureUri, setProfilePictureUri] = useState<string | null>(null);
   const [refreshedUser, setRefreshedUser] = useState(user);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load user data and profile picture
+  // Download profile picture URL if available
+  const { downloadUrl, loading: loadingProfilePic } = useDownloadUrl(
+    refreshedUser?.profile_picture_key || ""
+  );
+
+  // Load user data
   useEffect(() => {
     if (user) {
       setUsername(user.username || "");
       setOriginalUsername(user.username || "");
       setRefreshedUser(user);
-
-      // Load profile picture from local storage if available
-      loadProfilePicture();
     }
   }, [user]);
 
@@ -70,20 +73,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
       setIsRefreshing(false);
     }
   }, [userId, isEditing]);
-
-  const loadProfilePicture = async () => {
-    if (!userId) return;
-
-    try {
-      // Try to get locally stored profile picture
-      const storedUri = await AsyncStorage.getItem(`profile_pic_${userId}`);
-      if (storedUri) {
-        setProfilePictureUri(storedUri);
-      }
-    } catch (error) {
-      console.error("Error loading profile picture:", error);
-    }
-  };
 
   const handleSignOut = async () => {
     try {
@@ -160,6 +149,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   };
 
   const pickImage = async () => {
+    if (!userId) return;
+    
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
@@ -170,24 +161,25 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
       if (!result.canceled && result.assets[0].uri) {
         const uri = result.assets[0].uri;
-        await saveProfilePicture(uri);
+        const fileName = uri.split('/').pop() || 'profile.jpg';
+        const contentType = 'image/jpeg';
+        
+        // Upload to S3
+        const key = await uploadPhoto(
+          uri,
+          contentType,
+          fileName,
+          `profiles/${userId}`
+        );
+        
+        // Update user record with new key
+        await updateUser({ profile_picture_key: key });
+        
+        // Refresh user data
+        await refreshUserData();
       }
     } catch (error) {
       console.error("Error picking image:", error);
-    }
-  };
-
-  const saveProfilePicture = async (uri: string) => {
-    if (!userId) return;
-
-    try {
-      // Save the URI to local storage
-      await AsyncStorage.setItem(`profile_pic_${userId}`, uri);
-
-      // Update state
-      setProfilePictureUri(uri);
-    } catch (error) {
-      console.error("Error saving profile picture:", error);
     }
   };
 
@@ -211,9 +203,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               // Delete all user data using the utility function
               await deleteAllUserData(userId);
 
-              // Clear local storage
-              await AsyncStorage.removeItem(`profile_pic_${userId}`);
-
               // Sign out user
               await signOut();
               setModalVisible(false);
@@ -231,8 +220,12 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const userEmail = session?.user?.email || "User";
   const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
 
+  // Use S3 profile pic or fall back to OAuth provider pic
   const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
-  const displayProfilePic = profilePictureUri || oauthProfilePic;
+  const displayProfilePic = downloadUrl || oauthProfilePic;
+  
+  // Track whether we've tried loading the S3 profile picture yet
+  const isInitialLoading = refreshedUser?.profile_picture_key && !downloadUrl && !loadingProfilePic;
 
   return (
     <>
@@ -240,7 +233,11 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         className="absolute bottom-8 right-8 w-16 h-16 rounded-full flex justify-center items-center"
         onPress={handleOpenModal}
       >
-        {displayProfilePic ? (
+        {loadingProfilePic || isInitialLoading ? (
+          <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
+            <ActivityIndicator color={Colors.background.surface} />
+          </View>
+        ) : displayProfilePic ? (
           <Image
             source={{ uri: displayProfilePic }}
             className="w-16 h-16 rounded-full"
@@ -280,7 +277,11 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={pickImage} className="relative mr-4">
-                      {displayProfilePic ? (
+                      {loadingProfilePic || isUploading || isInitialLoading ? (
+                        <View className="w-20 h-20 rounded-full bg-gray-200 flex justify-center items-center">
+                          <ActivityIndicator color={Colors.primary.DEFAULT} />
+                        </View>
+                      ) : displayProfilePic ? (
                         <Image
                           source={{ uri: displayProfilePic }}
                           className="w-20 h-20 rounded-full"
