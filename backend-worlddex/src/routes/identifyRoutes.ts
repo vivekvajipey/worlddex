@@ -9,7 +9,20 @@ const vlm = new VlmService();
 
 // POST /api/identify  →  immediate Tier‑1 + maybe enqueue Tier‑2
 const identifyHandler:RequestHandler = async (req,res) => {
+  // Very early debug log to see if the handler is being called at all
+  console.log("=====================================");
+  console.log("IDENTIFY HANDLER CALLED");
+  console.log("=====================================");
+  
   const body = req.body as IdentifyRequest;
+  
+  // Add detailed debug log to see what's being received
+  console.log("=== DEBUG: Identify Request ===");
+  console.log("Active Collections:", body.activeCollections);
+  console.log("Content Type:", body.contentType);
+  console.log("Has base64Data:", !!body.base64Data);
+  console.log("GPS:", body.gps);
+  
   const tier1 = await vlm.identifyImage({
     base64Data: body.base64Data,
     contentType: body.contentType
@@ -22,6 +35,15 @@ const identifyHandler:RequestHandler = async (req,res) => {
     tier1.category,
     tier1.subcategory
   );
+  
+  // Log the routing decision and Tier 1 result
+  console.log("=== DEBUG: Routing Decision ===");
+  console.log("Tier 1 Result:", { 
+    label: tier1.label, 
+    category: tier1.category,
+    subcategory: tier1.subcategory 
+  });
+  console.log("Routing Decision:", routing);
   
   if (!routing.run){
     const response:IdentifyResponse = { status:"done", tier1 };
@@ -86,7 +108,7 @@ const streamHandler:RequestHandler = async (req,res) => {
   }, 500);
 };
 
-router.post("/identify", identifyHandler);
-router.get("/identify/stream/:jobId", streamHandler);
+router.post("/", identifyHandler);
+router.get("/stream/:jobId", streamHandler);
 
 export default router;

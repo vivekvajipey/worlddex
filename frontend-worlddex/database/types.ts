@@ -76,6 +76,7 @@ export type UserCollection = {
   user_id: string;
   collection_id: string;
   added_at?: string;
+  is_active: boolean;
 };
 
 export type CaptureLike = {

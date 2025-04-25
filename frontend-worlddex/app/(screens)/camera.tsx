@@ -15,6 +15,7 @@ import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture } from "../../database/types";
+import { useActiveCollections } from "../../database/hooks/useUserCollections";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -58,6 +59,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
+
+  // Get active collections for the current user
+  const { activeCollections, loading: collectionsLoading } = useActiveCollections(session?.user?.id || null);
 
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
@@ -209,7 +213,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           await identify({
             base64Data: manipResult.base64,
             contentType: "image/jpeg",
-            activeCollections: [],
+            activeCollections: activeCollections,
             gps: null
           });
           
@@ -220,7 +224,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
         }
       } else {
         console.warn("No base64 data available for VLM identification.");
-        setVlmCaptureSuccess(false); // Treating missing base64 as captureidilure
+        setVlmCaptureSuccess(false); // Treating missing base64 as capture failure
       }
       // ----------------------------------------------------
 
@@ -232,7 +236,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user]);
+  }, [identify, tier1, tier2, user, activeCollections]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -294,7 +298,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           await identify({
             base64Data: photo.base64,
             contentType: "image/jpeg",
-            activeCollections: [],
+            activeCollections: activeCollections,
             gps: null
           });
 
@@ -314,7 +318,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {

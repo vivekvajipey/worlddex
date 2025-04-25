@@ -29,22 +29,22 @@ export function decideTier2(
   // Use category information if available
   if (category) {
     // Route plants to the plant identification service
-    if (collections.includes("Organisms") && category === "plant") {
-      console.log("Organisms collection active and category is plant, using species module");
+    if (collections.includes("Plants") && category === "plant") {
+      console.log("Plants collection active and category is plant, using species module");
       return { run:true, module:"species" };
     }
     
     // Route animals to the plant identification service too for now
     // since we've deprecated the species service
-    if (collections.includes("Organisms") && category === "animal") {
-      console.log("Organisms collection active and category is animal, using species module");
+    if (collections.includes("Plants") && category === "animal") {
+      console.log("Plants collection active and category is animal, using species module");
       return { run:true, module:"species" };
     }
     
     console.log(`Category ${category} does not match routing rules`);
   } 
   // Fall back to keyword-based routing if category is not available
-  else if (collections.includes("Organisms") && LIFE_WORDS.some(w => tier1Label.toLowerCase().includes(w))) {
+  else if (collections.includes("Plants") && LIFE_WORDS.some(w => tier1Label.toLowerCase().includes(w))) {
     const matchedWord = LIFE_WORDS.find(w => tier1Label.toLowerCase().includes(w));
     console.log(`No category, but keyword match with '${matchedWord}' in label, using species module`);
     return { run:true, module:"species" };
