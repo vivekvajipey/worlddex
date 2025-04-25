@@ -29,11 +29,15 @@ const identifyHandler:RequestHandler = async (req,res) => {
     return;
   }
 
+  console.log(`Creating Tier2 job with module: ${routing.module}`);
+  
   const job = await tier2Queue.add("work", {
     base64Data: body.base64Data,
     module: routing.module as "species" | "landmark",
     gps: body.gps
   }, { removeOnComplete: 1000 });
+  
+  console.log(`Created Tier2 job with ID: ${job.id}`);
 
   const response:IdentifyResponse = {
     status:"pending",
@@ -46,6 +50,8 @@ const identifyHandler:RequestHandler = async (req,res) => {
 // SSE endpoint: /api/identify/stream/:jobId
 const streamHandler:RequestHandler = async (req,res) => {
   const jobId = req.params.jobId;
+  console.log(`SSE Stream requested for job: ${jobId}`);
+  
   res.setHeader("Content-Type","text/event-stream");
   res.setHeader("Cache-Control","no-cache");
   res.setHeader("Connection","keep-alive");
@@ -54,16 +60,26 @@ const streamHandler:RequestHandler = async (req,res) => {
     res.write(`data:${JSON.stringify({event,data})}\n\n`);
 
   const job = await tier2Queue.getJob(jobId);
-  if (!job){ send("error","Job not found"); return; }
+  if (!job){ 
+    console.log(`Job ${jobId} not found`);
+    send("error","Job not found"); 
+    return; 
+  }
+  
+  console.log(`Found job ${jobId}, current state: ${await job.getState()}`);
 
   const check = setInterval(async ()=>{
     const state = await job.getState();
+    console.log(`Job ${jobId} state check: ${state}`);
+    
     if (state === "completed") {
       clearInterval(check);
+      console.log(`Job ${jobId} completed, sending results`);
       send("completed", job.returnvalue);
       res.end();
     } else if (state === "failed"){
       clearInterval(check);
+      console.log(`Job ${jobId} failed`);
       send("failed",null);
       res.end();
     }

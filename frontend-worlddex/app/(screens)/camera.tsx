@@ -220,7 +220,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
         }
       } else {
         console.warn("No base64 data available for VLM identification.");
-        setVlmCaptureSuccess(false); // Treating missing base64 as capture failure
+        setVlmCaptureSuccess(false); // Treating missing base64 as captureidilure
       }
       // ----------------------------------------------------
 

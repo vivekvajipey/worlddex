@@ -1,7 +1,10 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
-export const connection = new IORedis(process.env.REDIS_URL!);
+// Configure Redis connection with maxRetriesPerRequest: null as required by BullMQ
+export const connection = new IORedis(process.env.REDIS_URL!, {
+  maxRetriesPerRequest: null
+});
 
 export interface Tier2JobData {
   base64Data: string;
