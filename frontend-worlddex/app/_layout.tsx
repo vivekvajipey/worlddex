@@ -1,11 +1,13 @@
 import { Stack } from "expo-router";
-import { View, Image } from "react-native";
+import { View } from "react-native";
+import { Image } from "expo-image";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
+
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -15,9 +17,9 @@ function SplashScreenComponent() {
     <View className="w-full h-full">
       <Image
         source={require("../assets/images/splash.png")}
-        className="w-full h-full absolute"
-        resizeMode="cover"
-      />
+        style={{ width: '100%', height: '100%', position: 'absolute' }}
+        contentFit="cover"
+      />  
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import 'react-native-get-random-values';
 import React, { useState, useCallback } from 'react';
-import { View, TouchableOpacity, Image } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
 import CameraScreen from './(screens)/camera';
 import Profile from './components/profile/Profile';
@@ -52,8 +53,8 @@ export default function HomeScreen() {
         >
           <Image
             source={require('../assets/images/Social Icon.png')}
-            className="w-16 h-16"
-            resizeMode="contain"
+            style={{ width: 64, height: 64 }}
+            contentFit="contain"
           />
         </TouchableOpacity>
       </View>
@@ -66,8 +67,8 @@ export default function HomeScreen() {
         >
           <Image
             source={require('../assets/images/icon.png')}
-            className="w-16 h-16"
-            resizeMode="cover"
+            style={{ width: 64, height: 64 }}
+            contentFit="cover"
           />
         </TouchableOpacity>
       </View>

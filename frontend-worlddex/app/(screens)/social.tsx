@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Modal,
@@ -9,10 +9,19 @@ import {
   ScrollView,
   SafeAreaView,
   Text,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import CaptureLeaderboard from "../components/leaderboard/CaptureLeaderboard";
 import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderboards";
+import { useTopCaptures } from "../../database/hooks/useCaptures";
+import CapturePost from "../components/social/CapturePost";
+import { Capture } from "../../database/types";
+import { useRouter } from "expo-router";
+import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 
 const { width } = Dimensions.get("window");
 
@@ -41,12 +50,127 @@ const LeaderboardTab = () => {
 };
 
 const SocialTab = () => {
+  const router = useRouter();
+  const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
+  
+  // Use the top captures hook with pagination
+  const {
+    captures,
+    loading,
+    refreshData,
+    fetchNextPage,
+    hasMore,
+    page,
+    pageCount,
+  } = useTopCaptures({
+    limit: 10,
+    minUpvotes: 0
+  });
+
+  // Collect all image keys from the captures for batch download
+  const imageKeys = useMemo(() => {
+    return captures.map(capture => capture.image_key).filter(Boolean) as string[];
+  }, [captures]);
+
+  // Fetch all image URLs in batch
+  const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(imageKeys);
+
+  // Create a mapping from image keys to download URLs
+  const imageUrlMap = useMemo(() => {
+    return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [imageUrlItems]);
+
+  // Event handlers
+  const handleUserPress = useCallback((userId: string) => {
+    // Navigate to user profile (implementation depends on app structure)
+    console.log("Navigate to user profile:", userId);
+    // We'll implement proper navigation when routes are set up
+  }, []);
+
+  const handleCapturePress = useCallback((capture: Capture) => {
+    setSelectedCapture(capture);
+    // For demonstration, just log the capture
+    console.log("Capture pressed:", capture.id);
+  }, []);
+
+  const renderFooter = () => {
+    if (!hasMore) return null;
+    
+    return (
+      <View className="py-4 items-center">
+        <ActivityIndicator size="small" color="#3B82F6" />
+        <Text className="text-gray-500 mt-2 font-lexend-regular">
+          Loading more...
+        </Text>
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    
+    return (
+      <View className="py-20 items-center">
+        <Ionicons name="images-outline" size={64} color="#CBD5E1" />
+        <Text className="text-gray-400 mt-4 text-lg font-lexend-medium text-center">
+          No captures found
+        </Text>
+        <Text className="text-gray-400 mt-2 text-center max-w-xs font-lexend-regular">
+          Be the first to share your captures with the world!
+        </Text>
+      </View>
+    );
+  };
+
   return (
-    <View className="flex-1 justify-center items-center">
-      <Ionicons name="globe-outline" size={48} color="#ccc" />
-      <Text className="text-lg font-lexend-medium text-gray-400 mt-4">
-        Social Feed Coming Soon
-      </Text>
+    <View className="flex-1 bg-background">
+      {/* Feed */}
+      <FlatList
+        data={captures}
+        keyExtractor={(item) => item.id || item.image_key}
+        renderItem={({ item }) => (
+          <CapturePost
+            capture={item}
+            onUserPress={handleUserPress}
+            onCapturePress={handleCapturePress}
+            imageUrl={imageUrlMap[item.image_key]}
+            imageLoading={imageUrlsLoading}
+          />
+        )}
+        contentContainerStyle={{ 
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: 120,
+          flexGrow: captures.length === 0 ? 1 : undefined
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && page === 1}
+            onRefresh={refreshData}
+            colors={["#3B82F6"]}
+            tintColor="#3B82F6"
+          />
+        }
+        onEndReached={() => {
+          if (!loading && hasMore) {
+            fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+      />
+      
+      {/* Pagination indicator */}
+      {pageCount > 1 && (
+        <View className="absolute bottom-4 left-0 right-0 items-center">
+          <View className="bg-gray-800/70 px-4 py-2 rounded-full">
+            <Text className="text-white font-lexend-medium">
+              Page {page} of {pageCount}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -67,6 +191,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const currentPageRef = useRef(0);
+  const router = useRouter();
 
   // Reset to Leaderboard tab when modal opens
   useEffect(() => {
@@ -154,6 +279,8 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
+        <StatusBar barStyle="dark-content" />
+        
         {/* Header Tabs */}
         <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-6">
