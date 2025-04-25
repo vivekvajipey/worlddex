@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraOnboarding from "../components/camera/CameraOnboarding";
-import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
@@ -35,7 +35,13 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   });
 
   // VLM
-  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const {
+    identify,
+    tier1, tier2,
+    isLoading: idLoading,
+    error: idError,
+    reset
+  } = useIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
   const { user, updateUser } = useUser(session?.user?.id || null);
@@ -44,7 +50,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
-
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -87,6 +92,16 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setHasCapture(true);
     }
   }, [isCapturing, capturedUri]);
+
+  // Two–tier ID -----------------------------------------------
+  useEffect(() => {
+    // Tier-2 overrides Tier-1 if it exists
+    const label = tier2?.label ?? tier1?.label ?? null;
+    if (label) {
+      setIdentifiedLabel(label);
+      setVlmCaptureSuccess(true);
+    }
+  }, [tier1, tier2]);
 
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
@@ -198,16 +213,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             gps: null
           });
           
-          // Use tier1 from the hook
-          if (tier1) {
-            setVlmCaptureSuccess(true);
-            setIdentifiedLabel(tier1);
-          } else {
-            setVlmCaptureSuccess(false);
-            setIdentifiedLabel(null);
-          }
-        } catch (vlmApiError) {
-          console.error("VLM Identification API Error:", vlmApiError);
+          // success/failure will be set by the useEffect above
+        } catch (idError) {
+          console.error("VLM Identification API Error:", idError);
           setVlmCaptureSuccess(false);
         }
       } else {
@@ -224,7 +232,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, user]);
+  }, [identify, tier1, tier2, user]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -290,14 +298,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             gps: null
           });
 
-          // Use tier1 from the hook
-          if (tier1) {
-            setVlmCaptureSuccess(true);
-            setIdentifiedLabel(tier1);
-          } else {
-            setVlmCaptureSuccess(false);
-            setIdentifiedLabel(null);
-          }
+          // success/failure will be set by the useEffect above
         } catch (vlmApiError) {
           console.error("VLM Identification API Error:", vlmApiError);
           setVlmCaptureSuccess(false);
@@ -313,7 +314,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -361,7 +362,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setIdentifiedLabel(null);
     setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -410,8 +411,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
-            isIdentifying={vlmLoading}
-            label={identifiedLabel || ""}
+            isIdentifying={idLoading}
+            label={identifiedLabel ?? ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
@@ -428,7 +429,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             capturesButtonClicked={capturesButtonClicked}
             hasCapture={hasCapture}
             showingCaptureReview={showingCaptureReview}
-            captureLabel={identifiedLabel || ""}
+            captureLabel={identifiedLabel ?? ""}
             onRequestReset={handleOnboardingReset}
           />
         )}
