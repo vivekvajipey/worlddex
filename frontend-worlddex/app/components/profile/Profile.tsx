@@ -228,14 +228,22 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   // Toggle default public/private setting
   const toggleDefaultPublicCaptures = async (value: boolean) => {
     try {
+      // Update state immediately for a smooth UI experience
       setDefaultPublicCaptures(value);
 
-      // Save immediately without waiting for "Save" button
-      if (!isEditing) {
-        await updateUser({ default_public_captures: value });
-        await refreshUserData();
+      // Update the user data in the database but don't refresh the entire component
+      await updateUser({ default_public_captures: value });
+
+      // Update the refreshedUser state locally without triggering a full refresh
+      if (refreshedUser) {
+        setRefreshedUser({
+          ...refreshedUser,
+          default_public_captures: value
+        });
       }
     } catch (error) {
+      // Revert the switch if there was an error
+      setDefaultPublicCaptures(!value);
       console.error("Error updating privacy setting:", error);
     }
   };
