@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import photoRoutes from './routes/photoRoutes';
-// import vlmRoutes from './routes/vlmRoutes';
 import identifyRoutes from './routes/identifyRoutes';
 import { tier2Queue } from "./services/jobQueue";
 
@@ -21,7 +20,6 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/photos', photoRoutes);
-// app.use('/api/vlm', vlmRoutes);
 app.use('/api/identify', identifyRoutes);
 
 app.get('/api/queues/status', async (req, res) => {

@@ -51,6 +51,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
+  // Add state to track whether identification is fully complete (both tiers if applicable)
+  const [identificationComplete, setIdentificationComplete] = useState(false);
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -111,8 +113,15 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setIdentifiedLabel(label);
       setVlmCaptureSuccess(true);
       console.log("Updated identifiedLabel state:", label);
+      
+      // If we have tier2 result or tier1 result with status "done" (no tier2 needed)
+      // then identification is complete
+      if (tier2 || (tier1 && !idLoading)) {
+        console.log("Identification is now complete");
+        setIdentificationComplete(true);
+      }
     }
-  }, [tier1, tier2]);
+  }, [tier1, tier2, idLoading]);
 
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
@@ -429,6 +438,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
               isRejectedRef.current = true;
             }}
             onSetPublic={setIsCapturePublic}
+            identificationComplete={identificationComplete}
           />
         )}
 
