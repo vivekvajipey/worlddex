@@ -22,7 +22,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { user, loading, error, updateUser } = useUser(userId);
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
   const { uploadPhoto, isUploading } = usePhotoUpload();
-  
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
@@ -139,9 +139,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
       if (!isValid) return;
 
-      await updateUser({ 
+      await updateUser({
         username,
-        default_public_captures: defaultPublicCaptures 
+        default_public_captures: defaultPublicCaptures
       });
       setIsEditing(false);
       setOriginalUsername(username);
@@ -159,7 +159,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
   const pickImage = async () => {
     if (!userId) return;
-    
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
@@ -172,7 +172,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         const uri = result.assets[0].uri;
         const fileName = uri.split('/').pop() || 'profile.jpg';
         const contentType = 'image/jpeg';
-        
+
         // Upload to S3
         const key = await uploadPhoto(
           uri,
@@ -180,10 +180,10 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           fileName,
           `profiles/${userId}`
         );
-        
+
         // Update user record with new key
         await updateUser({ profile_picture_key: key });
-        
+
         // Refresh user data
         await refreshUserData();
       }
@@ -229,7 +229,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const toggleDefaultPublicCaptures = async (value: boolean) => {
     try {
       setDefaultPublicCaptures(value);
-      
+
       // Save immediately without waiting for "Save" button
       if (!isEditing) {
         await updateUser({ default_public_captures: value });
@@ -247,7 +247,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   // Use S3 profile pic or fall back to OAuth provider pic
   const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
   const displayProfilePic = downloadUrl || oauthProfilePic;
-  
+
   // Track whether we've tried loading the S3 profile picture yet
   const isInitialLoading = refreshedUser?.profile_picture_key && !downloadUrl && !loadingProfilePic;
 
