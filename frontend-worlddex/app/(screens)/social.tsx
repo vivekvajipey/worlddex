@@ -19,8 +19,6 @@ import CaptureLeaderboard from "../components/leaderboard/CaptureLeaderboard";
 import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderboards";
 import { useTopCaptures } from "../../database/hooks/useCaptures";
 import CapturePost from "../components/social/CapturePost";
-import { Capture } from "../../database/types";
-import { useRouter } from "expo-router";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 
 const { width } = Dimensions.get("window");
@@ -50,9 +48,6 @@ const LeaderboardTab = () => {
 };
 
 const SocialTab = () => {
-  const router = useRouter();
-  const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
-  
   // Use the top captures hook with pagination
   const {
     captures,
@@ -87,15 +82,9 @@ const SocialTab = () => {
     // We'll implement proper navigation when routes are set up
   }, []);
 
-  const handleCapturePress = useCallback((capture: Capture) => {
-    setSelectedCapture(capture);
-    // For demonstration, just log the capture
-    console.log("Capture pressed:", capture.id);
-  }, []);
-
   const renderFooter = () => {
     if (!hasMore) return null;
-    
+
     return (
       <View className="py-4 items-center">
         <ActivityIndicator size="small" color="#3B82F6" />
@@ -108,7 +97,7 @@ const SocialTab = () => {
 
   const renderEmpty = () => {
     if (loading) return null;
-    
+
     return (
       <View className="py-20 items-center">
         <Ionicons name="images-outline" size={64} color="#CBD5E1" />
@@ -132,12 +121,11 @@ const SocialTab = () => {
           <CapturePost
             capture={item}
             onUserPress={handleUserPress}
-            onCapturePress={handleCapturePress}
             imageUrl={imageUrlMap[item.image_key]}
             imageLoading={imageUrlsLoading}
           />
         )}
-        contentContainerStyle={{ 
+        contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
           paddingBottom: 120,
@@ -160,7 +148,7 @@ const SocialTab = () => {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
       />
-      
+
       {/* Pagination indicator */}
       {pageCount > 1 && (
         <View className="absolute bottom-4 left-0 right-0 items-center">
@@ -191,7 +179,6 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const currentPageRef = useRef(0);
-  const router = useRouter();
 
   // Reset to Leaderboard tab when modal opens
   useEffect(() => {
@@ -280,7 +267,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
         <StatusBar barStyle="dark-content" />
-        
+
         {/* Header Tabs */}
         <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-6">

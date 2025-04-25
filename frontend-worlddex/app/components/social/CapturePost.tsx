@@ -13,7 +13,6 @@ import CommentModal from "./CommentModal";
 interface CapturePostProps {
   capture: Capture;
   onUserPress?: (userId: string) => void;
-  onCapturePress?: (capture: Capture) => void;
   onCommentsPress?: (capture: Capture) => void;
   imageUrl?: string | null;
   profileImageUrl?: string | null;
@@ -24,7 +23,6 @@ interface CapturePostProps {
 const CapturePost: React.FC<CapturePostProps> = ({
   capture,
   onUserPress,
-  onCapturePress,
   onCommentsPress,
   imageUrl = null,
   profileImageUrl = null,
@@ -34,21 +32,21 @@ const CapturePost: React.FC<CapturePostProps> = ({
   const { liked, toggle: toggleLike, busy: likeInProgress } = useLike(capture.id || null);
   const { session } = useAuth();
   const { user, loading: userLoading } = useUser(capture.user_id);
-  
+
   // Only use useDownloadUrl for profile picture if not provided as prop
-  const { 
-    downloadUrl: fallbackProfileUrl, 
-    loading: fallbackProfileLoading 
+  const {
+    downloadUrl: fallbackProfileUrl,
+    loading: fallbackProfileLoading
   } = useDownloadUrl(
-    !profileImageUrl && user?.profile_picture_key 
-      ? user.profile_picture_key 
+    !profileImageUrl && user?.profile_picture_key
+      ? user.profile_picture_key
       : ""
   );
-  
+
   // Determine profile image URL and loading state
   const finalProfileUrl = profileImageUrl || fallbackProfileUrl;
   const isProfileLoading = profileLoading || (!profileImageUrl && fallbackProfileLoading);
-  
+
   const [likeCount, setLikeCount] = useState(capture.like_count || 0);
   const [commentCount, setCommentCount] = useState(capture.comment_count || 0);
   const [showComments, setShowComments] = useState(false);
@@ -56,7 +54,7 @@ const CapturePost: React.FC<CapturePostProps> = ({
 
   const handleLikePress = () => {
     if (!session?.user) return; // Require authentication to like
-    
+
     toggleLike();
     // Optimistically update like count
     setLikeCount(prev => liked ? prev - 1 : prev + 1);
@@ -78,7 +76,7 @@ const CapturePost: React.FC<CapturePostProps> = ({
 
   const formatTimeAgo = (dateString?: string) => {
     if (!dateString) return "Recently";
-    
+
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
     } catch (error) {
@@ -101,7 +99,7 @@ const CapturePost: React.FC<CapturePostProps> = ({
       <View className={`bg-white rounded-xl overflow-hidden mb-4 shadow-sm ${showComments ? 'opacity-60' : ''}`}>
         {/* User info header */}
         <View className="flex-row items-center p-3">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => onUserPress?.(capture.user_id)}
             className="flex-row items-center flex-1"
           >
@@ -110,18 +108,18 @@ const CapturePost: React.FC<CapturePostProps> = ({
                 <ActivityIndicator size="small" color="#999" />
               </View>
             ) : (
-              <Image 
+              <Image
                 source={
                   finalProfileUrl
-                    ? { uri: finalProfileUrl } 
+                    ? { uri: finalProfileUrl }
                     : require("../../../assets/images/icon.png")
-                } 
+                }
                 style={{ width: 40, height: 40, borderRadius: 20 }}
                 contentFit="cover"
                 transition={200}
               />
             )}
-            
+
             <View className="ml-2 flex-1">
               <Text className="font-lexend-medium text-text-primary">
                 {userLoading ? "Loading..." : user?.username || "Unknown user"}
@@ -132,55 +130,50 @@ const CapturePost: React.FC<CapturePostProps> = ({
             </View>
           </TouchableOpacity>
         </View>
-        
+
         {/* Capture image */}
-        <TouchableOpacity 
-          onPress={() => onCapturePress?.(capture)}
-          activeOpacity={0.9}
-        >
-          <View className="w-full aspect-square bg-gray-100">
-            {imageLoading ? (
-              <View className="w-full h-full justify-center items-center">
-                <ActivityIndicator size="large" color="#999" />
-              </View>
-            ) : (
-              <Image 
-                source={{ uri: imageUrl || undefined }} 
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={300}
-              />
-            )}
-          </View>
-        </TouchableOpacity>
-        
+        <View className="w-full aspect-square bg-gray-100">
+          {imageLoading ? (
+            <View className="w-full h-full justify-center items-center">
+              <ActivityIndicator size="large" color="#999" />
+            </View>
+          ) : (
+            <Image
+              source={{ uri: imageUrl || undefined }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={300}
+            />
+          )}
+        </View>
+
         {/* Caption */}
         <View className="p-3">
           <Text className="font-lexend-bold text-text-primary text-lg mb-1">
             {capture.item_name}
           </Text>
         </View>
-        
+
         {/* Action buttons */}
         <View className="flex-row items-center px-3 pb-3">
           {/* Like button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleLikePress}
             disabled={likeInProgress}
             className="flex-row items-center mr-5"
           >
-            <Ionicons 
-              name={liked ? "heart" : "heart-outline"} 
-              size={24} 
-              color={liked ? "#e53e3e" : "#374151"} 
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={24}
+              color={liked ? "#e53e3e" : "#374151"}
             />
             <Text className="ml-1 font-lexend-medium text-text-primary">
               {likeCount > 0 ? likeCount : ""}
             </Text>
           </TouchableOpacity>
-          
+
           {/* Comment button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleCommentsPress}
             className="flex-row items-center"
           >
@@ -191,7 +184,7 @@ const CapturePost: React.FC<CapturePostProps> = ({
           </TouchableOpacity>
         </View>
       </View>
-      
+
       {/* Comments Modal */}
       <CommentModal
         visible={showComments}
