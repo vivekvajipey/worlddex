@@ -175,20 +175,22 @@ const MarketplaceTab = () => {
 };
 
 const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
-  const [activeTab, setActiveTab] = useState("Leaderboard");
-  const scrollX = useRef(new Animated.Value(0)).current;
+  // Changed initial state to "Social" instead of "Leaderboard"
+  const [activeTab, setActiveTab] = useState("Social");
+  const scrollX = useRef(new Animated.Value(width)).current; // Initialize to width (Social tab position)
   const scrollViewRef = useRef<ScrollView>(null);
-  const currentPageRef = useRef(0);
+  const currentPageRef = useRef(1); // Initialize to 1 (Social tab index)
 
-  // Reset to Leaderboard tab when modal opens
+  // Reset to Social tab when modal opens
   useEffect(() => {
     if (visible) {
-      setActiveTab("Leaderboard");
-      scrollX.setValue(0);
-      currentPageRef.current = 0;
-      // Ensure the scroll view is at position 0
+      setActiveTab("Social");
+      scrollX.setValue(width); // Set to width (Social tab position)
+      currentPageRef.current = 1; // Set to 1 (Social tab index)
+
+      // Ensure the scroll view is at the Social tab position
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: 0, animated: false });
+        scrollViewRef.current?.scrollTo({ x: width, animated: false });
       }, 100);
     }
   }, [visible]);
@@ -363,4 +365,4 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   );
 };
 
-export default SocialModal; 
+export default SocialModal;
