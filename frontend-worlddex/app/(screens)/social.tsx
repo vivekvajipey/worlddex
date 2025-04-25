@@ -180,6 +180,8 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   const scrollX = useRef(new Animated.Value(width)).current; // Initialize to width (Social tab position)
   const scrollViewRef = useRef<ScrollView>(null);
   const currentPageRef = useRef(1); // Initialize to 1 (Social tab index)
+  // Add a ref to track if we're responding to a tab click
+  const isTabClickRef = useRef(false);
 
   // Reset to Social tab when modal opens
   useEffect(() => {
@@ -198,6 +200,9 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   // Effect to update active tab based on scroll position
   useEffect(() => {
     const listener = scrollX.addListener(({ value }) => {
+      // Skip updating the active tab if we're currently responding to a tab click
+      if (isTabClickRef.current) return;
+
       // Calculate which page we're on based on scroll position
       const pageIndex = Math.round(value / width);
 
@@ -219,7 +224,9 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   }, []);
 
   const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
+    // Set the flag to indicate we're responding to a tab click
+    isTabClickRef.current = true;
+
     let pageIndex = 0;
 
     if (tab === "Leaderboard") {
@@ -230,11 +237,22 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
       pageIndex = 2;
     }
 
+    // Don't update the activeTab immediately
     currentPageRef.current = pageIndex;
     scrollViewRef.current?.scrollTo({
       x: pageIndex * width,
       animated: true
     });
+
+    // Update activeTab after a delay to match the scroll animation
+    setTimeout(() => {
+      setActiveTab(tab);
+
+      // Clear the flag after the animation is complete
+      setTimeout(() => {
+        isTabClickRef.current = false;
+      }, 50);
+    }, 200); // Most of the scroll animation duration
   };
 
   // Create pan responder for swipe gestures
@@ -278,7 +296,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Leaderboard" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Leaderboard" ? "text-primary" : "text-gray-400"}`}
               >
                 Leaderboard
               </Text>
@@ -294,7 +312,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Social" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Social" ? "text-primary" : "text-gray-400"}`}
               >
                 Social
               </Text>
@@ -310,7 +328,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Marketplace" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Marketplace" ? "text-primary" : "text-gray-400"}`}
               >
                 Marketplace
               </Text>
