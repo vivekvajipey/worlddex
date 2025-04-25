@@ -4,8 +4,6 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -47,7 +45,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
 
-  
+
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCapture, setHasCapture] = useState(false);
@@ -60,20 +58,17 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
 
-
-  const router = useRouter();
-  
   // Check if onboarding should be shown
   useEffect(() => {
     if (user && !user.is_onboarded) {
       setShowOnboarding(true);
     }
   }, [user]);
-  
+
   // Handle onboarding completion
   const handleOnboardingComplete = useCallback(async () => {
     setShowOnboarding(false);
-    
+
     // Update user record if we have a session
     if (session?.user?.id) {
       try {
@@ -360,7 +355,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setIdentifiedLabel(null);
     setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem, isCapturePublic]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -418,12 +413,12 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             onSetPublic={setIsCapturePublic}
           />
         )}
-        
+
         {/* Camera onboarding overlay */}
         {showOnboarding && (
-          <CameraOnboarding 
+          <CameraOnboarding
             key={resetCounter}
-            onComplete={handleOnboardingComplete} 
+            onComplete={handleOnboardingComplete}
             capturesButtonClicked={capturesButtonClicked}
             hasCapture={hasCapture}
             showingCaptureReview={showingCaptureReview}
@@ -431,7 +426,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             onRequestReset={handleOnboardingReset}
           />
         )}
-        
+
       </View>
     </GestureHandlerRootView>
   );
