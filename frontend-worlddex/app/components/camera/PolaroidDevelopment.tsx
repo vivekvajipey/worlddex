@@ -50,6 +50,12 @@ export default function PolaroidDevelopment({
   onReject,
   onSetPublic
 }: PolaroidDevelopmentProps) {
+  // Add logging for props
+  console.log("==== POLAROID DEVELOPMENT PROPS ====");
+  console.log("captureSuccess:", captureSuccess);
+  console.log("isIdentifying:", isIdentifying);
+  console.log("label:", label);
+
   // Get user settings
   const { session } = useAuth();
   const userId = session?.user?.id || null;
@@ -501,6 +507,14 @@ export default function PolaroidDevelopment({
       onSetPublic(isPublic);
     }
   }, [isPublic, onSetPublic]);
+
+  // Add logging whenever the label is rendered
+  useEffect(() => {
+    if (captureSuccess === true && label) {
+      console.log("==== POLAROID RENDERING LABEL ====");
+      console.log("Label being rendered:", label);
+    }
+  }, [captureSuccess, label]);
 
   return (
     <View className="absolute inset-0">

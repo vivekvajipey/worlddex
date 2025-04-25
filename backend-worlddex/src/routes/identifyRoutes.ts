@@ -72,14 +72,25 @@ const identifyHandler:RequestHandler = async (req,res) => {
 // SSE endpoint: /api/identify/stream/:jobId
 const streamHandler:RequestHandler = async (req,res) => {
   const jobId = req.params.jobId;
-  console.log(`SSE Stream requested for job: ${jobId}`);
+  console.log(`SSE Stream requested for job: ${jobId} from ${req.ip}`);
+  console.log("Request headers:", JSON.stringify(req.headers, null, 2));
   
+  // Set CORS headers for SSE
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  
+  // Standard SSE headers
   res.setHeader("Content-Type","text/event-stream");
   res.setHeader("Cache-Control","no-cache");
   res.setHeader("Connection","keep-alive");
 
-  const send = (event:string,data:any)=>
-    res.write(`data:${JSON.stringify({event,data})}\n\n`);
+  // Helper to send SSE messages
+  const send = (event:string,data:any)=> {
+    const message = `data:${JSON.stringify({event,data})}\n\n`;
+    console.log(`[SSE] Sending message: ${message.substring(0, 100)}...`);
+    res.write(message);
+  }
 
   const job = await tier2Queue.getJob(jobId);
   if (!job){ 
@@ -90,25 +101,100 @@ const streamHandler:RequestHandler = async (req,res) => {
   
   console.log(`Found job ${jobId}, current state: ${await job.getState()}`);
 
+  // Send initial connection confirmation
+  send("connected", { message: "SSE connection established" });
+
   const check = setInterval(async ()=>{
-    const state = await job.getState();
-    console.log(`Job ${jobId} state check: ${state}`);
-    
-    if (state === "completed") {
+    try {
+      // Get a fresh copy of the job on each check for the most current state
+      const freshJob = await tier2Queue.getJob(jobId);
+      if (!freshJob) {
+        console.warn(`Job ${jobId} no longer exists`);
+        clearInterval(check);
+        send("failed", { message: "Job not found" });
+        return res.end();
+      }
+      
+      const state = await freshJob.getState();
+      console.log(`Job ${jobId} state check: ${state}`);
+      
+      if (state === "completed") {
+        clearInterval(check);
+        
+        // Get the completed job result
+        const result = freshJob.returnvalue;
+        console.log(`Job ${jobId} completed, result:`, JSON.stringify(result));
+        
+        // Check if we have a valid result with label
+        if (result && typeof result === 'object' && result.label) {
+          console.log(`Sending valid tier2 result for job ${jobId}:`, JSON.stringify(result));
+          send("completed", result);
+        } else {
+          console.warn(`Job ${jobId} has invalid result:`, result);
+          send("failed", { message: "Invalid identification result" });
+        }
+        
+        // Explicitly end the response after a short delay to ensure message is sent
+        setTimeout(() => {
+          console.log(`Ending SSE connection for job ${jobId}`);
+          res.end();
+        }, 500);
+      } else if (state === "failed") {
+        clearInterval(check);
+        console.log(`Job ${jobId} failed`);
+        send("failed", { message: "Identification processing failed" });
+        res.end();
+      }
+    } catch (error) {
+      console.error(`Error checking job ${jobId} status:`, error);
       clearInterval(check);
-      console.log(`Job ${jobId} completed, sending results`);
-      send("completed", job.returnvalue);
-      res.end();
-    } else if (state === "failed"){
-      clearInterval(check);
-      console.log(`Job ${jobId} failed`);
-      send("failed",null);
+      send("failed", { message: "Error monitoring job status" });
       res.end();
     }
   }, 500);
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log(`SSE connection closed for job ${jobId} by client`);
+    clearInterval(check);
+  });
+};
+
+// Add GET endpoint for polling job status
+const jobStatusHandler: RequestHandler = async (req, res) => {
+  const jobId = req.params.jobId;
+  console.log(`Job status check requested for job: ${jobId} from ${req.ip}`);
+  
+  const job = await tier2Queue.getJob(jobId);
+  if (!job) {
+    console.log(`Job ${jobId} not found`);
+    res.status(404).json({ status: "error", message: "Job not found" });
+    return;
+  }
+  
+  const state = await job.getState();
+  console.log(`Job ${jobId} status: ${state}`);
+  
+  if (state === "completed") {
+    console.log(`Job ${jobId} completed, returning results for polling`);
+    res.json({
+      status: "completed",
+      data: job.returnvalue
+    });
+  } else if (state === "failed") {
+    console.log(`Job ${jobId} failed`);
+    res.json({
+      status: "failed"
+    });
+  } else {
+    res.json({
+      status: "pending"
+    });
+  }
 };
 
 router.post("/", identifyHandler);
 router.get("/stream/:jobId", streamHandler);
+router.get("/job/:jobId", jobStatusHandler);
 
 export default router;

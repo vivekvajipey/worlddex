@@ -99,11 +99,18 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Two–tier ID -----------------------------------------------
   useEffect(() => {
+    console.log("==== TIER RESULTS UPDATED ====");
+    console.log("Tier1:", tier1 ? JSON.stringify(tier1) : "null");
+    console.log("Tier2:", tier2 ? JSON.stringify(tier2) : "null");
+    
     // Tier-2 overrides Tier-1 if it exists
     const label = tier2?.label ?? tier1?.label ?? null;
+    console.log("Selected label for display:", label);
+    
     if (label) {
       setIdentifiedLabel(label);
       setVlmCaptureSuccess(true);
+      console.log("Updated identifiedLabel state:", label);
     }
   }, [tier1, tier2]);
 

@@ -1,56 +1,99 @@
-import { Worker } from "bullmq";
-import { connection } from "../services/jobQueue";
+import { Worker, Job } from "bullmq";
+import { connection, Tier2JobData } from "../services/jobQueue";
 // import { identifySpecies } from "../services/speciesService"; // Deprecated
 import { identifyPlant } from "../services/plantService";
 import { identifyLandmark } from "../services/stanfordService";
+import { Tier2Result } from "../../../shared/types/identify";
 
 console.log("Starting Tier2 Worker...");
 
-const worker = new Worker("tier2", async job => {
-  console.log(`[Worker] Processing job ${job.id} of type ${job.name}`);
-  console.log(`[Worker] Job data:`, JSON.stringify({
-    module: job.data.module,
-    hasBase64: !!job.data.base64Data,
-    hasGps: !!job.data.gps
-  }));
-  
-  const { base64Data, module, gps } = job.data;
-  
-  try {
-    // Use plantService instead of speciesService for plant identification
-    if (module === "species") {
-      console.log("[Worker] Identifying plant...");
-      const result = await identifyPlant(base64Data);
-      console.log(`[Worker] Plant identification complete: ${result.label}`);
-      return result;
-    }
+// Create a completely rewritten worker with better job lifecycle handling
+const worker = new Worker<Tier2JobData, Tier2Result, string>(
+  "tier2", 
+  async (job) => {
+    console.log(`[Worker] Processing job ${job.id} of type ${job.name}`);
+    console.log(`[Worker] Job data:`, JSON.stringify({
+      module: job.data.module,
+      hasBase64: !!job.data.base64Data,
+      hasGps: !!job.data.gps
+    }));
     
-    if (module === "landmark") {
-      console.log("[Worker] Identifying landmark...");
-      const result = await identifyLandmark(base64Data, gps);
-      console.log(`[Worker] Landmark identification complete: ${result.label}`);
-      return result;
-    }
+    const { base64Data, module, gps } = job.data;
     
-    throw new Error("Unknown module");
-  } catch (error) {
-    console.error(`[Worker] Error processing job:`, error);
-    throw error;
+    // Add progress updates for better tracking
+    await job.updateProgress(10);
+    
+    try {
+      let result: Tier2Result;
+      
+      // Use plantService instead of speciesService for plant identification
+      if (module === "species") {
+        console.log("[Worker] Identifying plant...");
+        await job.updateProgress(30);
+        
+        const plantResult = await identifyPlant(base64Data);
+        await job.updateProgress(80);
+        
+        console.log(`[Worker] Plant identification complete: ${plantResult.label}`);
+        result = {
+          label: plantResult.label,
+          provider: "plant.id", 
+          confidence: plantResult.confidence
+        };
+      } else if (module === "landmark") {
+        console.log("[Worker] Identifying landmark...");
+        await job.updateProgress(30);
+        
+        const landmarkResult = await identifyLandmark(base64Data, gps);
+        await job.updateProgress(80);
+        
+        console.log(`[Worker] Landmark identification complete: ${landmarkResult.label}`);
+        result = landmarkResult;
+      } else {
+        throw new Error(`Unknown module: ${module}`);
+      }
+      
+      // Final progress update
+      await job.updateProgress(100);
+      
+      // Important: Log the actual return value
+      console.log(`[Worker] Job ${job.id} result:`, JSON.stringify(result));
+      
+      // Make sure we're returning a result with the proper structure
+      if (!result || !result.label) {
+        console.error(`[Worker] Invalid result format:`, result);
+        throw new Error("Invalid identification result format");
+      }
+      
+      return result;
+    } catch (error) {
+      console.error(`[Worker] Error processing job:`, error);
+      throw error;
+    }
+  }, 
+  { 
+    connection,
+    autorun: true,
+    // Advanced settings to ensure results are properly saved
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 1000 },
+    lockDuration: 30000,
   }
-}, { connection });
+);
 
 console.log("Tier2 Worker successfully started and waiting for jobs...");
 
 // Add event listeners for better debugging
-worker.on('completed', job => {
+worker.on('completed', (job: Job, result: any) => {
   console.log(`[Worker] Job ${job.id} has completed successfully`);
+  console.log(`[Worker] Final result:`, JSON.stringify(result));
 });
 
-worker.on('failed', (job, err) => {
+worker.on('failed', (job: Job | undefined, err: Error) => {
   console.error(`[Worker] Job ${job?.id} has failed with error ${err.message}`);
 });
 
-worker.on('error', err => {
+worker.on('error', (err: Error) => {
   console.error('[Worker] Error in worker:', err);
 });
 
