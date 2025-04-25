@@ -1,13 +1,15 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { CollectionItem } from "../../../database/types";
 
 interface CollectionItemThumbnailProps {
   item: CollectionItem;
   onPress: () => void;
   isCollected?: boolean;
+  downloadUrl?: string | null;
+  loading?: boolean;
 }
 
 // Function to determine background color class for the rarity badge
@@ -51,9 +53,10 @@ const getRarityDisplayText = (item: CollectionItem): string => {
 const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
   item,
   onPress,
-  isCollected = true // Default to true for backward compatibility
+  isCollected = true, // Default to true for backward compatibility
+  downloadUrl = null,
+  loading = false
 }) => {
-  const { downloadUrl, loading } = useDownloadUrl(item.silhouette_key);
   const rarityColorClass = getRarityColorClass(item);
   const rarityText = getRarityDisplayText(item);
 
@@ -79,8 +82,13 @@ const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
         <View className="w-full h-full">
           <Image
             source={{ uri: downloadUrl || undefined }}
-            className="w-full h-full"
-            style={{ opacity: isCollected ? 1 : 0.3 }}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              opacity: isCollected ? 1 : 0.3 
+            }}
+            contentFit="cover"
+            transition={250}
           />
 
           {/* Rarity badge */}

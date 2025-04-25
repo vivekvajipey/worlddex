@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,14 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
-  Image,
   Alert,
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Collection, CollectionItem, AllItem, Capture } from "../../../database/types";
 import { fetchAllItems, fetchItem } from "../../../database/hooks/useItems";
 import { createCollectionItem } from "../../../database/hooks/useCollectionItems";
@@ -64,7 +65,7 @@ const CaptureListItem = ({ capture, isSelected, onPress }: {
         <Image
           source={{ uri: downloadUrl || undefined }}
           className="w-16 h-16 rounded-md mr-3"
-          resizeMode="cover"
+          contentFit="cover"
         />
       )}
       <View className="flex-1">
@@ -176,6 +177,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
           collection_rarity: globalItem?.global_rarity || "common", // Use global_rarity or default to "common"
           display_name: capture.item_name, // Use item_name as display_name
           name: capture.item_name, // Store the original item name
+          thumb_key: capture.thumb_key, // Use the capture's thumb_key if available
         });
 
         if (newItem) {
@@ -276,6 +278,31 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         folder
       );
 
+      // Generate thumbnail
+      const thumbnailResult = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: 200 } }],
+        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      
+      // Generate thumb_key similar to captures
+      const thumbKey = `thumbs/${fileName.replace(/\.(png|jpe?g)$/i, '.jpg')}`;
+      
+      // Upload thumbnail
+      let thumbSuccess = false;
+      try {
+        const thumbResult = await uploadPhoto(
+          thumbnailResult.uri,
+          "image/jpeg",
+          fileName.replace(/\.(png|jpe?g)$/i, '.jpg'),
+          "thumbs"
+        );
+        thumbSuccess = !!thumbResult;
+      } catch (thumbErr) {
+        console.error("Thumbnail upload failed:", thumbErr);
+        // Continue with main item creation even if thumbnail fails
+      }
+
       // Set display_name based on whether the item is secret rare
       const displayName = newItemForm.isSecretRare ? "???" : newItemForm.name.trim();
       const itemName = newItemForm.name.trim();
@@ -289,6 +316,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         collection_rarity: newItemForm.rarity,
         display_name: displayName,
         name: itemName,
+        thumb_key: thumbSuccess ? thumbKey : undefined,
       });
 
       if (newCollectionItem) {
@@ -471,7 +499,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
             <Image
               source={{ uri: newItemForm.silhouetteImage }}
               className="w-full h-full"
-              resizeMode="contain"
+              contentFit="contain"
             />
           ) : (
             <View className="flex-1 justify-center items-center">

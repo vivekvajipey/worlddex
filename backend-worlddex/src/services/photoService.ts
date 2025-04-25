@@ -1,6 +1,7 @@
 import { S3Service } from './s3Service';
 import { PhotoUpload, PhotoUploadResponse, UploadUrlResponse, DownloadUrlResponse } from '../../shared/types/photo';
 import { AWS_CONFIG } from '../config/aws';
+import sharp from 'sharp';
 
 export class PhotoService {
   private s3Service: S3Service;
@@ -22,21 +23,43 @@ export class PhotoService {
       throw new Error('Invalid base64 data');
     }
 
+    /* 1️⃣ decode base64 */
     const buffer = Buffer.from(photo.base64Data, 'base64');
     
-    // Generate a unique key for the photo
-    const key = `photos/${Date.now()}-${photo.fileName}`;
-    
-    // Upload to S3
-    const result = await this.s3Service.uploadFile(
-      key,
-      buffer,
-      photo.contentType
-    );
+    /* 2️⃣ derive keys */
+    const originalKey = `photos/${Date.now()}-${photo.fileName}`;
+    const thumbKey = originalKey.replace(/^photos\//, 'thumbs/').replace(/\.(png|jpe?g)$/i, '.jpg');
 
+    /* 3️⃣ async-parallel uploads */
+    let originalResult: any;
+    
+    try {
+      // Use destructuring to get the first result from Promise.all
+      [originalResult] = await Promise.all([
+        this.s3Service.uploadFile(originalKey, buffer, photo.contentType),
+        sharp(buffer)
+          .resize({ width: 200 })
+          .jpeg({ mozjpeg: true, quality: 75 })
+          .toBuffer()
+          .then(tb => this.s3Service.uploadFile(thumbKey, tb, 'image/jpeg'))
+          .catch(err => {
+            console.error("Thumbnail generation error:", err);
+            // Just log the error but don't rethrow - allow original upload to proceed
+            return null;
+          })
+      ]);
+      
+      console.log("Upload successful:", { originalKey, thumbKey });
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      throw error;
+    }
+
+    /* 4️⃣ return both keys */
     return {
-      url: result.url,
-      key: result.key
+      url: originalResult.url,
+      key: originalResult.key,
+      thumbKey: thumbKey
     };
   }
 

@@ -7,6 +7,7 @@ export interface PhotoUpload {
 export interface PhotoUploadResponse {
   url: string;  // The S3 signed URL
   key: string;  // The S3 key/path where the photo is stored
+  thumbKey?: string; // The S3 key/path for the thumbnail image
 }
 
 export interface UploadUrlRequest { key: string; contentType: string }

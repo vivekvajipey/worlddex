@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Image } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { useRouter, Link } from "expo-router";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,8 +45,8 @@ export default function SignInScreen() {
       <View className="mb-10 items-center">
         <Image
           source={require("../../assets/images/icon.png")}
-          className="w-32 h-32 mb-1"
-          resizeMode="contain"
+          style={{ width: 128, height: 128, marginBottom: 4 }}
+          contentFit="contain"
         />
         <Text className="text-3xl font-['LexendDeca-Black'] text-text-primary mb-2">
           WorldDex

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Modal, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import { View, Text, Modal, TouchableOpacity, ActivityIndicator, Switch } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { Capture } from "../../../database/types";
@@ -10,6 +11,7 @@ interface CaptureDetailsModalProps {
   capture: Capture | null;
   onClose: () => void;
   onDelete?: (capture: Capture) => void;
+  onUpdate?: (capture: Capture, updates: Partial<Capture>) => void;
 }
 
 const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
@@ -17,10 +19,12 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   capture,
   onClose,
   onDelete,
+  onUpdate,
 }) => {
   const { downloadUrl, loading } = useDownloadUrl(capture?.image_key || "");
   const [totalCaptures, setTotalCaptures] = useState<number | null>(null);
   const [isLoadingItem, setIsLoadingItem] = useState(false);
+  const [isPublic, setIsPublic] = useState<boolean>(false);
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -41,6 +45,20 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
 
     loadItemData();
   }, [capture?.item_id]);
+
+  // Set isPublic state when capture changes
+  useEffect(() => {
+    if (capture && capture.is_public !== undefined) {
+      setIsPublic(!!capture.is_public);
+    }
+  }, [capture]);
+
+  const handleTogglePublic = (value: boolean) => {
+    if (capture && onUpdate) {
+      setIsPublic(value);
+      onUpdate(capture, { is_public: value });
+    }
+  };
 
   if (!capture) return null;
 
@@ -91,8 +109,9 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
             ) : (
               <Image
                 source={{ uri: downloadUrl || undefined }}
-                className="w-full h-full"
-                resizeMode="contain"
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                transition={300}
               />
             )}
           </View>
@@ -129,6 +148,28 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
                 <Text className="text-text-primary ml-2 font-lexend-regular">
                   Location: {JSON.stringify(capture.location)}
                 </Text>
+              </View>
+            )}
+
+            {/* Public/Private Toggle */}
+            {onUpdate && (
+              <View className="flex-row items-center justify-center mt-4 mb-2">
+                <View className="flex-row items-center bg-gray-100 px-4 py-2 rounded-lg">
+                  <Ionicons 
+                    name={isPublic ? "globe-outline" : "lock-closed-outline"} 
+                    size={20} 
+                    color="#000" 
+                  />
+                  <Text className="mx-2 font-lexend-medium">
+                    {isPublic ? "Public" : "Private"}
+                  </Text>
+                  <Switch 
+                    value={isPublic}
+                    onValueChange={handleTogglePublic}
+                    trackColor={{ false: "#E0E0E0", true: "#BEE3F8" }}
+                    thumbColor={isPublic ? "#3B82F6" : "#9CA3AF"}
+                  />
+                </View>
               </View>
             )}
 

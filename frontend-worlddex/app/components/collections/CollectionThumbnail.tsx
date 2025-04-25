@@ -1,18 +1,21 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
-import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Image } from "expo-image";
 import { Collection } from "../../../database/types";
 
 interface CollectionThumbnailProps {
   collection: Collection;
   onPress: () => void;
+  downloadUrl?: string | null;
+  loading?: boolean;
 }
 
 const CollectionThumbnail: React.FC<CollectionThumbnailProps> = ({
   collection,
   onPress,
+  downloadUrl = null,
+  loading = false
 }) => {
-  const { downloadUrl, loading } = useDownloadUrl(collection.cover_photo_key || "");
   const [imageError, setImageError] = useState(false);
 
   // Import the default cover image
@@ -32,8 +35,8 @@ const CollectionThumbnail: React.FC<CollectionThumbnailProps> = ({
           <View className="w-full h-full bg-black/30 justify-center items-center">
             <Image
               source={defaultCoverImage}
-              className="absolute w-full h-full opacity-20"
-              resizeMode="cover"
+              style={{ width: '100%', height: '100%', opacity: 0.2 }}
+              contentFit="cover"
             />
             <ActivityIndicator size="small" color="#FFF" />
           </View>
@@ -42,16 +45,16 @@ const CollectionThumbnail: React.FC<CollectionThumbnailProps> = ({
             {hasCustomImage ? (
               <Image
                 source={{ uri: downloadUrl }}
-                className="w-full h-full"
-                resizeMode="cover"
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
                 onError={() => setImageError(true)}
-                fadeDuration={300}
+                transition={300}
               />
             ) : (
               <Image
                 source={defaultCoverImage}
-                className="w-full h-full"
-                resizeMode="cover"
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
               />
             )}
 

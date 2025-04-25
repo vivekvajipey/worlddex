@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, ImageBackground, Image, Alert } from "react-native";
+import React, { useState, useEffect, useMemo } from "react";
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, Alert } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { useCollection } from "../../../database/hooks/useCollections";
@@ -9,6 +10,7 @@ import { CollectionItem } from "../../../database/types";
 import CollectionItemThumbnail from "./CollectionItemThumbnail";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
+import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { deleteCollection } from "../../../database/hooks/useCollections";
 
 interface CollectionDetailScreenProps {
@@ -35,7 +37,21 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [toggleLoading, setToggleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const { downloadUrl, loading: coverLoading } = useDownloadUrl(collection?.cover_photo_key || "");
+  // Get keys for all collection items - use thumb_key with fallback to silhouette_key
+  const itemImageKeys = useMemo(() => {
+    const displayItems = refreshedItems.length > 0 ? refreshedItems : collectionItems;
+    return displayItems.map(item => item.thumb_key || item.silhouette_key).filter(Boolean) as string[];
+  }, [refreshedItems, collectionItems]);
+
+  // Fetch all item image URLs in one batch request
+  const { items: itemUrlData, loading: itemUrlsLoading } = useDownloadUrls(itemImageKeys);
+
+  // Create a mapping from keys to URLs for easy lookup
+  const itemUrlMap = useMemo(() => {
+    return Object.fromEntries(itemUrlData.map(item => [item.key, item.downloadUrl]));
+  }, [itemUrlData]);
+
+  const { downloadUrl: coverUrl, loading: coverLoading } = useDownloadUrl(collection?.cover_photo_key || "");
   const [coverImageError, setCoverImageError] = useState(false);
 
   // Default cover image 
@@ -182,9 +198,10 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const hasError = error || itemsError || collectionError;
 
   // Sort items alphabetically by display_name
-  const displayItems = [...(refreshedItems.length > 0 ? refreshedItems : collectionItems)].sort((a, b) =>
-    a.display_name.localeCompare(b.display_name)
-  );
+  const displayItems = useMemo(() => {
+    const items = [...(refreshedItems.length > 0 ? refreshedItems : collectionItems)];
+    return items.sort((a, b) => a.display_name.localeCompare(b.display_name));
+  }, [refreshedItems, collectionItems]);
 
   // Check if an item is collected by the user
   const isItemCollected = (itemId: string) => {
@@ -217,26 +234,26 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
               <View className="w-full h-full bg-black/50 justify-center items-center">
                 <Image
                   source={defaultCoverImage}
-                  className="absolute w-full h-full opacity-30"
-                  resizeMode="cover"
+                  style={{ width: '100%', height: '100%', opacity: 0.3 }}
+                  contentFit="cover"
                 />
                 <ActivityIndicator size="small" color="#FFF" />
               </View>
             ) : (
               <View className="w-full h-full">
-                {collection?.cover_photo_key && downloadUrl && !coverImageError ? (
+                {collection?.cover_photo_key && coverUrl && !coverImageError ? (
                   <Image
-                    source={{ uri: downloadUrl }}
-                    className="w-full h-full"
-                    resizeMode="cover"
+                    source={{ uri: coverUrl }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
                     onError={() => setCoverImageError(true)}
-                    fadeDuration={300}
+                    transition={300}
                   />
                 ) : (
                   <Image
                     source={defaultCoverImage}
-                    className="w-full h-full"
-                    resizeMode="cover"
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
                   />
                 )}
 
@@ -304,6 +321,8 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
                   item={item}
                   onPress={() => { }}
                   isCollected={isItemCollected(item.id)}
+                  downloadUrl={itemUrlMap[item.thumb_key || item.silhouette_key]}
+                  loading={itemUrlsLoading}
                 />
               )}
               numColumns={3}

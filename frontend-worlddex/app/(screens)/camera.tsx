@@ -4,7 +4,6 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -46,34 +45,34 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
 
-  
+
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCapture, setHasCapture] = useState(false);
   const [showingCaptureReview, setShowingCaptureReview] = useState(false);
 
+  // Add a state for tracking public/private status
+  const [isCapturePublic, setIsCapturePublic] = useState(false);
+
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
 
-
-  const router = useRouter();
-  
   // Check if onboarding should be shown
   useEffect(() => {
-    if (user && !user.isOnboarded) {
+    if (user && !user.is_onboarded) {
       setShowOnboarding(true);
     }
   }, [user]);
-  
+
   // Handle onboarding completion
   const handleOnboardingComplete = useCallback(async () => {
     setShowOnboarding(false);
-    
+
     // Update user record if we have a session
     if (session?.user?.id) {
       try {
-        await updateUser({ isOnboarded: true });
+        await updateUser({ is_onboarded: true });
       } catch (error) {
         console.error("Failed to update onboarding status:", error);
       }
@@ -327,7 +326,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           item_id: item.id,
           item_name: item.name,
           capture_number: item.total_captures,
-          image_key: ""
+          image_key: "",
+          is_public: isCapturePublic,
+          like_count: 0,
+          daily_upvotes: 0
         };
 
         await uploadCapturePhoto(
@@ -351,8 +353,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
-    isRejectedRef.current = false;
-    
+    setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
   }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
@@ -403,19 +404,21 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
+            isIdentifying={vlmLoading}
             label={identifiedLabel || ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
             }}
+            onSetPublic={setIsCapturePublic}
           />
         )}
-        
+
         {/* Camera onboarding overlay */}
         {showOnboarding && (
-          <CameraOnboarding 
+          <CameraOnboarding
             key={resetCounter}
-            onComplete={handleOnboardingComplete} 
+            onComplete={handleOnboardingComplete}
             capturesButtonClicked={capturesButtonClicked}
             hasCapture={hasCapture}
             showingCaptureReview={showingCaptureReview}
@@ -423,6 +426,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             onRequestReset={handleOnboardingReset}
           />
         )}
+
       </View>
     </GestureHandlerRootView>
   );

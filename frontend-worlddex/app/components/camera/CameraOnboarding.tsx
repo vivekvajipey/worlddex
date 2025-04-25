@@ -1,6 +1,7 @@
 // app/components/camera/CameraOnboarding.tsx
 import React, { useRef, useEffect, useState } from "react"
-import { View, Text, Image, TouchableOpacity } from "react-native"
+import { View, Text, TouchableOpacity } from "react-native"
+import { Image } from "expo-image"
 import { Svg, Circle, Line, Path } from "react-native-svg"
 import Finger from "../../../assets/images/kid-named-finger.png"
 import { backgroundColor } from "../../../src/utils/colors"
@@ -20,7 +21,6 @@ import { Ionicons } from "@expo/vector-icons"
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 const AnimatedLine = Animated.createAnimatedComponent(Line)
-const AnimatedPath = Animated.createAnimatedComponent(Path)
 
 const ANIM_DURATION = 2000
 const TAP_DURATION = 500
@@ -369,7 +369,8 @@ export function CameraOnboarding({
               <Animated.View style={fingerCircleStyle}>
                 <Image
                   source={Finger}
-                  className="w-8 h-8"
+                  style={{ width: 32, height: 32 }}
+                  contentFit="contain"
                 />
               </Animated.View>
             </>
@@ -395,7 +396,8 @@ export function CameraOnboarding({
               <Animated.View style={fingerLineStyle}>
                 <Image
                   source={Finger}
-                  className="w-8 h-8"
+                  style={{ width: 32, height: 32 }}
+                  contentFit="contain"
                 />
               </Animated.View>
             </>
@@ -408,7 +410,8 @@ export function CameraOnboarding({
           <Animated.View style={fingerDoubleTapStyle}>
             <Image
               source={Finger}
-              className="w-8 h-8"
+              style={{ width: 32, height: 32 }}
+              contentFit="contain"
             />
           </Animated.View>
         </View>

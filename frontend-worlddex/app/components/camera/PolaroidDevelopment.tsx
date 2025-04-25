@@ -1,9 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Image, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { useUser } from "../../../database/hooks/useUsers";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -31,8 +34,10 @@ interface PolaroidDevelopmentProps {
   };
   onDismiss: () => void;
   captureSuccess: boolean | null;
+  isIdentifying?: boolean;
   label?: string; // Optional string for the identified subject
   onReject?: () => void; // Optional function to reject the capture
+  onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
 }
 
 export default function PolaroidDevelopment({
@@ -40,15 +45,27 @@ export default function PolaroidDevelopment({
   captureBox,
   onDismiss,
   captureSuccess,
+  isIdentifying = false,
   label,
-  onReject
+  onReject,
+  onSetPublic
 }: PolaroidDevelopmentProps) {
+  // Get user settings
+  const { session } = useAuth();
+  const userId = session?.user?.id || null;
+  const { user } = useUser(userId);
+
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const expandAnim = useRef(new Animated.Value(0)).current;
   const blurIntensityRef = useRef({ value: INITIAL_BLUR });
   const blurIntensity = useRef(new Animated.Value(INITIAL_BLUR)).current;
+
+  // Loading animation values
+  const dot1Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot2Opacity = useRef(new Animated.Value(0.3)).current;
+  const dot3Opacity = useRef(new Animated.Value(0.3)).current;
 
   // Minimizing animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -69,6 +86,16 @@ export default function PolaroidDevelopment({
   const [isCompleted, setIsCompleted] = useState(false);
   const [initialAnimationDone, setInitialAnimationDone] = useState(false);
 
+  // Public/private toggle state - initialize with user's default preference
+  const [isPublic, setIsPublic] = useState(false);
+
+  // Set the initial public/private setting based on user's default preference
+  useEffect(() => {
+    if (user) {
+      setIsPublic(user.default_public_captures || false);
+    }
+  }, [user]);
+
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
 
@@ -87,6 +114,73 @@ export default function PolaroidDevelopment({
       blurIntensity.removeListener(listener);
     };
   }, []);
+
+  // Loading dots animation
+  useEffect(() => {
+    if (isIdentifying && captureSuccess === null) {
+      // Create animations for the loading dots
+      const dot1Animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot1Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot1Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          })
+        ])
+      );
+      
+      const dot2Animation = Animated.loop(
+        Animated.sequence([
+          Animated.delay(150),
+          Animated.timing(dot2Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot2Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.delay(150)
+        ])
+      );
+      
+      const dot3Animation = Animated.loop(
+        Animated.sequence([
+          Animated.delay(300),
+          Animated.timing(dot3Opacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.timing(dot3Opacity, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true
+          }),
+          Animated.delay(300)
+        ])
+      );
+      
+      // Start all animations
+      dot1Animation.start();
+      dot2Animation.start();
+      dot3Animation.start();
+      
+      // Clean up on component unmount or when identification is done
+      return () => {
+        dot1Animation.stop();
+        dot2Animation.stop();
+        dot3Animation.stop();
+      };
+    }
+  }, [isIdentifying, captureSuccess]);
 
   // Animation sequence for Polaroid development
   function runDevelopmentAnimation() {
@@ -401,6 +495,13 @@ export default function PolaroidDevelopment({
     };
   };
 
+  // Update parent component when isPublic changes
+  useEffect(() => {
+    if (onSetPublic) {
+      onSetPublic(isPublic);
+    }
+  }, [isPublic, onSetPublic]);
+
   return (
     <View className="absolute inset-0">
       {/* Blurred background - gets touchable in final state */}
@@ -448,7 +549,7 @@ export default function PolaroidDevelopment({
               width: '100%',
               height: '100%'
             }}
-            resizeMode={isCompleted ? "contain" : "cover"}
+            contentFit={isCompleted ? "contain" : "cover"}
           />
 
           {/* White overlay that fades away */}
@@ -474,6 +575,27 @@ export default function PolaroidDevelopment({
               {label}
             </Text>
           )}
+          {captureSuccess === null && isIdentifying && (
+            <View className="flex-row items-center justify-center space-x-2">
+              <Text className="font-shadows text-black text-center text-2xl">
+                Identifying
+              </Text>
+              <View className="flex-row">
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot1Opacity }}
+                />
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot2Opacity }}
+                />
+                <Animated.View
+                  className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                  style={{ opacity: dot3Opacity }}
+                />
+              </View>
+            </View>
+          )}
         </View>
       </Animated.View>
 
@@ -497,7 +619,7 @@ export default function PolaroidDevelopment({
               top: 0,
               left: 0,
             }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
 
@@ -551,7 +673,7 @@ export default function PolaroidDevelopment({
               top: 0,
               right: 0,
             }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         </View>
 
@@ -587,7 +709,9 @@ export default function PolaroidDevelopment({
 
       {/* Control buttons - only show after initial animation is done */}
       {initialAnimationDone && !isRipping && !isMinimizing && (
-        <View className="absolute bottom-28 left-0 right-0 flex flex-row justify-center items-center z-10">
+        <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
+          {/* Reject/Accept buttons */}
+          <View className="flex flex-row justify-center items-center">
           {/* Reject button */}
           <TouchableOpacity
             className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
@@ -605,6 +729,7 @@ export default function PolaroidDevelopment({
           >
             <Ionicons name="checkmark" size={36} color="green" />
           </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>

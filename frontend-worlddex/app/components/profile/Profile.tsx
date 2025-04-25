@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Modal, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch } from "react-native";
+import { Image } from "expo-image";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "../../../database/hooks/useUsers";
@@ -21,7 +22,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { user, loading, error, updateUser } = useUser(userId);
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
   const { uploadPhoto, isUploading } = usePhotoUpload();
-  
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
@@ -30,6 +31,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [refreshedUser, setRefreshedUser] = useState(user);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [defaultPublicCaptures, setDefaultPublicCaptures] = useState(false);
 
   // Download profile picture URL if available
   const { downloadUrl, loading: loadingProfilePic } = useDownloadUrl(
@@ -42,6 +44,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
       setUsername(user.username || "");
       setOriginalUsername(user.username || "");
       setRefreshedUser(user);
+      // Set default privacy setting from user preferences
+      setDefaultPublicCaptures(user.default_public_captures || false);
     }
   }, [user]);
 
@@ -66,6 +70,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           setUsername(freshUserData.username);
           setOriginalUsername(freshUserData.username);
         }
+        // Set default privacy setting from user preferences
+        setDefaultPublicCaptures(freshUserData.default_public_captures || false);
       }
     } catch (error) {
       console.error("Error refreshing user data:", error);
@@ -133,7 +139,10 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
       if (!isValid) return;
 
-      await updateUser({ username });
+      await updateUser({
+        username,
+        default_public_captures: defaultPublicCaptures
+      });
       setIsEditing(false);
       setOriginalUsername(username);
       // Refresh user data after update
@@ -150,7 +159,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
   const pickImage = async () => {
     if (!userId) return;
-    
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: "images",
@@ -163,7 +172,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         const uri = result.assets[0].uri;
         const fileName = uri.split('/').pop() || 'profile.jpg';
         const contentType = 'image/jpeg';
-        
+
         // Upload to S3
         const key = await uploadPhoto(
           uri,
@@ -171,10 +180,10 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           fileName,
           `profiles/${userId}`
         );
-        
+
         // Update user record with new key
         await updateUser({ profile_picture_key: key });
-        
+
         // Refresh user data
         await refreshUserData();
       }
@@ -216,6 +225,21 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
     );
   };
 
+  // Toggle default public/private setting
+  const toggleDefaultPublicCaptures = async (value: boolean) => {
+    try {
+      setDefaultPublicCaptures(value);
+
+      // Save immediately without waiting for "Save" button
+      if (!isEditing) {
+        await updateUser({ default_public_captures: value });
+        await refreshUserData();
+      }
+    } catch (error) {
+      console.error("Error updating privacy setting:", error);
+    }
+  };
+
   const userInitial = refreshedUser?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
   const userEmail = session?.user?.email || "User";
   const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
@@ -223,7 +247,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   // Use S3 profile pic or fall back to OAuth provider pic
   const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
   const displayProfilePic = downloadUrl || oauthProfilePic;
-  
+
   // Track whether we've tried loading the S3 profile picture yet
   const isInitialLoading = refreshedUser?.profile_picture_key && !downloadUrl && !loadingProfilePic;
 
@@ -240,7 +264,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         ) : displayProfilePic ? (
           <Image
             source={{ uri: displayProfilePic }}
-            className="w-16 h-16 rounded-full"
+            style={{ width: 64, height: 64, borderRadius: 32 }}
+            contentFit="cover"
+            transition={200}
           />
         ) : (
           <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
@@ -284,7 +310,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                       ) : displayProfilePic ? (
                         <Image
                           source={{ uri: displayProfilePic }}
-                          className="w-20 h-20 rounded-full"
+                          style={{ width: 80, height: 80, borderRadius: 40 }}
+                          contentFit="cover"
+                          transition={200}
                         />
                       ) : (
                         <View className="w-20 h-20 rounded-full bg-primary flex justify-center items-center">
@@ -354,6 +382,29 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                       <Text className="text-primary font-lexend-bold text-xl">{totalCaptures}</Text>
                       <Text className="text-text-secondary font-lexend-medium text-xs">Total Captures</Text>
                     </View>
+                  </View>
+
+                  {/* Default capture visibility preference */}
+                  <View className="flex-row items-center justify-between py-4 border-t border-gray-100">
+                    <View className="flex-row items-center">
+                      {defaultPublicCaptures ? (
+                        <Ionicons name="globe-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
+                      ) : (
+                        <Ionicons name="lock-closed-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
+                      )}
+                      <View>
+                        <Text className="text-text-primary font-lexend-medium">Default Capture Visibility</Text>
+                        <Text className="text-text-secondary text-xs font-lexend-regular">
+                          {defaultPublicCaptures ? "Public - Visible to everyone" : "Private - Only visible to you"}
+                        </Text>
+                      </View>
+                    </View>
+                    <Switch
+                      trackColor={{ false: "#CBD5E1", true: "#93C5FD" }}
+                      thumbColor={defaultPublicCaptures ? Colors.primary.DEFAULT : "#f4f3f4"}
+                      onValueChange={toggleDefaultPublicCaptures}
+                      value={defaultPublicCaptures}
+                    />
                   </View>
 
                   <TouchableOpacity
