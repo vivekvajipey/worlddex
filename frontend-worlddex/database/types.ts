@@ -8,6 +8,8 @@ export type User = {
   capture_tier: number;
   daily_captures_used: number;
   capture_streak: number;
+  is_onboarded?: boolean;
+  default_public_captures?: boolean;
 };
 
 export type Collection = {
@@ -39,6 +41,8 @@ export type CollectionItem = {
   created_at?: string;
   location?: any; // Geography point type
   display_name: string;
+  name: string;
+  thumb_key?: string;
 };
 
 export type Capture = {
@@ -51,6 +55,11 @@ export type Capture = {
   segmented_image_key: string;
   captured_at?: string;
   location?: any; // Geography point type
+  like_count?: number;
+  daily_upvotes?: number;
+  is_public?: boolean;
+  comment_count?: number;
+  thumb_key?: string;
 };
 
 export type UserCollectionItem = {
@@ -58,5 +67,27 @@ export type UserCollectionItem = {
   user_id: string;
   collection_item_id: string;
   capture_id: string;
+  collection_id: string;
   collected_at?: string;
+};
+
+export type UserCollection = {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  added_at?: string;
+};
+
+export type CaptureLike = {
+  user_id: string;
+  capture_id: string;
+  created_at?: string;
+};
+
+export type CaptureComment = {
+  id: string;
+  user_id: string;
+  capture_id: string;
+  comment_text: string;
+  created_at?: string;
 };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Modal,
@@ -13,15 +13,17 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { useUserCaptures, fetchUserCaptures, deleteCapture } from "../../database/hooks/useCaptures";
-import { useCollections, fetchAllCollections } from "../../database/hooks/useCollections";
+import { useUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from "../../database/hooks/useCaptures";
+import { fetchAllCollections } from "../../database/hooks/useCollections";
+import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
+import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
-import CollectionsTab from "../components/captures/CollectionsTab";
+import CollectionsTab from "../components/collections/CollectionsTab";
 import CaptureDetailsModal from "../components/captures/CaptureDetailsModal";
-import CollectionDetailScreen from "../components/captures/CollectionDetailScreen";
+import CollectionDetailScreen from "../components/collections/CollectionDetailScreen";
 
 const { width } = Dimensions.get("window");
 
@@ -35,8 +37,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [collectionDetailVisible, setCollectionDetailVisible] = useState(false);
   const [refreshedCaptures, setRefreshedCaptures] = useState<Capture[]>([]);
-  const [refreshedCollections, setRefreshedCollections] = useState<Collection[]>([]);
+  const [userCollectionsData, setUserCollectionsData] = useState<Collection[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -45,25 +48,85 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const userId = session?.user?.id || null;
 
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
-  const { collections, loading: collectionsLoading } = useCollections(true);
+  const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
+
+  // Collect all image keys for batch loading - use thumb_key with fallback to image_key
+  const captureImageKeys = useMemo(() => {
+    const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
+    return displayCaptures.map(capture => capture.thumb_key || capture.image_key).filter(Boolean) as string[];
+  }, [refreshedCaptures, captures]);
+
+  // Fetch all image URLs in one batch
+  const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(captureImageKeys);
+
+  // Create a map from image keys to download URLs
+  const imageUrlMap = useMemo(() => {
+    return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [imageUrlItems]);
+
+  // Similarly for collections, collect cover photo keys
+  const collectionCoverKeys = useMemo(() => {
+    return userCollectionsData
+      .map(collection => collection.cover_photo_key)
+      .filter(Boolean) as string[];
+  }, [userCollectionsData]);
+
+  // Fetch all collection cover URLs in one batch
+  const { items: coverUrlItems, loading: coverUrlsLoading } = useDownloadUrls(collectionCoverKeys);
+
+  // Create a map from cover keys to download URLs
+  const coverUrlMap = useMemo(() => {
+    return Object.fromEntries(coverUrlItems.map(item => [item.key, item.downloadUrl]));
+  }, [coverUrlItems]);
+
+  // Function to fetch full collection details for user collections
+  const fetchUserCollectionDetails = useCallback(async () => {
+    if (!userCollections.length) return [];
+
+    try {
+      // Get all collections
+      const allCollections = await fetchAllCollections(100);
+
+      // Filter to only include collections that the user has added
+      const collectionIds = userCollections.map(uc => uc.collection_id);
+      return allCollections.filter(collection => collectionIds.includes(collection.id));
+    } catch (error) {
+      console.error("Error fetching user collection details:", error);
+      return [];
+    }
+  }, [userCollections]);
 
   // Function to refresh data from Supabase
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (showLoadingIndicator = true) => {
     if (!userId) return;
 
-    setIsRefreshing(true);
+    if (showLoadingIndicator) {
+      setIsRefreshing(true);
+    }
+
     try {
       // Fetch fresh captures data
       const freshCaptures = await fetchUserCaptures(userId, 100);
-      setRefreshedCaptures(freshCaptures);
 
-      // Fetch fresh collections data
-      const freshCollections = await fetchAllCollections(20, true);
-      setRefreshedCollections(freshCollections);
+      // Fetch fresh user collections data
+      const userCollectionEntries = await fetchUserCollectionsByUser(userId);
+      const allCollections = await fetchAllCollections(100);
+
+      // Filter collections to only those the user has added
+      const collectionIds = userCollectionEntries.map(uc => uc.collection_id);
+      const userAddedCollections = allCollections.filter(
+        collection => collectionIds.includes(collection.id)
+      );
+
+      // Update state with the fresh data
+      setRefreshedCaptures(freshCaptures);
+      setUserCollectionsData(userAddedCollections);
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
-      setIsRefreshing(false);
+      if (showLoadingIndicator) {
+        setIsRefreshing(false);
+      }
     }
   }, [userId]);
 
@@ -82,15 +145,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     }
   }, [visible, refreshData]);
 
+  // Load user collections when they change
+  useEffect(() => {
+    const loadCollectionDetails = async () => {
+      if (userCollections.length > 0) {
+        const collections = await fetchUserCollectionDetails();
+        setUserCollectionsData(collections);
+      }
+    };
+
+    loadCollectionDetails();
+  }, [userCollections, fetchUserCollectionDetails]);
+
   // Initialize refreshed data with hook data
   useEffect(() => {
     if (captures.length > 0 && refreshedCaptures.length === 0) {
       setRefreshedCaptures(captures);
     }
-    if (collections.length > 0 && refreshedCollections.length === 0) {
-      setRefreshedCollections(collections);
-    }
-  }, [captures, collections, refreshedCaptures, refreshedCollections]);
+  }, [captures, refreshedCaptures]);
 
   // Effect to update active tab based on scroll position
   useEffect(() => {
@@ -114,6 +186,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const handleCollectionPress = (collectionId: string) => {
     setSelectedCollectionId(collectionId);
+    setCollectionDetailVisible(true);
   };
 
   const handleTabPress = (tab: string) => {
@@ -125,7 +198,15 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   };
 
   const handleCollectionClose = () => {
-    setSelectedCollectionId(null);
+    setCollectionDetailVisible(false);
+
+    // Use silent refresh to update data without showing loading indicator
+    refreshData(false);
+
+    // Keep this timeout to ensure the modal is fully closed before resetting the ID
+    setTimeout(() => {
+      setSelectedCollectionId(null);
+    }, 300);
   };
 
   const handleCaptureDetailsClose = () => {
@@ -171,6 +252,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     }
   };
 
+  // Handle updating a capture
+  const handleUpdateCapture = async (capture: Capture, updates: Partial<Capture>) => {
+    if (!capture.id) return;
+
+    try {
+      const updatedCapture = await updateCapture(capture.id, updates);
+      if (updatedCapture) {
+        // Update the captures list with the updated capture
+        setRefreshedCaptures(prev => 
+          prev.map(c => c.id === updatedCapture.id ? updatedCapture : c)
+        );
+      }
+    } catch (error) {
+      console.error("Error updating capture:", error);
+      Alert.alert("Error", "Failed to update capture. Please try again.");
+    }
+  };
+
   // Create pan responder for swipe gestures
   const panResponder = useRef(
     PanResponder.create({
@@ -189,19 +288,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   // Determine which captures and collections to display
   const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
-  const displayCollections = refreshedCollections.length > 0 ? refreshedCollections : collections;
-
-  // If a collection is selected, show the collection detail screen
-  if (selectedCollectionId) {
-    return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <CollectionDetailScreen
-          collectionId={selectedCollectionId}
-          onClose={handleCollectionClose}
-        />
-      </Modal>
-    );
-  }
+  const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -257,6 +344,8 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
               <WorldDexTab
                 displayCaptures={displayCaptures}
                 loading={capturesLoading || isRefreshing}
+                urlsLoading={imageUrlsLoading}
+                urlMap={imageUrlMap}
                 onCapturePress={handleCapturePress}
               />
             </View>
@@ -265,8 +354,11 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             <View style={{ width, height: '100%' }}>
               <CollectionsTab
                 displayCollections={displayCollections}
-                loading={collectionsLoading || isRefreshing}
+                loading={isRefreshing || userCollectionsLoading}
                 onCollectionPress={handleCollectionPress}
+                refreshCollections={refreshData}
+                urlsLoading={coverUrlsLoading}
+                urlMap={coverUrlMap}
               />
             </View>
           </Animated.ScrollView>
@@ -274,7 +366,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
         {/* Close Button */}
         <TouchableOpacity
-          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-gray-800 justify-center items-center"
+          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
           onPress={onClose}
         >
           <Ionicons name="close" size={24} color="#FFF" />
@@ -287,6 +379,16 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             capture={selectedCapture}
             onClose={handleCaptureDetailsClose}
             onDelete={handleDeleteCapture}
+            onUpdate={handleUpdateCapture}
+          />
+        )}
+
+        {/* Collection Detail Screen - slides up over the current screen */}
+        {selectedCollectionId && (
+          <CollectionDetailScreen
+            collectionId={selectedCollectionId}
+            onClose={handleCollectionClose}
+            visible={collectionDetailVisible}
           />
         )}
       </SafeAreaView>

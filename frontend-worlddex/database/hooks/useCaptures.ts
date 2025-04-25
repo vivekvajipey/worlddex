@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase, Tables } from "../supabase-client";
 import { Capture } from "../types";
 
@@ -106,6 +106,148 @@ export const deleteCapture = async (captureId: string): Promise<boolean> => {
   }
 
   return true;
+};
+
+/**
+ * Fetches top public captures sorted by total upvotes with pagination
+ */
+export const fetchTopCaptures = async (
+  options: {
+    limit?: number;
+    page?: number;
+    minUpvotes?: number;
+    itemId?: string;
+  } = {}
+): Promise<{
+  captures: Capture[];
+  count: number;
+}> => {
+  const {
+    limit = 10,
+    page = 1,
+    minUpvotes = 0,
+    itemId,
+  } = options;
+
+  // Calculate offset based on page and limit
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from(Tables.CAPTURES)
+    .select("*", { count: "exact" })
+    .eq("is_public", true)
+    .gte("like_count", minUpvotes)
+    .order("like_count", { ascending: false })
+    .range(offset, offset + limit - 1);
+    
+  // Add optional filter by item_id
+  if (itemId) {
+    query = query.eq("item_id", itemId);
+  }
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error("Error fetching top captures:", error);
+    return { captures: [], count: 0 };
+  }
+
+  return { 
+    captures: data || [], 
+    count: count || 0 
+  };
+};
+
+/**
+ * React hook for paginated top captures
+ */
+export const useTopCaptures = (
+  options: {
+    limit?: number;
+    initialPage?: number;
+    minUpvotes?: number;
+    itemId?: string;
+    autoFetch?: boolean;
+  } = {}
+) => {
+  const {
+    limit = 10,
+    initialPage = 1,
+    minUpvotes = 0,
+    itemId,
+    autoFetch = true
+  } = options;
+
+  const [captures, setCaptures] = useState<Capture[]>([]);
+  const [loading, setLoading] = useState(autoFetch);
+  const [error, setError] = useState<Error | null>(null);
+  const [page, setPage] = useState(initialPage);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchCaptures = useCallback(async (pageToFetch: number = page) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetchTopCaptures({
+        limit,
+        page: pageToFetch,
+        minUpvotes,
+        itemId
+      });
+
+      setCaptures(result.captures);
+      setTotalCount(result.count);
+      setHasMore(pageToFetch * limit < result.count);
+      setPage(pageToFetch);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err
+          : new Error("Unknown error fetching top captures")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [limit, minUpvotes, itemId, page]);
+
+  const fetchNextPage = useCallback(() => {
+    if (!loading && hasMore) {
+      fetchCaptures(page + 1);
+    }
+  }, [fetchCaptures, loading, hasMore, page]);
+  
+  const fetchPreviousPage = useCallback(() => {
+    if (!loading && page > 1) {
+      fetchCaptures(page - 1);
+    }
+  }, [fetchCaptures, loading, page]);
+
+  const refreshData = useCallback(() => {
+    fetchCaptures(1);
+  }, [fetchCaptures]);
+
+  // Load initial data
+  useEffect(() => {
+    if (autoFetch) {
+      fetchCaptures(initialPage);
+    }
+  }, [autoFetch, initialPage]);
+
+  return {
+    captures,
+    loading,
+    error,
+    page,
+    totalCount,
+    hasMore,
+    pageCount: Math.ceil(totalCount / limit),
+    fetchCaptures,
+    fetchNextPage,
+    fetchPreviousPage,
+    refreshData
+  };
 };
 
 // React hooks

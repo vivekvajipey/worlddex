@@ -4,22 +4,25 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
-// import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
-import { useIdentify } from "../../src/hooks/useIdentify";
+import CameraOnboarding from "../components/camera/CameraOnboarding";
+import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
-import { incrementUserField } from "../../database/hooks/useUsers";
+import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture } from "../../database/types";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function CameraScreen() {
+interface CameraScreenProps {
+  capturesButtonClicked?: boolean;
+}
+
+export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
@@ -31,18 +34,59 @@ export default function CameraScreen() {
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
-  // Identification
-  // const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
-  const { tier1, tier2, loading: vlmLoading, identify } = useIdentify();
-  const { uploadPhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
+  // VLM
+  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
-  const { user } = useUser(session?.user?.id || null);
+  const { user, updateUser } = useUser(session?.user?.id || null);
   const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
+  const [resetCounter, setResetCounter] = useState(0);
 
-  const router = useRouter();
+
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasCapture, setHasCapture] = useState(false);
+  const [showingCaptureReview, setShowingCaptureReview] = useState(false);
+
+  // Add a state for tracking public/private status
+  const [isCapturePublic, setIsCapturePublic] = useState(false);
+
+  const handleOnboardingReset = useCallback(() => {
+    setResetCounter((n) => n + 1);   // new key → unmount + mount
+  }, []);
+
+  // Check if onboarding should be shown
+  useEffect(() => {
+    if (user && !user.is_onboarded) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false);
+
+    // Update user record if we have a session
+    if (session?.user?.id) {
+      try {
+        await updateUser({ is_onboarded: true });
+      } catch (error) {
+        console.error("Failed to update onboarding status:", error);
+      }
+    }
+  }, [session, updateUser]);
+
+  // Track when a capture review is shown or dismissed
+  useEffect(() => {
+    setShowingCaptureReview(isCapturing && capturedUri !== null);
+    // Set hasCapture to true when capture is initiated
+    if (isCapturing && capturedUri !== null) {
+      setHasCapture(true);
+    }
+  }, [isCapturing, capturedUri]);
 
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
@@ -64,10 +108,6 @@ export default function CameraScreen() {
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
-    setIdentifiedLabel(null);
-
-    // Start capture state - freeze UI
-    setIsCapturing(true);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -75,6 +115,9 @@ export default function CameraScreen() {
         base64: true, // Need base64 for VLM
         skipProcessing: false
       });
+
+      // Start capture state - freeze UI
+      setIsCapturing(true);
 
       if (!photo) {
         throw new Error("Failed to capture photo");
@@ -290,10 +333,13 @@ export default function CameraScreen() {
           item_id: item.id,
           item_name: item.name,
           capture_number: item.total_captures,
-          image_key: ""
+          image_key: "",
+          is_public: isCapturePublic,
+          like_count: 0,
+          daily_upvotes: 0
         };
 
-        await uploadPhoto(
+        await uploadCapturePhoto(
           capturedUri,
           "image/jpeg",
           `${Date.now()}.jpg`,
@@ -313,16 +359,9 @@ export default function CameraScreen() {
     cameraCaptureRef.current?.resetLasso();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
+    setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadPhoto, incrementOrCreateItem]);
-
-  // Update identified label whenever tier1 changes
-  useEffect(() => {
-    if (tier1) {
-      setIdentifiedLabel(tier1);
-      setVlmCaptureSuccess(true);
-    }
-  }, [tier1]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -371,13 +410,29 @@ export default function CameraScreen() {
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
+            isIdentifying={vlmLoading}
             label={identifiedLabel || ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
             }}
+            onSetPublic={setIsCapturePublic}
           />
         )}
+
+        {/* Camera onboarding overlay */}
+        {showOnboarding && (
+          <CameraOnboarding
+            key={resetCounter}
+            onComplete={handleOnboardingComplete}
+            capturesButtonClicked={capturesButtonClicked}
+            hasCapture={hasCapture}
+            showingCaptureReview={showingCaptureReview}
+            captureLabel={identifiedLabel || ""}
+            onRequestReset={handleOnboardingReset}
+          />
+        )}
+
       </View>
     </GestureHandlerRootView>
   );
