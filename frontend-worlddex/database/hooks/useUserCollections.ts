@@ -108,6 +108,24 @@ export const fetchActiveCollectionNames = async (
     .filter(Boolean) as string[];
 };
 
+export const fetchActiveCollectionIds = async (
+  userId: string
+): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from(Tables.USER_COLLECTIONS)
+    .select("collection_id")
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  if (error) {
+    console.error("Error fetching active collection IDs:", error);
+    return [];
+  }
+
+  // Extract collection IDs from the data
+  return (data || []).map(item => item.collection_id);
+};
+
 export const setCollectionActive = async (
   userId: string,
   collectionId: string,
@@ -278,7 +296,7 @@ export const useActiveCollections = (userId: string | null) => {
 
       try {
         setLoading(true);
-        const data = await fetchActiveCollectionNames(userId);
+        const data = await fetchActiveCollectionIds(userId);
 
         if (isMounted) {
           setActiveCollections(data);
@@ -317,7 +335,7 @@ export const useActiveCollections = (userId: string | null) => {
       
       if (success) {
         // Refresh the active collections
-        const updatedCollections = await fetchActiveCollectionNames(userId);
+        const updatedCollections = await fetchActiveCollectionIds(userId);
         setActiveCollections(updatedCollections);
       }
       

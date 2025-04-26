@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, Alert } from "react-native";
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, Alert, Switch } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { useCollection } from "../../../database/hooks/useCollections";
 import { checkUserHasCollectionItem } from "../../../database/hooks/useUserCollectionItems";
-import { useUserCollection, addCollectionToUser, removeCollectionFromUser, fetchUserCollection } from "../../../database/hooks/useUserCollections";
+import { useUserCollection, addCollectionToUser, removeCollectionFromUser, fetchUserCollection, setCollectionActive } from "../../../database/hooks/useUserCollections";
 import { CollectionItem } from "../../../database/types";
 import CollectionItemThumbnail from "./CollectionItemThumbnail";
 import { useAuth } from "../../../src/contexts/AuthContext";
@@ -34,7 +34,9 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [error, setError] = useState<Error | null>(null);
   const [collectionProgress, setCollectionProgress] = useState({ collected: 0, total: 0 });
   const [isInUserCollection, setIsInUserCollection] = useState(false);
+  const [isActiveCollection, setIsActiveCollection] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
+  const [activeToggleLoading, setActiveToggleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Get keys for all collection items - use thumb_key with fallback to silhouette_key
@@ -84,6 +86,11 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
       try {
         const userCollection = await fetchUserCollection(userId, collectionId);
         setIsInUserCollection(!!userCollection);
+        
+        // If we have a user collection, set the active status
+        if (userCollection) {
+          setIsActiveCollection(!!userCollection.is_active);
+        }
       } catch (err) {
         console.error("Error checking user collection:", err);
       }
@@ -147,11 +154,37 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
       if (success) {
         // Update state
         setIsInUserCollection(!isInUserCollection);
+        // If we're adding a collection, default active to true
+        if (!isInUserCollection) {
+          setIsActiveCollection(true);
+        }
       }
     } catch (error) {
       console.error("Error toggling collection:", error);
     } finally {
       setToggleLoading(false);
+    }
+  };
+
+  // Toggle active status of the collection
+  const toggleActiveStatus = async () => {
+    if (!userId || !collectionId || !isInUserCollection) return;
+
+    setActiveToggleLoading(true);
+    try {
+      const newActiveStatus = !isActiveCollection;
+      const success = await setCollectionActive(userId, collectionId, newActiveStatus);
+      
+      if (success) {
+        setIsActiveCollection(newActiveStatus);
+      } else {
+        Alert.alert("Error", "Failed to update collection status");
+      }
+    } catch (error) {
+      console.error("Error toggling active status:", error);
+      Alert.alert("Error", "An unexpected error occurred while updating collection status");
+    } finally {
+      setActiveToggleLoading(false);
     }
   };
 
@@ -334,9 +367,33 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
           </>
         )}
 
-        {/* Add/Remove Collection Button */}
+        {/* Collection Controls */}
         {userId && (
-          <View className="absolute bottom-8 left-4 right-4">
+          <View className="absolute bottom-8 left-4 right-4 space-y-3">
+            {/* Active Collection Toggle - Only show when collection is added */}
+            {isInUserCollection && (
+              <View className="flex-row items-center justify-between bg-gray-800 px-4 py-3 rounded-lg">
+                <Text className="text-white font-lexend-medium">Active Collection</Text>
+                <View className="flex-row items-center">
+                  {activeToggleLoading ? (
+                    <ActivityIndicator size="small" color="#FFF" className="mr-2" />
+                  ) : (
+                    <Text className="text-white/70 mr-2 font-lexend-regular">
+                      {isActiveCollection ? "On" : "Off"}
+                    </Text>
+                  )}
+                  <Switch
+                    value={isActiveCollection}
+                    onValueChange={toggleActiveStatus}
+                    disabled={activeToggleLoading || !isInUserCollection}
+                    trackColor={{ false: "#767577", true: "#4CAF50" }}
+                    thumbColor="#f4f3f4"
+                  />
+                </View>
+              </View>
+            )}
+            
+            {/* Add/Remove Collection Button */}
             <TouchableOpacity
               className={`h-12 rounded-lg justify-center items-center ${isInUserCollection ? "bg-red-500" : "bg-primary"
                 }`}

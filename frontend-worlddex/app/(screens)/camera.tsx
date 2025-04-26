@@ -14,8 +14,10 @@ import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
-import type { Capture } from "../../database/types";
+import type { Capture, CollectionItem } from "../../database/types";
 import { useActiveCollections } from "../../database/hooks/useUserCollections";
+import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
+import { createUserCollectionItem } from "../../database/hooks/useUserCollectionItems";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -360,12 +362,49 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           daily_upvotes: 0
         };
 
-        await uploadCapturePhoto(
+        const captureRecord = await uploadCapturePhoto(
           capturedUri,
           "image/jpeg",
           `${Date.now()}.jpg`,
           capturePayload
         );
+
+        // Auto-add to user collections if the capture is in active collections
+        if (captureRecord && activeCollections.length > 0) {
+          console.log("Checking if capture matches any collection items...");
+          
+          for (const collectionId of activeCollections) {
+            try {
+              // For each active collection, fetch its items
+              const collectionItems = await fetchCollectionItems(collectionId);
+              
+              // Filter items that match the identified label
+              const matchingItems = collectionItems.filter((item: CollectionItem) => 
+                // Check if this item matches the label
+                item.name.toLowerCase() === label.toLowerCase() ||
+                item.display_name.toLowerCase() === label.toLowerCase()
+              );
+              
+              // Add matching items to user's collection
+              for (const item of matchingItems) {
+                try {
+                  await createUserCollectionItem({
+                    user_id: session.user.id,
+                    collection_item_id: item.id,
+                    capture_id: captureRecord.id,
+                    collection_id: item.collection_id,
+                  });
+                  console.log(`Added ${label} to collection ${collectionId}`);
+                } catch (collectionErr) {
+                  console.error("Error adding item to user collection:", collectionErr);
+                  // Continue with next item even if this one fails
+                }
+              }
+            } catch (collectionErr) {
+              console.error("Error checking collection matches:", collectionErr);
+            }
+          }
+        }
 
         // Increment daily_captures_used for the user
         await incrementUserField(session.user.id, "daily_captures_used", 1);
@@ -382,7 +421,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setIdentifiedLabel(null);
     setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem, activeCollections]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
