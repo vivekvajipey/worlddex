@@ -4,6 +4,7 @@ const LIFE_WORDS = ["tree","plant","flower","bird","animal","mammal"];
 const COLLECTION_IDS = {
   STANFORD: "07c2674e-cbb4-4e5a-aeb4-cac8d628effa",
   PLANTS: "369c098c-e86c-4409-ac26-d3aac9d75c22",
+  TEST: "a800df8e-c8da-4b9e-93c4-44098abce6c7"
 };
 
 export function gpsInStanford(gps?: {lat:number;lng:number}|null) {
@@ -55,6 +56,12 @@ export function decideTier2(
     const matchedWord = LIFE_WORDS.find(w => tier1Label.toLowerCase().includes(w));
     console.log(`No category, but keyword match with '${matchedWord}' in label, using plants module`);
     return { run:true, module:"species" };
+  }
+
+  if (collections.includes(COLLECTION_IDS.TEST) && 
+      tier1Label && tier1Label.toLowerCase().includes("bottle")) {
+    console.log("Test collection active and bottle detected");
+    return { run: false }; // Just use tier1 result for test items
   }
 
   console.log("No routing rules matched, skipping Tier2");
