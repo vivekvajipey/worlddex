@@ -3,6 +3,7 @@ import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Al
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
@@ -28,6 +29,7 @@ interface CameraScreenProps {
 export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
+  const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
 
   // Photo capture state
@@ -36,6 +38,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const [captureBox, setCaptureBox] = useState({
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
+
+  // Location state
+  const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // VLM
   const {
@@ -71,6 +77,38 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
 
+  // Request location permission after camera permission
+  useEffect(() => {
+    if (permission?.granted && !locationPermission?.granted) {
+      requestLocationPermission();
+    }
+  }, [permission?.granted, locationPermission]);
+
+  // Get location when permission is granted
+  useEffect(() => {
+    const getLocation = async () => {
+      if (!locationPermission?.granted) return;
+      
+      try {
+        setLocationError(null);
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        
+        setLocation({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude
+        });
+      } catch (error) {
+        console.error("Error getting location:", error);
+        setLocationError("Could not get location");
+        setLocation(null);
+      }
+    };
+
+    getLocation();
+  }, [locationPermission?.granted]);
+
   // Check if onboarding should be shown
   useEffect(() => {
     if (user && !user.is_onboarded) {
@@ -100,6 +138,28 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setHasCapture(true);
     }
   }, [isCapturing, capturedUri]);
+
+  // Update location periodically or before capture
+  const refreshLocation = useCallback(async () => {
+    if (!locationPermission?.granted) return;
+    
+    try {
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High
+      });
+      
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude
+      });
+      setLocationError(null);
+      return currentLocation.coords;
+    } catch (error) {
+      console.error("Error refreshing location:", error);
+      setLocationError("Could not refresh location");
+      return null;
+    }
+  }, [locationPermission?.granted]);
 
   // Two–tier ID -----------------------------------------------
   useEffect(() => {
@@ -142,6 +202,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       cameraCaptureRef.current?.resetLasso();
       return;
     }
+
+    // Try to refresh location before capture
+    await refreshLocation();
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
@@ -227,12 +290,20 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       // VLM Identification
       if (manipResult.base64) {
         try {
+          // Format location data for the API
+          const gpsData = location ? {
+            lat: location.latitude,
+            lng: location.longitude
+          } : null;
+          
+          console.log("Sending location with capture:", gpsData);
+          
           // Use new identify function instead of identifyPhoto
           await identify({
             base64Data: manipResult.base64,
             contentType: "image/jpeg",
             activeCollections: activeCollections,
-            gps: null
+            gps: gpsData
           });
           
           // success/failure will be set by the useEffect above
@@ -254,7 +325,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, activeCollections]);
+  }, [identify, tier1, tier2, user, activeCollections, location, refreshLocation]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -269,6 +340,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       );
       return;
     }
+
+    // Try to refresh location before capture
+    await refreshLocation();
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
@@ -312,12 +386,20 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       // VLM Identification with the full photo
       if (photo.base64) {
         try {
+          // Format location data for the API
+          const gpsData = location ? {
+            lat: location.latitude,
+            lng: location.longitude
+          } : null;
+          
+          console.log("Sending location with full screen capture:", gpsData);
+          
           // Use new identify function instead of identifyPhoto
           await identify({
             base64Data: photo.base64,
             contentType: "image/jpeg",
             activeCollections: activeCollections,
-            gps: null
+            gps: gpsData
           });
 
           // success/failure will be set by the useEffect above
@@ -336,7 +418,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections, location, refreshLocation]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -452,9 +534,24 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     );
   }
 
+  // Location permission UI (optional)
+  if (!locationPermission?.granted) {
+    // Continue without location, but show a message
+    console.log("Location permission not granted. Some features may be limited.");
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
+        {/* Location indicator (optional UI) */}
+        {locationPermission?.granted && (
+          <View className="absolute top-10 left-4 z-10 bg-black/50 px-2 py-1 rounded-md">
+            <Text className="text-white text-xs">
+              {location ? "📍 Location active" : "📍 No location"}
+            </Text>
+          </View>
+        )}
+
         {/* Camera capture component */}
         <CameraCapture
           ref={cameraCaptureRef}
