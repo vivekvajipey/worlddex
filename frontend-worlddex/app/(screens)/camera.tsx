@@ -99,6 +99,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude
         });
+        console.log("Location fetched successfully:", currentLocation.coords);
       } catch (error) {
         console.error("Error getting location:", error);
         setLocationError("Could not get location");
@@ -138,28 +139,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setHasCapture(true);
     }
   }, [isCapturing, capturedUri]);
-
-  // Update location periodically or before capture
-  const refreshLocation = useCallback(async () => {
-    if (!locationPermission?.granted) return;
-    
-    try {
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High
-      });
-      
-      setLocation({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
-      setLocationError(null);
-      return currentLocation.coords;
-    } catch (error) {
-      console.error("Error refreshing location:", error);
-      setLocationError("Could not refresh location");
-      return null;
-    }
-  }, [locationPermission?.granted]);
 
   // Two–tier ID -----------------------------------------------
   useEffect(() => {
@@ -202,9 +181,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       cameraCaptureRef.current?.resetLasso();
       return;
     }
-
-    // Try to refresh location before capture
-    await refreshLocation();
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
@@ -325,7 +301,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, activeCollections, location, refreshLocation]);
+  }, [identify, tier1, tier2, user, activeCollections, location]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -340,9 +316,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       );
       return;
     }
-
-    // Try to refresh location before capture
-    await refreshLocation();
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
@@ -418,7 +391,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections, location, refreshLocation]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections, location]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -543,15 +516,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
-        {/* Location indicator (optional UI) */}
-        {locationPermission?.granted && (
-          <View className="absolute top-10 left-4 z-10 bg-black/50 px-2 py-1 rounded-md">
-            <Text className="text-white text-xs">
-              {location ? "📍 Location active" : "📍 No location"}
-            </Text>
-          </View>
-        )}
-
         {/* Camera capture component */}
         <CameraCapture
           ref={cameraCaptureRef}

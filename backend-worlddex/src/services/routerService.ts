@@ -7,6 +7,19 @@ const COLLECTION_IDS = {
   TEST: "a800df8e-c8da-4b9e-93c4-44098abce6c7"
 };
 
+// Helper function to calculate distance between two GPS coordinates in miles using Haversine formula
+function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in miles
+}
+
 export function gpsInStanford(gps?: {lat:number;lng:number}|null) {
   if (!gps) return false;
   return gps.lat > 37.41 && gps.lat < 37.44 && gps.lng < -122.15 && gps.lng > -122.18;
@@ -61,6 +74,29 @@ export function decideTier2(
   if (collections.includes(COLLECTION_IDS.TEST) && 
       tier1Label && tier1Label.toLowerCase().includes("bottle")) {
     console.log("Test collection active and bottle detected");
+    
+    // Check if GPS location is within ~100 miles of specified coordinates
+    if (gps) {
+      const targetLat = 37.432953961860534;
+      const targetLng = -122.184734535784;
+      const distance = calculateDistanceMiles(
+        gps.lat, 
+        gps.lng, 
+        targetLat, 
+        targetLng
+      );
+      
+      console.log(`Distance from target coordinates: ${distance.toFixed(2)} miles`);
+      
+      if (distance <= 100) {
+        console.log("Location is within 100 miles of target coordinates");
+      } else {
+        console.log("Location is outside 100 miles of target coordinates");
+      }
+    } else {
+      console.log("No GPS coordinates provided for location check");
+    }
+    
     return { run: false }; // Just use tier1 result for test items
   }
 
