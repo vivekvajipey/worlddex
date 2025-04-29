@@ -95,7 +95,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     if (!cameraRef.current || points.length < 3) return;
 
     // Check if user has reached their daily capture limit
-    if (user && user.daily_captures_used >= 11) {
+    if (user && user.daily_captures_used >= 10) {
       Alert.alert(
         "Daily Limit Reached",
         "You have used up all of your daily captures! They will reset at midnight PST.",
@@ -228,7 +228,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     if (!cameraCaptureRef.current) return;
 
     // Check if user has reached their daily capture limit
-    if (user && user.daily_captures_used >= 11) {
+    if (user && user.daily_captures_used >= 10) {
       Alert.alert(
         "Daily Limit Reached",
         "You have used up all of your daily captures! They will reset at midnight PST.",
