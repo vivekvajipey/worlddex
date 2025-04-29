@@ -10,6 +10,7 @@ export type User = {
   capture_streak: number;
   is_onboarded?: boolean;
   default_public_captures?: boolean;
+  balance: number;
 };
 
 export type Collection = {
@@ -89,5 +90,62 @@ export type CaptureComment = {
   user_id: string;
   capture_id: string;
   comment_text: string;
+  created_at?: string;
+};
+
+export type Listing = {
+  id: string;
+  seller_id: string;
+  title: string;
+  description?: string;
+  listing_type: "auction" | "buy-now" | "trade";
+  auction_type?: "first-price" | "second-price";
+  price?: number;
+  min_bid?: number;
+  status: "active" | "completed" | "cancelled" | "expired";
+  created_at?: string;
+  expires_at: string;
+  completed_at?: string;
+};
+
+export type ListingItem = {
+  id: string;
+  listing_id: string;
+  capture_id: string;
+};
+
+export type Bid = {
+  id: string;
+  listing_id: string;
+  bidder_id: string;
+  amount: number;
+  status: "active" | "winning" | "outbid" | "rejected" | "cancelled";
+  created_at?: string;
+};
+
+export type TradeOffer = {
+  id: string;
+  listing_id: string;
+  offerer_id: string;
+  status: "pending" | "accepted" | "rejected" | "cancelled";
+  message?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type TradeOfferItem = {
+  id: string;
+  trade_offer_id: string;
+  capture_id: string;
+};
+
+export type Transaction = {
+  id: string;
+  listing_id?: string;
+  buyer_id: string;
+  seller_id: string;
+  transaction_type: "buy-now" | "auction" | "trade";
+  coins_amount: number;
+  trade_offer_id?: string;
   created_at?: string;
 };

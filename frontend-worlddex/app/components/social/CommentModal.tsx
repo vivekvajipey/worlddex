@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Capture, CaptureComment } from "../../../database/types";
 import { useCaptureComments } from "../../../database/hooks/useComments";
-import { createComment } from "../../../src/api/comments";
+import { createComment } from "../../../database/hooks/useComments";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import Comment from "./Comment";
 
@@ -93,11 +93,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
         capture_id: capture.id,
         comment_text: commentText.trim(),
       });
-      
+
       // Clear input and refresh comments
       setCommentText("");
       refreshComments();
-      
+
       // Notify parent about new comment
       if (onCommentAdded) {
         onCommentAdded();
@@ -127,7 +127,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     >
       <View className="flex-1">
         {/* Semi-transparent background that shows the photo behind - only visible above keyboard */}
-        <TouchableOpacity 
+        <TouchableOpacity
           activeOpacity={1}
           onPress={() => {
             Keyboard.dismiss();
@@ -135,7 +135,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           }}
           className="flex-1"
         />
-        
+
         {/* Modal Container - takes up bottom portion of screen */}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -144,14 +144,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
         >
           {/* This ensures we have a solid background regardless of keyboard state */}
           <View className="absolute bottom-0 left-0 right-0 top-0 bg-white" />
-          
+
           <View className="flex-1 bg-white rounded-t-3xl overflow-hidden shadow-xl">
             {/* Header */}
             <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
               <Text className="font-lexend-bold text-xl text-text-primary">
                 Comments
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
                   onClose();
