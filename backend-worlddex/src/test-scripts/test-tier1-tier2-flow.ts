@@ -46,11 +46,9 @@ async function testIdentificationFlow() {
     
     // Step 2: Determine if Tier 2 is needed
     console.log("\n--- TIER 2 ROUTING DECISION ---");
-    // Test with Organisms collection
-    const activeCollections = ["Organisms"];
+    // Now using heuristic-based routing without active collections
     const routing = decideTier2(
       tier1Result.label,
-      activeCollections,
       null, // No GPS
       tier1Result.category,
       tier1Result.subcategory

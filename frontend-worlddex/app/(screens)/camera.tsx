@@ -16,9 +16,12 @@ import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture, CollectionItem } from "../../database/types";
-import { useActiveCollections } from "../../database/hooks/useUserCollections";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
-import { createUserCollectionItem } from "../../database/hooks/useUserCollectionItems";
+import { 
+  createUserCollectionItem, 
+  checkUserHasCollectionItem 
+} from "../../database/hooks/useUserCollectionItems";
+import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -69,9 +72,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
-
-  // Get active collections for the current user
-  const { activeCollections, loading: collectionsLoading } = useActiveCollections(session?.user?.id || null);
 
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
@@ -278,7 +278,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           await identify({
             base64Data: manipResult.base64,
             contentType: "image/jpeg",
-            activeCollections: activeCollections,
             gps: gpsData
           });
           
@@ -301,7 +300,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, activeCollections, location]);
+  }, [identify, tier1, tier2, user, location]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -371,7 +370,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           await identify({
             base64Data: photo.base64,
             contentType: "image/jpeg",
-            activeCollections: activeCollections,
             gps: gpsData
           });
 
@@ -391,7 +389,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, activeCollections, location]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -424,40 +422,55 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           capturePayload
         );
 
-        // Auto-add to user collections if the capture is in active collections
-        if (captureRecord && activeCollections.length > 0) {
+        // Auto-add to user collections based on the identified label
+        if (captureRecord && identifiedLabel) {
           console.log("Checking if capture matches any collection items...");
           
-          for (const collectionId of activeCollections) {
-            try {
-              // For each active collection, fetch its items
-              const collectionItems = await fetchCollectionItems(collectionId);
+          try {
+            // Get all user collections
+            const userCollections = await fetchUserCollectionsByUser(session.user.id);
+            console.log(`Found ${userCollections.length} user collections to check`);
+            
+            // For each collection, find matching items
+            for (const userCollection of userCollections) {
+              // Get all items in this collection
+              const collectionItems = await fetchCollectionItems(userCollection.collection_id);
+              console.log(`Collection ${userCollection.collection_id} has ${collectionItems.length} items`);
               
               // Filter items that match the identified label
-              const matchingItems = collectionItems.filter((item: CollectionItem) => 
-                // Check if this item matches the label
-                item.name.toLowerCase() === label.toLowerCase() ||
-                item.display_name.toLowerCase() === label.toLowerCase()
-              );
+              const matchingItems = collectionItems.filter((item: CollectionItem) => {
+                const itemNameMatch = item.name?.toLowerCase() === identifiedLabel.toLowerCase();
+                const displayNameMatch = item.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
+                return itemNameMatch || displayNameMatch;
+              });
+              
+              console.log(`Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
               
               // Add matching items to user's collection
               for (const item of matchingItems) {
                 try {
-                  await createUserCollectionItem({
-                    user_id: session.user.id,
-                    collection_item_id: item.id,
-                    capture_id: captureRecord.id,
-                    collection_id: item.collection_id,
-                  });
-                  console.log(`Added ${label} to collection ${collectionId}`);
+                  // Check if the user already has this item to avoid duplicates
+                  const hasItem = await checkUserHasCollectionItem(session.user.id, item.id);
+                  
+                  if (!hasItem) {
+                    await createUserCollectionItem({
+                      user_id: session.user.id,
+                      collection_item_id: item.id,
+                      capture_id: captureRecord.id,
+                      collection_id: item.collection_id,
+                    });
+                    console.log(`Added ${identifiedLabel} to collection ${item.collection_id}`);
+                  } else {
+                    console.log(`User already has item ${item.id} in their collection`);
+                  }
                 } catch (collectionErr) {
                   console.error("Error adding item to user collection:", collectionErr);
                   // Continue with next item even if this one fails
                 }
               }
-            } catch (collectionErr) {
-              console.error("Error checking collection matches:", collectionErr);
             }
+          } catch (collectionErr) {
+            console.error("Error handling collections:", collectionErr);
           }
         }
 
@@ -476,7 +489,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setIdentifiedLabel(null);
     setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem, activeCollections]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading

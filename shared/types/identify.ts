@@ -2,7 +2,6 @@ export interface IdentifyRequest {
     base64Data: string;
     contentType: string;
     gps?: { lat: number; lng: number } | null;
-    activeCollections?: string[];
 }
   
 export interface Tier1Result { 

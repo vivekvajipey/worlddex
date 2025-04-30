@@ -18,7 +18,6 @@ const identifyHandler:RequestHandler = async (req,res) => {
   
   // Add detailed debug log to see what's being received
   console.log("=== DEBUG: Identify Request ===");
-  console.log("Active Collections:", body.activeCollections);
   console.log("Content Type:", body.contentType);
   console.log("Has base64Data:", !!body.base64Data);
   console.log("GPS:", body.gps);
@@ -30,7 +29,6 @@ const identifyHandler:RequestHandler = async (req,res) => {
 
   const routing = decideTier2(
     tier1.label, 
-    body.activeCollections, 
     body.gps,
     tier1.category,
     tier1.subcategory
