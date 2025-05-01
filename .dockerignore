@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+
+# Frontend code - exclude this entirely
+frontend-worlddex/
+
+# Environment files
+.env*
+!*.env.production
+
+# IDE/OS specific
+.vscode/
+.idea/
+*.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build artifacts (we build inside Docker)
+dist
+build
+
+# Dependency cache directories
+.npm
+.yarn

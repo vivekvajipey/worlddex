@@ -47,11 +47,9 @@ async function testStanfordE2EFlow() {
     console.log("\n--- TEST CASE 1: Stanford Campus, Stanford Collection ---");
     // GPS coordinates for The Claw
     const stanfordGps = { lat: 37.42520, lng: -122.16930 };
-    const stanfordCollections = ["Stanford"];
     
     const routing1 = decideTier2(
       tier1Result.label,
-      stanfordCollections,
       stanfordGps,
       tier1Result.category,
       tier1Result.subcategory
@@ -61,11 +59,9 @@ async function testStanfordE2EFlow() {
     
     // Test Case 2: Within Stanford, both "Stanford" and "Organisms" collections active
     console.log("\n--- TEST CASE 2: Stanford Campus, Both Collections ---");
-    const bothCollections = ["Stanford", "Organisms"];
     
     const routing2 = decideTier2(
       tier1Result.label,
-      bothCollections,
       stanfordGps,
       tier1Result.category,
       tier1Result.subcategory

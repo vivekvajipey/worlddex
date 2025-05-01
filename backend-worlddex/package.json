@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build:shared": "cd shared && tsc",
-    "build": "npm run build:shared && tsc",
+    "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
     "worker": "ts-node-dev src/workers/tier2Worker.ts"
