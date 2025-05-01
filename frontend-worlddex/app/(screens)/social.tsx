@@ -20,6 +20,14 @@ import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderbo
 import { useTopCaptures } from "../../database/hooks/useCaptures";
 import CapturePost from "../components/social/CapturePost";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
+import MarketplaceFeed from "../components/marketplace/MarketplaceFeed";
+import { Listing } from "../../database/types";
+import CreateListingScreen from "../components/marketplace/CreateListingScreen";
+import { useAuth } from "../../src/contexts/AuthContext";
+import { useUser } from "../../database/hooks/useUsers";
+import { Image } from "expo-image";
+import retroCoin from "../../assets/images/retro_coin.png";
+import { supabase } from "../../database/supabase-client";
 
 const { width } = Dimensions.get("window");
 
@@ -164,12 +172,93 @@ const SocialTab = () => {
 };
 
 const MarketplaceTab = () => {
+  const { session } = useAuth();
+  const { user } = useUser(session?.user?.id || null);
+  const [localBalance, setLocalBalance] = useState(user?.balance ?? 0);
+  useEffect(() => {
+    setLocalBalance(user?.balance ?? 0);
+  }, [user?.balance]);
+
+  const refreshUserBalance = async () => {
+    if (!user?.id) return;
+    const { data, error } = await supabase
+      .from("users")
+      .select("balance")
+      .eq("id", user.id)
+      .single();
+    if (!error && data) setLocalBalance(data.balance);
+  };
+
+  const [createListingVisible, setCreateListingVisible] = useState(false);
+  const [marketplaceFeedKey, setMarketplaceFeedKey] = useState(0);
+  const refreshMarketplaceFeed = () => {
+    setMarketplaceFeedKey((k) => k + 1);
+  };
+
+  const handleUserPress = (userId: string) => {
+    // Navigate to user profile
+    console.log("Navigate to user profile:", userId);
+  };
+
+  const handleCommentsPress = (listing: Listing) => {
+    // Handle comments press
+    console.log("Open comments for listing:", listing.id);
+  };
+
+  const handleBidPress = (listing: Listing) => {
+    // Handle bid press
+    console.log("Open bid modal for listing:", listing.id);
+  };
+
+  const handleBuyPress = (listing: Listing) => {
+    // Handle buy press
+    console.log("Open buy modal for listing:", listing.id);
+  };
+
+  const handleTradePress = (listing: Listing) => {
+    // Handle trade press
+    console.log("Open trade modal for listing:", listing.id);
+  };
+
   return (
-    <View className="flex-1 justify-center items-center">
-      <Ionicons name="cart-outline" size={48} color="#ccc" />
-      <Text className="text-lg font-lexend-medium text-gray-400 mt-4">
-        Marketplace Coming Soon
-      </Text>
+    <View className="flex-1 bg-background">
+      {/* Floating user balance icon */}
+      <View style={{ position: "absolute", top: 10, right: 20, zIndex: 20 }}>
+        <View className="flex-row items-center justify-center bg-accent-200 border border-primary rounded-full px-3 py-1 shadow-md" style={{ minWidth: 54 }}>
+          <Image
+            source={retroCoin}
+            style={{ width: 22, height: 22, marginRight: 4 }}
+            contentFit="contain"
+          />
+          <Text className="text-primary font-lexend-bold text-lg">{localBalance}</Text>
+        </View>
+      </View>
+      <MarketplaceFeed
+        onUserBalanceChanged={refreshUserBalance}
+        onRefreshed={refreshUserBalance}
+        key={marketplaceFeedKey}
+        refreshKey={marketplaceFeedKey}
+        onUserPress={handleUserPress}
+        onCommentsPress={handleCommentsPress}
+        onBidPress={handleBidPress}
+        onBuyPress={handleBuyPress}
+        onTradePress={handleTradePress}
+      />
+
+      {/* Create Listing FAB */}
+      <TouchableOpacity
+        onPress={() => setCreateListingVisible(true)}
+        className="absolute bottom-6 right-6 w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg"
+      >
+        <Ionicons name="add" size={30} color="#FFF" />
+      </TouchableOpacity>
+
+      {/* Create Listing Modal */}
+      <CreateListingScreen
+        visible={createListingVisible}
+        onClose={() => setCreateListingVisible(false)}
+        onListingCreated={refreshMarketplaceFeed}
+      />
     </View>
   );
 };

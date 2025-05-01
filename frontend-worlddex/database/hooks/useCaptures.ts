@@ -122,12 +122,7 @@ export const fetchTopCaptures = async (
   captures: Capture[];
   count: number;
 }> => {
-  const {
-    limit = 10,
-    page = 1,
-    minUpvotes = 0,
-    itemId,
-  } = options;
+  const { limit = 10, page = 1, minUpvotes = 0, itemId } = options;
 
   // Calculate offset based on page and limit
   const offset = (page - 1) * limit;
@@ -139,7 +134,7 @@ export const fetchTopCaptures = async (
     .gte("like_count", minUpvotes)
     .order("like_count", { ascending: false })
     .range(offset, offset + limit - 1);
-    
+
   // Add optional filter by item_id
   if (itemId) {
     query = query.eq("item_id", itemId);
@@ -152,9 +147,9 @@ export const fetchTopCaptures = async (
     return { captures: [], count: 0 };
   }
 
-  return { 
-    captures: data || [], 
-    count: count || 0 
+  return {
+    captures: data || [],
+    count: count || 0,
   };
 };
 
@@ -175,7 +170,7 @@ export const useTopCaptures = (
     initialPage = 1,
     minUpvotes = 0,
     itemId,
-    autoFetch = true
+    autoFetch = true,
   } = options;
 
   const [captures, setCaptures] = useState<Capture[]>([]);
@@ -185,39 +180,42 @@ export const useTopCaptures = (
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchCaptures = useCallback(async (pageToFetch: number = page) => {
-    setLoading(true);
-    setError(null);
+  const fetchCaptures = useCallback(
+    async (pageToFetch: number = page) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const result = await fetchTopCaptures({
-        limit,
-        page: pageToFetch,
-        minUpvotes,
-        itemId
-      });
+      try {
+        const result = await fetchTopCaptures({
+          limit,
+          page: pageToFetch,
+          minUpvotes,
+          itemId,
+        });
 
-      setCaptures(result.captures);
-      setTotalCount(result.count);
-      setHasMore(pageToFetch * limit < result.count);
-      setPage(pageToFetch);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err
-          : new Error("Unknown error fetching top captures")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [limit, minUpvotes, itemId, page]);
+        setCaptures(result.captures);
+        setTotalCount(result.count);
+        setHasMore(pageToFetch * limit < result.count);
+        setPage(pageToFetch);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err
+            : new Error("Unknown error fetching top captures")
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [limit, minUpvotes, itemId, page]
+  );
 
   const fetchNextPage = useCallback(() => {
     if (!loading && hasMore) {
       fetchCaptures(page + 1);
     }
   }, [fetchCaptures, loading, hasMore, page]);
-  
+
   const fetchPreviousPage = useCallback(() => {
     if (!loading && page > 1) {
       fetchCaptures(page - 1);
@@ -246,7 +244,7 @@ export const useTopCaptures = (
     fetchCaptures,
     fetchNextPage,
     fetchPreviousPage,
-    refreshData
+    refreshData,
   };
 };
 
@@ -318,7 +316,7 @@ export const useCapture = (captureId: string | null) => {
   return { capture, loading, error, updateCapture: updateCaptureData };
 };
 
-export const useUserCaptures = (userId: string | null, limit: number = 20) => {
+export const useUserCaptures = (userId: string | null, limit: number = 100) => {
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);

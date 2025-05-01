@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase, Tables } from "../supabase-client";
 import { Listing } from "../types";
 
@@ -11,7 +11,15 @@ export const fetchListings = async (
   },
   pagination?: { page: number; pageSize: number }
 ): Promise<{ data: Listing[]; count: number } | null> => {
-  let query = supabase.from(Tables.LISTINGS).select("*", { count: "exact" });
+  let query = supabase.from(Tables.LISTINGS).select(
+    `
+      *,
+      listing_items (
+        captures (*)
+      )
+    `,
+    { count: "exact" }
+  );
 
   // Apply filters
   if (filters?.sellerId) {
@@ -42,7 +50,16 @@ export const fetchListings = async (
     return null;
   }
 
-  return { data, count: count || 0 };
+  // Transform the data to flatten the captures array
+  const transformedData = data.map((listing) => ({
+    ...listing,
+    captures:
+      listing.listing_items?.flatMap(
+        (item: { captures: any[] }) => item.captures
+      ) || [],
+  }));
+
+  return { data: transformedData, count: count || 0 };
 };
 
 export const fetchListingById = async (
@@ -63,11 +80,18 @@ export const fetchListingById = async (
 };
 
 export const createListing = async (
-  listing: Omit<Listing, "id" | "created_at" | "status" | "completed_at">
+  listing: Omit<Listing, "id" | "created_at" | "status" | "completed_at"> & {
+    reserve_price?: number;
+  }
 ): Promise<Listing | null> => {
+  const insertData: any = { ...listing, status: "active" };
+  if (listing.listing_type === "auction") {
+    insertData.auction_type = "second-price";
+    insertData.reserve_price = listing.reserve_price;
+  }
   const { data, error } = await supabase
     .from(Tables.LISTINGS)
-    .insert({ ...listing, status: "active" })
+    .insert(insertData)
     .select()
     .single();
 
@@ -149,6 +173,11 @@ export const useListings = (
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,9 +218,10 @@ export const useListings = (
     filters?.status,
     pagination?.page,
     pagination?.pageSize,
+    refreshTrigger,
   ]);
 
-  return { listings, totalCount, loading, error };
+  return { listings, totalCount, loading, error, refresh };
 };
 
 // Hook for a single listing

@@ -115,61 +115,95 @@ export const updateListingBidsStatus = async (
   return true;
 };
 
+export const fetchBids = async (listingId: string): Promise<Bid[]> => {
+  const { data, error } = await supabase
+    .from("bids")
+    .select("*")
+    .eq("listing_id", listingId)
+    .order("amount", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching bids:", error);
+    return [];
+  }
+
+  return data || [];
+};
+
+export const fetchUserBid = async (
+  listingId: string,
+  userId: string
+): Promise<Bid | null> => {
+  const { data, error } = await supabase
+    .from("bids")
+    .select("*")
+    .eq("listing_id", listingId)
+    .eq("bidder_id", userId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // No bid found
+    console.error("Error fetching user bid:", error);
+    return null;
+  }
+
+  return data;
+};
+
 // React hook
-export const useBids = (listingId: string | null, bidderId?: string | null) => {
+export const useBids = (listingId: string, userId?: string | null) => {
   const [bids, setBids] = useState<Bid[]>([]);
   const [highestBid, setHighestBid] = useState<Bid | null>(null);
+  const [userBid, setUserBid] = useState<Bid | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const loadBids = async () => {
+    try {
+      setLoading(true);
+      const bidsData = await fetchBids(listingId);
+      setBids(bidsData);
+      setHighestBid(bidsData[0] || null);
+
+      if (userId) {
+        const userBidData = await fetchUserBid(listingId, userId);
+        setUserBid(userBidData);
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("Unknown error fetching bids")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = true;
-
-    const loadBids = async () => {
-      if (!listingId && !bidderId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        let data: Bid[] | null = null;
-
-        if (listingId) {
-          data = await fetchBidsByListingId(listingId);
-          const highest = data?.length ? data[0] : null;
-          if (isMounted) {
-            setHighestBid(highest);
-          }
-        } else if (bidderId) {
-          data = await fetchBidsByBidderId(bidderId);
-        }
-
-        if (isMounted) {
-          setBids(data || []);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error
-              ? err
-              : new Error("Unknown error fetching bids")
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
     loadBids();
 
+    // Subscribe to bid changes
+    const subscription = supabase
+      .channel(`listing_bids:${listingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bids",
+          filter: `listing_id=eq.${listingId}`,
+        },
+        () => {
+          loadBids();
+        }
+      )
+      .subscribe();
+
     return () => {
-      isMounted = false;
+      subscription.unsubscribe();
     };
-  }, [listingId, bidderId]);
+  }, [listingId, userId]);
 
   const placeBid = async (
     amount: number,
@@ -247,9 +281,11 @@ export const useBids = (listingId: string | null, bidderId?: string | null) => {
   return {
     bids,
     highestBid,
+    userBid,
     loading,
     error,
     placeBid,
     cancelBid,
+    refresh: loadBids,
   };
 };

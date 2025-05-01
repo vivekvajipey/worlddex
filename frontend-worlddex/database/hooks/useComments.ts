@@ -3,18 +3,20 @@ import { supabase } from "../supabase-client";
 import { CaptureComment } from "../types";
 
 /* --------------------------------------------------------
-   A) Paginated comments for a SINGLE capture
+   A) Paginated comments for a SINGLE capture or listing
    -------------------------------------------------------- */
-const fetchCaptureComments = async (
-  captureId: string,
+const fetchComments = async (
+  targetId: string,
+  targetType: "capture" | "listing",
   { limit = 20, page = 1 }: { limit?: number; page?: number } = {}
 ): Promise<{ comments: CaptureComment[]; count: number }> => {
   const offset = (page - 1) * limit;
+  const targetField = targetType === "capture" ? "capture_id" : "listing_id";
 
   const { data, error, count } = await supabase
     .from("comments")
     .select("*", { count: "exact" })
-    .eq("capture_id", captureId)
+    .eq(targetField, targetId)
     .order("created_at", { ascending: false }) // newest first
     .range(offset, offset + limit - 1);
 
@@ -27,20 +29,24 @@ const fetchCaptureComments = async (
 };
 
 /* --------------------------------------------------------
-   B) "Preview" comments for MANY captures (feed page)
-      – gets the first N comments per capture in ONE query
+   B) "Preview" comments for MANY captures/listings (feed page)
+      – gets the first N comments per target in ONE query
    -------------------------------------------------------- */
 export const fetchPreviewComments = async (
-  captureIds: string[],
-  limitPerCapture = 3
+  targetIds: string[],
+  targetType: "capture" | "listing",
+  limitPerTarget = 3
 ): Promise<Record<string, CaptureComment[]>> => {
-  if (!captureIds.length) return {};
+  if (!targetIds.length) return {};
+
+  const targetField = targetType === "capture" ? "capture_id" : "listing_id";
 
   // Call an RPC so Postgres does LIMIT per partition.
   // (Supabase can't LIMIT nested selects yet.)
   const { data, error } = await supabase.rpc("get_preview_comments", {
-    _capture_ids: captureIds,
-    _limit: limitPerCapture,
+    _target_ids: targetIds,
+    _target_field: targetField,
+    _limit: limitPerTarget,
   });
 
   if (error) {
@@ -49,12 +55,15 @@ export const fetchPreviewComments = async (
   }
 
   /* data comes back as:
-     [{ capture_id: '...', id: '...', comment_text: ... }, ...]
-     We reshape it into { [capture_id]: Comment[] }
+     [{ target_id: '...', id: '...', comment_text: ... }, ...]
+     We reshape it into { [target_id]: Comment[] }
   */
   return (data as CaptureComment[]).reduce<Record<string, CaptureComment[]>>(
     (acc, c) => {
-      (acc[c.capture_id] ||= []).push(c);
+      const targetId = targetType === "capture" ? c.capture_id : c.listing_id;
+      if (targetId) {
+        (acc[targetId] ||= []).push(c);
+      }
       return acc;
     },
     {}
@@ -66,15 +75,17 @@ export const fetchPreviewComments = async (
    -------------------------------------------------------- */
 export const createComment = async ({
   capture_id,
+  listing_id,
   comment_text,
 }: Pick<
   CaptureComment,
-  "capture_id" | "comment_text"
+  "capture_id" | "listing_id" | "comment_text"
 >): Promise<CaptureComment | null> => {
   const { data, error } = await supabase
     .from("comments")
     .insert({
       capture_id,
+      listing_id,
       comment_text,
       user_id: (await supabase.auth.getUser()).data.user?.id,
     })
@@ -114,8 +125,9 @@ const deleteComment = async (id: string): Promise<boolean> => {
 };
 
 // React hook
-export const useCaptureComments = (
-  captureId: string | null,
+export const useComments = (
+  targetId: string | null,
+  targetType: "capture" | "listing",
   { limit = 20, initialPage = 1 }: { limit?: number; initialPage?: number } = {}
 ) => {
   const [comments, setComments] = useState<CaptureComment[]>([]);
@@ -126,10 +138,10 @@ export const useCaptureComments = (
 
   const load = useCallback(
     async (p = page) => {
-      if (!captureId) return;
+      if (!targetId) return;
       setLoading(true);
       try {
-        const { comments, count } = await fetchCaptureComments(captureId, {
+        const { comments, count } = await fetchComments(targetId, targetType, {
           limit,
           page: p,
         });
@@ -143,20 +155,21 @@ export const useCaptureComments = (
         setLoading(false);
       }
     },
-    [captureId, limit, page]
+    [targetId, targetType, limit, page]
   );
 
   useEffect(() => {
     load(initialPage);
-  }, [captureId]);
+  }, [targetId, targetType]);
 
   const addComment = async (
     commentText: string
   ): Promise<CaptureComment | null> => {
-    if (!captureId) return null;
+    if (!targetId) return null;
     try {
       const newComment = await createComment({
-        capture_id: captureId,
+        capture_id: targetType === "capture" ? targetId : undefined,
+        listing_id: targetType === "listing" ? targetId : undefined,
         comment_text: commentText,
       });
       if (newComment) {

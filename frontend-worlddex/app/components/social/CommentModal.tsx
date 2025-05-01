@@ -13,15 +13,15 @@ import {
   Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Capture, CaptureComment } from "../../../database/types";
-import { useCaptureComments } from "../../../database/hooks/useComments";
-import { createComment } from "../../../database/hooks/useComments";
+import { Capture, CaptureComment, Listing } from "../../../database/types";
+import { useComments, createComment } from "../../../database/hooks/useComments";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import Comment from "./Comment";
 
 interface CommentModalProps {
   visible: boolean;
-  capture: Capture | null;
+  capture?: Capture | null;
+  listing?: Listing | null;
   onClose: () => void;
   onUserPress?: (userId: string) => void;
   inputRef?: React.RefObject<TextInput>;
@@ -31,6 +31,7 @@ interface CommentModalProps {
 const CommentModal: React.FC<CommentModalProps> = ({
   visible,
   capture,
+  listing,
   onClose,
   onUserPress,
   inputRef: externalInputRef,
@@ -51,7 +52,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
     pageCount,
     fetchPage,
     refresh: refreshComments,
-  } = useCaptureComments(capture?.id || null, { limit: 10 });
+  } = useComments(
+    (capture?.id || listing?.id) || null,
+    capture ? "capture" : "listing",
+    { limit: 10 }
+  );
 
   // Convert to correct type - the hook returns generic Comment[] type but we need CaptureComment[]
   const comments = commentData as unknown as CaptureComment[];
@@ -85,12 +90,13 @@ const CommentModal: React.FC<CommentModalProps> = ({
   }, []);
 
   const handleSubmitComment = async () => {
-    if (!commentText.trim() || !capture?.id || !session?.user?.id || isSubmitting) return;
+    if (!commentText.trim() || (!capture?.id && !listing?.id) || !session?.user?.id || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       await createComment({
-        capture_id: capture.id,
+        capture_id: capture?.id,
+        listing_id: listing?.id,
         comment_text: commentText.trim(),
       });
 
@@ -116,7 +122,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     }
   };
 
-  if (!capture) return null;
+  if (!capture && !listing) return null;
 
   return (
     <Modal

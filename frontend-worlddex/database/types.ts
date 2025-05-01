@@ -88,7 +88,8 @@ export type CaptureLike = {
 export type CaptureComment = {
   id: string;
   user_id: string;
-  capture_id: string;
+  capture_id?: string;
+  listing_id?: string;
   comment_text: string;
   created_at?: string;
 };
@@ -101,11 +102,12 @@ export type Listing = {
   listing_type: "auction" | "buy-now" | "trade";
   auction_type?: "first-price" | "second-price";
   price?: number;
-  min_bid?: number;
+  reserve_price?: number;
   status: "active" | "completed" | "cancelled" | "expired";
   created_at?: string;
   expires_at: string;
   completed_at?: string;
+  listing_items?: { captures: Capture }[];
 };
 
 export type ListingItem = {
