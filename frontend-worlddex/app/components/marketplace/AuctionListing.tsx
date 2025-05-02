@@ -46,32 +46,6 @@ const AuctionListing: React.FC<AuctionListingProps> = ({
     if (onListingChanged) onListingChanged();
   };
 
-  const renderAuctionInfo = () => {
-    if (bidsLoading) {
-      return (
-        <View className="mt-2">
-          <Text className="text-gray-500 font-lexend-regular">Loading bid info...</Text>
-        </View>
-      );
-    }
-
-    return (
-      <View className="mt-2">
-        <Text className="text-gray-600 font-lexend-medium">
-          {highestBid ? `Highest bid: ${highestBid.amount} coins` : "No bids yet"}
-        </Text>
-        {userBid && (
-          <Text className="text-primary font-lexend-medium">
-            Your bid: {userBid.amount} coins
-          </Text>
-        )}
-        <Text className="text-gray-500 font-lexend-regular text-sm">
-          {listing.auction_type === "first-price" ? "First-price auction" : "Second-price auction"}
-        </Text>
-      </View>
-    );
-  };
-
   return (
     <>
       <ListingPost
@@ -86,9 +60,7 @@ const AuctionListing: React.FC<AuctionListingProps> = ({
         onBidPress={handleBidPress}
         onListingChanged={onListingChanged}
         onUserBalanceChanged={onUserBalanceChanged}
-      >
-        {renderAuctionInfo()}
-      </ListingPost>
+      />
 
       <BidModal
         visible={showBidModal}

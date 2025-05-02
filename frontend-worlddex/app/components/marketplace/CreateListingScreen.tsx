@@ -41,6 +41,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
   const [showReserveInfo, setShowReserveInfo] = useState(false);
 
   const durationOptions = [
+    { label: "1 minute", value: (1 / 60).toString() },
     { label: "1 hour", value: "1" },
     { label: "2 hours", value: "2" },
     { label: "4 hours", value: "4" },
@@ -131,7 +132,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
         description,
         listing_type: listingType,
         status: "active",
-        expires_at: new Date(Date.now() + parseInt(duration, 10) * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + parseFloat(duration) * 60 * 60 * 1000).toISOString(),
       };
 
       if (listingType === "buy-now") {

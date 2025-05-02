@@ -31,28 +31,6 @@ const TradeListing: React.FC<TradeListingProps> = ({
   onListingChanged,
   onUserBalanceChanged
 }) => {
-  const { tradeOffers, loading: offersLoading } = useTradeOffers(listing.id);
-
-  const renderTradeInfo = () => {
-    if (offersLoading) {
-      return (
-        <View className="mt-2">
-          <Text className="text-gray-500 font-lexend-regular">Loading trade offers...</Text>
-        </View>
-      );
-    }
-
-    return (
-      <View className="mt-2">
-        <Text className="text-gray-600 font-lexend-medium">
-          {tradeOffers.length > 0 ? `${tradeOffers.length} trade offers` : "No trade offers yet"}
-        </Text>
-        <Text className="text-gray-500 font-lexend-regular text-sm">
-          Looking for items of similar value
-        </Text>
-      </View>
-    );
-  };
 
   return (
     <ListingPost
@@ -67,9 +45,7 @@ const TradeListing: React.FC<TradeListingProps> = ({
       onTradePress={onTradePress}
       onListingChanged={onListingChanged}
       onUserBalanceChanged={onUserBalanceChanged}
-    >
-      {renderTradeInfo()}
-    </ListingPost>
+    />
   );
 };
 

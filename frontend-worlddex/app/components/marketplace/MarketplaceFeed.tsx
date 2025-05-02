@@ -89,15 +89,28 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
   // apply filters
   const [localListings, setLocalListings] = useState<Listing[]>([]);
   useEffect(() => {
-    setLocalListings(
-      listings.filter((l) => {
-        if (!filters.yourListings && l.seller_id === currentUserId) return false;
-        if (!filters.auctions && l.listing_type === "auction") return false;
-        if (!filters.buyNow && l.listing_type === "buy-now") return false;
-        if (!filters.trades && l.listing_type === "trade") return false;
-        return true;
-      })
-    );
+    const onlyYour =
+      filters.yourListings &&
+      !filters.auctions &&
+      !filters.buyNow &&
+      !filters.trades;
+
+    if (onlyYour) {
+      // show all of the user's listings, any type
+      setLocalListings(listings.filter((l) => l.seller_id === currentUserId));
+    } else {
+      setLocalListings(
+        listings.filter((l) => {
+          // hide user's listings if they untoggle "Your listings"
+          if (!filters.yourListings && l.seller_id === currentUserId) return false;
+          // hide auctions if untoggled
+          if (!filters.auctions && l.listing_type === "auction") return false;
+          if (!filters.buyNow && l.listing_type === "buy-now") return false;
+          if (!filters.trades && l.listing_type === "trade") return false;
+          return true;
+        })
+      );
+    }
   }, [listings, filters, currentUserId]);
 
   // refresh on key change
@@ -124,23 +137,23 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
     refreshListingsData();
   };
 
-  const renderListing = ({ item: listing }: { item: Listing }) => {
-    const captures = listing.listing_items?.map((i) => i.captures) || [];
+  const renderListing = ({ item }: { item: Listing }) => {
+    const captures = item.listing_items?.map((i) => i.captures) || [];
     const imageUrls = captures.map((c: Capture) =>
       c.image_key ? imageUrlMap[c.image_key] : null
     );
     const commonProps = {
-      listing,
+      listing: item,
       captures,
       onUserPress,
       onCommentsPress,
       imageUrls,
       imageLoading: imageUrlsLoading,
       profileLoading: false,
-      onListingChanged: () => handleListingDeleted(listing.id),
+      onListingChanged: () => handleListingDeleted(item.id),
       onUserBalanceChanged,
     };
-    switch (listing.listing_type) {
+    switch (item.listing_type) {
       case "auction":
         return <AuctionListing {...commonProps} onBidPress={onBidPress} />;
       case "buy-now":
@@ -184,25 +197,22 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
       </View>
       {showFiltersPanel && (
         <View className="flex-row flex-wrap">
-          {filterOptions.map(({ key, label }) => {
-            const checked = filters[key];
-            return (
-              <TouchableOpacity
-                key={key}
-                className="mr-4 mb-2 flex-row items-center"
-                onPress={() => setFilters((f) => ({ ...f, [key]: !f[key] }))}
-              >
-                <Ionicons
-                  name={checked ? "checkbox" : "checkbox-outline"}
-                  size={20}
-                  color="#374151"
-                />
-                <Text className="ml-1 text-text-primary font-lexend-regular">
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {filterOptions.map(({ key, label }) => (
+            <TouchableOpacity
+              key={key}
+              className="mr-4 mb-2 flex-row items-center"
+              onPress={() => setFilters((f) => ({ ...f, [key]: !f[key] }))}
+            >
+              <Ionicons
+                name={filters[key] ? "checkbox" : "checkbox-outline"}
+                size={20}
+                color="#374151"
+              />
+              <Text className="ml-1 text-text-primary font-lexend-regular">
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>

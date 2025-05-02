@@ -160,7 +160,6 @@ export const deleteListing = async (listingId: string): Promise<boolean> => {
   return true;
 };
 
-// React hook
 export const useListings = (
   filters?: {
     sellerId?: string;
@@ -185,25 +184,29 @@ export const useListings = (
     const loadListings = async () => {
       try {
         setLoading(true);
-        const result = await fetchListings(filters, pagination);
 
-        if (isMounted && result) {
-          setListings(result.data);
-          setTotalCount(result.count);
-          setError(null);
-        }
+        // 1) batch‐finalize all expired auctions & listings via DB function
+        const { error: batchError } = await supabase.rpc(
+          "finalize_expired_listings"
+        );
+        if (batchError) console.error("Batch finalize failed:", batchError);
+
+        // 2) fetch fresh listings
+        const result = await fetchListings(filters, pagination);
+        if (!isMounted || !result) return;
+
+        setListings(result.data);
+        setTotalCount(result.count);
+        setError(null);
       } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error
-              ? err
-              : new Error("Unknown error fetching listings")
-          );
-        }
+        if (!isMounted) return;
+        setError(
+          err instanceof Error
+            ? err
+            : new Error("Unknown error fetching listings")
+        );
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
