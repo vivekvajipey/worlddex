@@ -191,6 +191,13 @@ const MarketplaceTab = () => {
 
   const [createListingVisible, setCreateListingVisible] = useState(false);
   const [marketplaceFeedKey, setMarketplaceFeedKey] = useState(0);
+  const [marketplaceRefreshKey, setMarketplaceRefreshKey] = useState(0);
+
+  const handleMarketplaceRefresh = () => {
+    setMarketplaceRefreshKey((k) => k + 1);
+    refreshUserBalance();
+  };
+
   const refreshMarketplaceFeed = () => {
     setMarketplaceFeedKey((k) => k + 1);
   };
@@ -215,9 +222,9 @@ const MarketplaceTab = () => {
       </View>
       <MarketplaceFeed
         onUserBalanceChanged={refreshUserBalance}
-        onRefreshed={refreshUserBalance}
+        onRefreshed={handleMarketplaceRefresh}
         key={marketplaceFeedKey}
-        refreshKey={marketplaceFeedKey}
+        refreshKey={marketplaceRefreshKey}
         onUserPress={handleUserPress}
       />
 
