@@ -9,17 +9,53 @@ primary_region = 'ord'
 [build]
   dockerfile = 'Dockerfile'
 
-[http_service]
+# Define the three processes: web API, worker, and Redis
+[processes]
+  web = "node dist/index.js"  # Web API process
+  worker = "node dist/workers/tier2Worker.js"  # Worker process
+  redis = "redis-server --save '' --appendonly no --bind 0.0.0.0 :: --protected-mode no --maxmemory 64mb --maxmemory-policy allkeys-lru"  # Redis process with optimized settings
+
+# Web service configuration
+[[services]]
+  http_checks = []
   internal_port = 3000
-  force_https = true
-  auto_stop_machines = 'stop'
+  processes = ["web"]
+  protocol = "tcp"
+  script_checks = []
+  auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['web'] # Updated to reference the 'web' process
 
-[processes]
-  web = "npm run start"       # Command to start the web server
-  worker = "node dist/workers/tier2Worker.js" # Command to start the worker
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+# Redis process (only internal access)
+[[services]]
+processes     = ["redis"]     # must match the process-group name
+internal_port = 6379
+protocol      = "tcp"
+
+  # One port entry *with* handlers makes the validator happy.
+  # "tcp" means: no TLS termination, no proxy-protocol, just raw TCP.
+  [[services.ports]]
+    port     = 6379
+    handlers = ["tcp"]
+
+  # keep the machine alive so DNS is always valid
+  auto_start_machines = true
+  auto_stop_machines  = false     # <- no automatic scale-to-zero
+  min_machines_running = 1
 
 [[vm]]
   memory = '1gb'
