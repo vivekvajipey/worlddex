@@ -45,6 +45,10 @@ RUN cd backend-worlddex && \
 
 ENV NODE_ENV="production"
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends redis-server && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set the working directory for the final command
 WORKDIR /app/backend-worlddex
 
