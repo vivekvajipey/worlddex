@@ -103,7 +103,7 @@ export type Listing = {
   auction_type?: "first-price" | "second-price";
   price?: number;
   reserve_price?: number;
-  status: "active" | "completed" | "cancelled" | "expired";
+  status: "active" | "completed" | "canceled" | "expired";
   created_at?: string;
   expires_at: string;
   completed_at?: string;
@@ -121,7 +121,7 @@ export type Bid = {
   listing_id: string;
   bidder_id: string;
   amount: number;
-  status: "active" | "winning" | "outbid" | "rejected" | "cancelled";
+  status: "active" | "winning" | "outbid" | "rejected" | "canceled";
   created_at?: string;
 };
 
@@ -129,7 +129,7 @@ export type TradeOffer = {
   id: string;
   listing_id: string;
   offerer_id: string;
-  status: "pending" | "accepted" | "rejected" | "cancelled";
+  status: "pending" | "accepted" | "rejected" | "canceled";
   message?: string;
   created_at?: string;
   updated_at?: string;

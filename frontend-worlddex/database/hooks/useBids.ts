@@ -76,7 +76,7 @@ export const createBid = async (
 
 export const updateBidStatus = async (
   bidId: string,
-  status: "active" | "winning" | "outbid" | "rejected" | "cancelled"
+  status: "active" | "winning" | "outbid" | "rejected" | "canceled"
 ): Promise<boolean> => {
   const { error } = await supabase
     .from(Tables.BIDS)
@@ -93,7 +93,7 @@ export const updateBidStatus = async (
 
 export const updateListingBidsStatus = async (
   listingId: string,
-  status: "outbid" | "rejected" | "cancelled",
+  status: "outbid" | "rejected" | "canceled",
   excludeBidId?: string
 ): Promise<boolean> => {
   let query = supabase
@@ -250,13 +250,13 @@ export const useBids = (listingId: string, userId?: string | null) => {
 
   const cancelBid = async (bidId: string): Promise<boolean> => {
     try {
-      const success = await updateBidStatus(bidId, "cancelled");
+      const success = await updateBidStatus(bidId, "canceled");
 
       if (success) {
         // Update local state
         setBids((prevBids) =>
           prevBids.map((bid) =>
-            bid.id === bidId ? { ...bid, status: "cancelled" } : bid
+            bid.id === bidId ? { ...bid, status: "canceled" } : bid
           )
         );
 

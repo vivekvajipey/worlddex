@@ -6,7 +6,8 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
-  Modal
+  Modal,
+  TextInput
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,7 @@ import { useBids } from "../../../database/hooks/useBids";
 import CommentModal from "../social/CommentModal";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { supabase } from "../../../database/supabase-client";
+import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
 
 interface ListingPostProps {
   listing: Listing;
@@ -35,6 +37,8 @@ interface ListingPostProps {
   onTradePress?: (listing: Listing) => void;
   onListingChanged?: () => void;
   onUserBalanceChanged?: () => void | Promise<void>;
+  tradeButtonText?: string;
+  refreshKey?: number;
 }
 
 const ListingPost: React.FC<ListingPostProps> = ({
@@ -50,7 +54,9 @@ const ListingPost: React.FC<ListingPostProps> = ({
   onBuyPress,
   onTradePress,
   onListingChanged,
-  onUserBalanceChanged
+  onUserBalanceChanged,
+  tradeButtonText,
+  refreshKey
 }) => {
   const { session } = useAuth();
   const userId = session?.user?.id;
@@ -76,6 +82,10 @@ const ListingPost: React.FC<ListingPostProps> = ({
   const hasUserActiveBid = !!bids?.find(
     (b) => b.bidder_id === userId && b.status === "active"
   );
+
+  // Check for pending trade offers
+  const { tradeOffers, refresh: refreshTradeOffers } = useTradeOffers(listing.id, null);
+  const hasPendingOffers = tradeOffers?.some(offer => offer.status === "pending");
 
   // profile pic fallback
   const {
@@ -136,6 +146,12 @@ const ListingPost: React.FC<ListingPostProps> = ({
   useEffect(() => {
     setCommentCount(comments?.length || 0);
   }, [comments]);
+
+  // Refresh trade offers when refreshKey changes
+  useEffect(() => {
+    refreshTradeOffers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   // delete listing
   const handleDelete = async () => {
@@ -225,6 +241,12 @@ const ListingPost: React.FC<ListingPostProps> = ({
     return null;
   };
 
+  // Handler to refresh offers before opening modal
+  const handleReviewOffers = () => {
+    refreshTradeOffers();
+    onTradePress?.(listing);
+  };
+
   const renderActionButton = () => {
     if (isSeller) {
       return (
@@ -264,11 +286,11 @@ const ListingPost: React.FC<ListingPostProps> = ({
       case "trade":
         return (
           <TouchableOpacity
-            onPress={() => onTradePress?.(listing)}
+            onPress={handleReviewOffers}
             className="bg-primary px-4 py-2 rounded-full"
           >
             <Text className="text-white font-lexend-medium">
-              Make Trade Offer
+              {tradeButtonText || "Make Trade Offer"}
             </Text>
           </TouchableOpacity>
         );
@@ -411,6 +433,17 @@ const ListingPost: React.FC<ListingPostProps> = ({
               </Text>
             </View>
           )}
+          {listing.listing_type === "trade" && isSeller && (
+            <TouchableOpacity
+              onPress={hasPendingOffers ? handleReviewOffers : undefined}
+              disabled={!hasPendingOffers}
+              className={`flex-row items-center px-3 py-1 rounded-full ${hasPendingOffers ? "bg-primary" : "bg-gray-300"}`}
+            >
+              <Text className={`font-lexend-medium ${hasPendingOffers ? "text-white" : "text-gray-500"}`}>
+                Review Offers
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Description */}
@@ -472,7 +505,7 @@ const ListingPost: React.FC<ListingPostProps> = ({
         listing={listing}
         onClose={() => setShowComments(false)}
         onUserPress={onUserPress}
-        inputRef={useRef(null)}
+        inputRef={useRef<TextInput>(null) as React.RefObject<TextInput>}
         onCommentAdded={() => setCommentCount((c) => c + 1)}
       />
     </>

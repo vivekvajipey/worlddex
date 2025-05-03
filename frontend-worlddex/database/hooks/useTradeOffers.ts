@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase, Tables } from "../supabase-client";
 import { TradeOffer } from "../types";
 
@@ -73,7 +73,7 @@ export const createTradeOffer = async (
 
 export const updateTradeOfferStatus = async (
   tradeOfferId: string,
-  status: "pending" | "accepted" | "rejected" | "cancelled"
+  status: "pending" | "accepted" | "rejected" | "canceled"
 ): Promise<TradeOffer | null> => {
   const { data, error } = await supabase
     .from(Tables.TRADE_OFFERS)
@@ -117,6 +117,11 @@ export const useTradeOffers = (
   const [tradeOffers, setTradeOffers] = useState<TradeOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -161,7 +166,7 @@ export const useTradeOffers = (
     return () => {
       isMounted = false;
     };
-  }, [listingId, offererId]);
+  }, [listingId, offererId, refreshKey]);
 
   const createOffer = async (
     offerer_id: string,
@@ -193,7 +198,7 @@ export const useTradeOffers = (
 
   const updateStatus = async (
     tradeOfferId: string,
-    status: "pending" | "accepted" | "rejected" | "cancelled"
+    status: "pending" | "accepted" | "rejected" | "canceled"
   ): Promise<TradeOffer | null> => {
     try {
       const updatedOffer = await updateTradeOfferStatus(tradeOfferId, status);
@@ -250,6 +255,7 @@ export const useTradeOffers = (
     createOffer,
     updateStatus,
     updateMessage,
+    refresh,
   };
 };
 
@@ -299,7 +305,7 @@ export const useTradeOffer = (tradeOfferId: string | null) => {
   }, [tradeOfferId]);
 
   const updateStatus = async (
-    status: "pending" | "accepted" | "rejected" | "cancelled"
+    status: "pending" | "accepted" | "rejected" | "canceled"
   ): Promise<TradeOffer | null> => {
     if (!tradeOfferId) return null;
 

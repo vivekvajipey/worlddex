@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (result.type === 'cancel') {
-          throw new Error('User cancelled the operation');
+          throw new Error('User canceled the operation');
         }
 
         if (result.type === 'success' && result.url) {

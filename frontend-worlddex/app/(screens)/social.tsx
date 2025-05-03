@@ -200,26 +200,6 @@ const MarketplaceTab = () => {
     console.log("Navigate to user profile:", userId);
   };
 
-  const handleCommentsPress = (listing: Listing) => {
-    // Handle comments press
-    console.log("Open comments for listing:", listing.id);
-  };
-
-  const handleBidPress = (listing: Listing) => {
-    // Handle bid press
-    console.log("Open bid modal for listing:", listing.id);
-  };
-
-  const handleBuyPress = (listing: Listing) => {
-    // Handle buy press
-    console.log("Open buy modal for listing:", listing.id);
-  };
-
-  const handleTradePress = (listing: Listing) => {
-    // Handle trade press
-    console.log("Open trade modal for listing:", listing.id);
-  };
-
   return (
     <View className="flex-1 bg-background">
       {/* Floating user balance icon */}
@@ -239,10 +219,6 @@ const MarketplaceTab = () => {
         key={marketplaceFeedKey}
         refreshKey={marketplaceFeedKey}
         onUserPress={handleUserPress}
-        onCommentsPress={handleCommentsPress}
-        onBidPress={handleBidPress}
-        onBuyPress={handleBuyPress}
-        onTradePress={handleTradePress}
       />
 
       {/* Create Listing FAB */}

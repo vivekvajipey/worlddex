@@ -7,7 +7,7 @@ export const fetchListings = async (
   filters?: {
     sellerId?: string;
     listingType?: "auction" | "buy-now" | "trade";
-    status?: "active" | "completed" | "cancelled" | "expired";
+    status?: "active" | "completed" | "canceled" | "expired";
   },
   pagination?: { page: number; pageSize: number }
 ): Promise<{ data: Listing[]; count: number } | null> => {
@@ -124,7 +124,7 @@ export const updateListing = async (
 
 export const updateListingStatus = async (
   listingId: string,
-  status: "active" | "completed" | "cancelled" | "expired",
+  status: "active" | "completed" | "canceled" | "expired",
   completedAt?: string
 ): Promise<boolean> => {
   const updates: Partial<Listing> = { status };
@@ -164,7 +164,7 @@ export const useListings = (
   filters?: {
     sellerId?: string;
     listingType?: "auction" | "buy-now" | "trade";
-    status?: "active" | "completed" | "cancelled" | "expired";
+    status?: "active" | "completed" | "canceled" | "expired";
   },
   pagination?: { page: number; pageSize: number }
 ) => {
@@ -293,7 +293,7 @@ export const useListing = (listingId: string | null) => {
   };
 
   const changeStatus = async (
-    status: "active" | "completed" | "cancelled" | "expired",
+    status: "active" | "completed" | "canceled" | "expired",
     completedAt?: string
   ): Promise<boolean> => {
     if (!listingId) return false;

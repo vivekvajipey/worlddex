@@ -31,7 +31,6 @@ interface MarketplaceFeedProps {
   onCommentsPress?: (listing: Listing) => void;
   onBidPress?: (listing: Listing) => void;
   onBuyPress?: (listing: Listing) => void;
-  onTradePress?: (listing: Listing) => void;
   refreshKey?: number;
   onUserBalanceChanged?: () => void | Promise<void>;
   onRefreshed?: () => void;
@@ -42,7 +41,6 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
   onCommentsPress,
   onBidPress,
   onBuyPress,
-  onTradePress,
   refreshKey = 0,
   onUserBalanceChanged,
   onRefreshed,
@@ -152,6 +150,7 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
       profileLoading: false,
       onListingChanged: () => handleListingDeleted(item.id),
       onUserBalanceChanged,
+      refreshKey,
     };
     switch (item.listing_type) {
       case "auction":
@@ -159,7 +158,7 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
       case "buy-now":
         return <BuyNowListing {...commonProps} onBuyPress={onBuyPress} />;
       case "trade":
-        return <TradeListing {...commonProps} onTradePress={onTradePress} />;
+        return <TradeListing {...commonProps} />;
       default:
         return null;
     }

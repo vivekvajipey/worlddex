@@ -307,12 +307,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               ) : (
                 <>
                   <View className="flex-row items-center mb-8">
-                    <TouchableOpacity className="absolute top-0 right-0" onPress={handleDeleteAccount}>
-                      <Ionicons name="trash-outline" size={24} color={Colors.error.DEFAULT} />
-                    </TouchableOpacity>
-
-                    {/* Balance display below trash can icon */}
-                    <View className="absolute top-8 right-0 flex-row items-center">
+                    {/* Balance display */}
+                    <View className="absolute top-1/2 right-0 -translate-y-1/2 flex-row items-center">
                       <View className="flex-row items-center justify-center bg-accent-200 border border-primary rounded-full px-3 py-1" style={{ minWidth: 54 }}>
                         <Image
                           source={retroCoin}
@@ -442,6 +438,14 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                   >
                     <Ionicons name="help-circle-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
                     <Text className="text-text-primary font-lexend-medium">Help & Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="flex-row items-center py-4 border-t border-gray-100"
+                    onPress={handleDeleteAccount}
+                  >
+                    <Ionicons name="trash-outline" size={24} color={Colors.error.DEFAULT} style={{ marginRight: 12 }} />
+                    <Text className="text-error font-lexend-medium">Delete Account</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
