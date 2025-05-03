@@ -18,6 +18,9 @@ import { Picker } from "@react-native-picker/picker";
 import { Image } from "expo-image";
 import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { useListings } from "../../../database/hooks/useListings";
+import { useBids, fetchBidsByBidderId } from "../../../database/hooks/useBids";
+import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
+import { fetchTradeOfferItemsByTradeOfferId } from "../../../database/hooks/useTradeOfferItems";
 
 interface CreateListingScreenProps {
   visible: boolean;
@@ -82,16 +85,42 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
   // Load user's captures
   const { captures, loading: capturesLoading } = useUserCaptures(session?.user?.id || null);
 
-  // Determine which captures are already listed
+  const userId = session?.user?.id || null;
+  
+  // Fetch all of the user's pending trade offers and their items
+  const { tradeOffers: userTradeOffers } = useTradeOffers(null, userId);
+  const [pendingTradeCaptureIds, setPendingTradeCaptureIds] = useState<string[]>([]);
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAllTradeOfferItems = async () => {
+      if (!userTradeOffers) return;
+      const pendingOffers = userTradeOffers.filter(offer => offer.status === "pending");
+      let allCaptureIds: string[] = [];
+      for (const offer of pendingOffers) {
+        const items = await fetchTradeOfferItemsByTradeOfferId(offer.id);
+        if (items) {
+          allCaptureIds = allCaptureIds.concat(items.map(item => item.capture_id));
+        }
+      }
+      if (isMounted) setPendingTradeCaptureIds(allCaptureIds);
+    };
+    fetchAllTradeOfferItems();
+    return () => { isMounted = false; };
+  }, [userTradeOffers]);
+
+  // Determine which captures are already listed or have pending bids or are in pending trade offers
   const listedCaptureIds = useMemo(() => {
     const ids = new Set<string>();
+    // Already listed
     activeListings.forEach(listing => {
       listing.listing_items?.forEach(item => {
         if (item.captures?.id) ids.add(item.captures.id);
       });
     });
+    // Captures in user's own pending trade offers
+    pendingTradeCaptureIds.forEach(id => ids.add(id));
     return ids;
-  }, [activeListings]);
+  }, [activeListings, pendingTradeCaptureIds]);
 
   // Download URLs for images
   const imageKeys = useMemo(
@@ -274,7 +303,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
                       </Text>
                       <Text className="mb-2 font-lexend-medium">Reserve Price:</Text>
                       <Text className="mb-2 text-gray-700">
-                        This is your hidden minimum. If the top bid is below it, it doesn’t sell; if above, winner pays max(second bid, reserve).
+                        This is your hidden minimum. If the top bid is below it, it doesn't sell; if above, winner pays max(second bid, reserve).
                       </Text>
                       <TouchableOpacity onPress={() => setShowReserveInfo(false)} className="mt-4 bg-primary rounded-full px-6 py-2 self-center">
                         <Text className="text-white font-lexend-medium text-center">Close</Text>

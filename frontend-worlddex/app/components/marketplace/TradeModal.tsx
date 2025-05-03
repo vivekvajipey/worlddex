@@ -20,6 +20,8 @@ import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
 import { useTradeOfferItemsWithCaptures, fetchTradeOfferItemsWithCaptures } from "../../../database/hooks/useTradeOfferItems";
 import { formatDistanceToNow } from "date-fns";
 import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
+import { useListings } from "../../../database/hooks/useListings";
+import { fetchTradeOfferItemsByTradeOfferId } from "../../../database/hooks/useTradeOfferItems";
 
 interface TradeModalProps {
   visible: boolean;
@@ -162,6 +164,43 @@ const TradeModal: React.FC<TradeModalProps> = ({
       setSelectedIds([]);
     }
   }, [isSeller, existingOffer]);
+
+  // Fetch all of the user's active listings
+  const { listings: userActiveListings } = useListings({ sellerId: userId, status: "active" });
+  // Fetch all of the user's pending trade offers and their items
+  const { tradeOffers: userTradeOffers } = useTradeOffers(null, userId);
+  const [pendingTradeCaptureIds, setPendingTradeCaptureIds] = useState<string[]>([]);
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAllTradeOfferItems = async () => {
+      if (!userTradeOffers) return;
+      const pendingOffers = userTradeOffers.filter(offer => offer.status === "pending");
+      let allCaptureIds: string[] = [];
+      for (const offer of pendingOffers) {
+        const items = await fetchTradeOfferItemsByTradeOfferId(offer.id);
+        if (items) {
+          allCaptureIds = allCaptureIds.concat(items.map(item => item.capture_id));
+        }
+      }
+      if (isMounted) setPendingTradeCaptureIds(allCaptureIds);
+    };
+    fetchAllTradeOfferItems();
+    return () => { isMounted = false; };
+  }, [userTradeOffers]);
+
+  // Collect all capture IDs that should be disabled (in active listings or pending trade offers)
+  const disabledCaptureIds = useMemo(() => {
+    const ids = new Set<string>();
+    // Captures in user's active listings
+    userActiveListings.forEach(listing => {
+      listing.listing_items?.forEach(item => {
+        if (item.captures?.id) ids.add(item.captures.id);
+      });
+    });
+    // Captures in user's own pending trade offers
+    pendingTradeCaptureIds.forEach(id => ids.add(id));
+    return ids;
+  }, [userActiveListings, pendingTradeCaptureIds]);
 
   // Place or update an offer
   const handlePlaceTrade = async () => {
@@ -395,19 +434,20 @@ const TradeModal: React.FC<TradeModalProps> = ({
                     <View className="flex-row flex-wrap">
                       {userCaptures.map(capture => {
                         const sel = selectedIds.includes(capture.id);
+                        const disabled = disabledCaptureIds.has(capture.id);
                         const imageUrl = imageUrlMap[capture.image_key];
                         return (
                           <TouchableOpacity
                             key={capture.id}
                             onPress={() => {
-                              if (sel)
-                                setSelectedIds((s) => s.filter((i) => i !== capture.id));
-                              else
-                                setSelectedIds((s) => [...s, capture.id]);
+                              if (disabled) return;
+                              if (sel) setSelectedIds((s) => s.filter((i) => i !== capture.id));
+                              else setSelectedIds((s) => [...s, capture.id]);
                             }}
+                            disabled={disabled}
                             className={`w-1/3 aspect-square p-1 ${sel ? "bg-primary/20" : ""}`}
                           >
-                            <View className={`w-full h-full rounded-lg overflow-hidden border ${sel ? "border-primary" : "border-gray-200"}`}>
+                            <View className={`w-full h-full rounded-lg overflow-hidden border ${disabled ? "border-gray-300 opacity-40" : sel ? "border-primary" : "border-gray-200"}`}>
                               <Image
                                 source={imageUrl ? { uri: imageUrl } : undefined}
                                 style={{ width: '100%', height: '100%' }}
@@ -416,6 +456,11 @@ const TradeModal: React.FC<TradeModalProps> = ({
                               {sel && (
                                 <View className="absolute inset-0 bg-primary/20 items-center justify-center">
                                   <Ionicons name="checkmark-circle" size={24} color="#F97316" />
+                                </View>
+                              )}
+                              {disabled && (
+                                <View className="absolute inset-0 bg-white/60 items-center justify-center">
+                                  <Ionicons name="close-circle" size={32} color="#A1A1AA" />
                                 </View>
                               )}
                             </View>
