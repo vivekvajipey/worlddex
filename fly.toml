@@ -47,10 +47,8 @@ internal_port = 6379
 protocol      = "tcp"
 
   # One port entry *with* handlers makes the validator happy.
-  # "tcp" means: no TLS termination, no proxy-protocol, just raw TCP.
   [[services.ports]]
     port     = 6379
-    handlers = ["tcp"]
 
   # keep the machine alive so DNS is always valid
   auto_start_machines = true
