@@ -13,15 +13,15 @@ import {
   Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Capture, CaptureComment } from "../../../database/types";
-import { useCaptureComments } from "../../../database/hooks/useComments";
-import { createComment } from "../../../src/api/comments";
+import { Capture, CaptureComment, Listing } from "../../../database/types";
+import { useComments, createComment } from "../../../database/hooks/useComments";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import Comment from "./Comment";
 
 interface CommentModalProps {
   visible: boolean;
-  capture: Capture | null;
+  capture?: Capture | null;
+  listing?: Listing | null;
   onClose: () => void;
   onUserPress?: (userId: string) => void;
   inputRef?: React.RefObject<TextInput>;
@@ -31,6 +31,7 @@ interface CommentModalProps {
 const CommentModal: React.FC<CommentModalProps> = ({
   visible,
   capture,
+  listing,
   onClose,
   onUserPress,
   inputRef: externalInputRef,
@@ -51,7 +52,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
     pageCount,
     fetchPage,
     refresh: refreshComments,
-  } = useCaptureComments(capture?.id || null, { limit: 10 });
+  } = useComments(
+    (capture?.id || listing?.id) || null,
+    capture ? "capture" : "listing",
+    { limit: 10 }
+  );
 
   // Convert to correct type - the hook returns generic Comment[] type but we need CaptureComment[]
   const comments = commentData as unknown as CaptureComment[];
@@ -85,19 +90,20 @@ const CommentModal: React.FC<CommentModalProps> = ({
   }, []);
 
   const handleSubmitComment = async () => {
-    if (!commentText.trim() || !capture?.id || !session?.user?.id || isSubmitting) return;
+    if (!commentText.trim() || (!capture?.id && !listing?.id) || !session?.user?.id || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       await createComment({
-        capture_id: capture.id,
+        capture_id: capture?.id,
+        listing_id: listing?.id,
         comment_text: commentText.trim(),
       });
-      
+
       // Clear input and refresh comments
       setCommentText("");
       refreshComments();
-      
+
       // Notify parent about new comment
       if (onCommentAdded) {
         onCommentAdded();
@@ -116,7 +122,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     }
   };
 
-  if (!capture) return null;
+  if (!capture && !listing) return null;
 
   return (
     <Modal
@@ -127,7 +133,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     >
       <View className="flex-1">
         {/* Semi-transparent background that shows the photo behind - only visible above keyboard */}
-        <TouchableOpacity 
+        <TouchableOpacity
           activeOpacity={1}
           onPress={() => {
             Keyboard.dismiss();
@@ -135,7 +141,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           }}
           className="flex-1"
         />
-        
+
         {/* Modal Container - takes up bottom portion of screen */}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -144,14 +150,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
         >
           {/* This ensures we have a solid background regardless of keyboard state */}
           <View className="absolute bottom-0 left-0 right-0 top-0 bg-white" />
-          
+
           <View className="flex-1 bg-white rounded-t-3xl overflow-hidden shadow-xl">
             {/* Header */}
             <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
               <Text className="font-lexend-bold text-xl text-text-primary">
                 Comments
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
                   onClose();
