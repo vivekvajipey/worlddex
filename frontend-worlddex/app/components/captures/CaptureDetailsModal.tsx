@@ -87,42 +87,6 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
     });
   };
 
-  const getTransactionTypeTag = () => {
-    if (!capture?.transaction_type) return null;
-
-    if (capture.transaction_type === "auction") {
-      return (
-        <View className="flex-row items-center bg-blue-100 px-2 py-0.5 rounded-full">
-          <Ionicons name="hammer" size={15} color="#2563EB" />
-          <Text className="ml-1 text-sm font-lexend-medium text-blue-700">
-            Auction
-          </Text>
-        </View>
-      );
-    }
-    if (capture.transaction_type === "buy-now") {
-      return (
-        <View className="flex-row items-center bg-green-100 px-2 py-0.5 rounded-full">
-          <Ionicons name="pricetag" size={15} color="#16A34A" />
-          <Text className="ml-1 text-sm font-lexend-medium text-green-700">
-            Buy Now
-          </Text>
-        </View>
-      );
-    }
-    if (capture.transaction_type === "trade") {
-      return (
-        <View className="flex-row items-center bg-yellow-100 px-2 py-0.5 rounded-full">
-          <Ionicons name="swap-horizontal" size={15} color="#F59E42" />
-          <Text className="ml-1 text-sm font-lexend-medium text-yellow-700">
-            Trade
-          </Text>
-        </View>
-      );
-    }
-    return null;
-  };
-
   return (
     <Modal
       visible={visible}
@@ -176,12 +140,6 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
               </View>
             </View>
 
-            {capture.transaction_type && (
-              <View className="flex-row justify-center mb-2">
-                {getTransactionTypeTag()}
-              </View>
-            )}
-
             <View className="flex-row justify-center mb-2">
               <Ionicons name="time-outline" size={18} color="#000" />
               <Text className="text-text-primary ml-2 font-lexend-regular">
@@ -224,10 +182,31 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
 
             {capture.last_owner_id && capture.last_owner_id !== capture.user_id && (
               <View className="flex-row justify-center mb-4">
-                <View className="flex-row items-center bg-yellow-100 px-4 py-2 rounded-lg">
-                  <Ionicons name="swap-horizontal" size={18} color="#F59E42" />
-                  <Text className="ml-2 text-sm font-lexend-medium text-yellow-700">
-                    Traded from: {previousOwner?.username || "Unknown user"}
+                <View className={`flex-row items-center px-4 py-2 rounded-lg ${capture.transaction_type === "buy-now" ? "bg-green-100" :
+                  capture.transaction_type === "auction" ? "bg-blue-100" :
+                    "bg-yellow-100"
+                  }`}>
+                  <Ionicons
+                    name={
+                      capture.transaction_type === "buy-now" ? "pricetag" :
+                        capture.transaction_type === "auction" ? "hammer" :
+                          "swap-horizontal"
+                    }
+                    size={18}
+                    color={
+                      capture.transaction_type === "buy-now" ? "#16A34A" :
+                        capture.transaction_type === "auction" ? "#2563EB" :
+                          "#F59E42"
+                    }
+                  />
+                  <Text className={`ml-2 text-sm font-lexend-medium ${capture.transaction_type === "buy-now" ? "text-green-700" :
+                    capture.transaction_type === "auction" ? "text-blue-700" :
+                      "text-yellow-700"
+                    }`}>
+                    {capture.transaction_type === "buy-now" ? "Bought from: " :
+                      capture.transaction_type === "auction" ? "Auctioned from: " :
+                        "Traded from: "}
+                    {previousOwner?.username || "Unknown user"}
                   </Text>
                 </View>
               </View>
