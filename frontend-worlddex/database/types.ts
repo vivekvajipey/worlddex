@@ -61,6 +61,8 @@ export type Capture = {
   is_public?: boolean;
   comment_count?: number;
   thumb_key?: string;
+  last_owner_id?: string;
+  transaction_type?: "buy-now" | "auction" | "trade";
 };
 
 export type UserCollectionItem = {
