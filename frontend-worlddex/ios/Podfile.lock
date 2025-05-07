@@ -30,13 +30,25 @@ PODS:
     - ExpoModulesCore
   - ExpoHead (4.0.20):
     - ExpoModulesCore
+  - ExpoImage (2.0.7):
+    - ExpoModulesCore
+    - libavif/libdav1d
+    - SDWebImage (~> 5.19.1)
+    - SDWebImageAVIFCoder (~> 0.11.0)
+    - SDWebImageSVGCoder (~> 1.7.0)
   - ExpoImageManipulator (13.0.6):
     - EXImageLoader
     - ExpoModulesCore
     - SDWebImageWebPCoder
+  - ExpoImagePicker (16.0.6):
+    - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
   - ExpoLinking (7.0.5):
+    - ExpoModulesCore
+  - ExpoLocation (18.0.10):
+    - ExpoModulesCore
+  - ExpoMailComposer (14.0.2):
     - ExpoModulesCore
   - ExpoMediaLibrary (17.0.6):
     - ExpoModulesCore
@@ -79,6 +91,11 @@ PODS:
   - hermes-engine (0.76.9):
     - hermes-engine/Pre-built (= 0.76.9)
   - hermes-engine/Pre-built (0.76.9)
+  - libavif/core (0.11.1)
+  - libavif/libdav1d (0.11.1):
+    - libavif/core
+    - libdav1d (>= 0.6.0)
+  - libdav1d (1.2.0)
   - libwebp (1.5.0):
     - libwebp/demux (= 1.5.0)
     - libwebp/mux (= 1.5.0)
@@ -1369,6 +1386,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-get-random-values (1.11.0):
+    - React-Core
   - react-native-safe-area-context (4.12.0):
     - DoubleConversion
     - glog
@@ -1966,7 +1985,14 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - SDWebImage/Core (5.21.0)
+  - SDWebImage (5.19.7):
+    - SDWebImage/Core (= 5.19.7)
+  - SDWebImage/Core (5.19.7)
+  - SDWebImageAVIFCoder (0.11.0):
+    - libavif/core (>= 0.11.0)
+    - SDWebImage (~> 5.10)
+  - SDWebImageSVGCoder (1.7.0):
+    - SDWebImage/Core (~> 5.6)
   - SDWebImageWebPCoder (0.14.6):
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
@@ -1994,9 +2020,13 @@ DEPENDENCIES:
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
+  - ExpoImage (from `../node_modules/expo-image/ios`)
   - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
+  - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
+  - ExpoLocation (from `../node_modules/expo-location/ios`)
+  - ExpoMailComposer (from `../node_modules/expo-mail-composer/ios`)
   - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
@@ -2039,6 +2069,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-view-shot (from `../node_modules/react-native-view-shot`)
   - react-native-webview (from `../node_modules/react-native-webview`)
@@ -2078,8 +2109,12 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - libavif
+    - libdav1d
     - libwebp
     - SDWebImage
+    - SDWebImageAVIFCoder
+    - SDWebImageSVGCoder
     - SDWebImageWebPCoder
     - SocketRocket
     - ZXingObjC
@@ -2115,12 +2150,20 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-haptics/ios"
   ExpoHead:
     :path: "../node_modules/expo-router/ios"
+  ExpoImage:
+    :path: "../node_modules/expo-image/ios"
   ExpoImageManipulator:
     :path: "../node_modules/expo-image-manipulator/ios"
+  ExpoImagePicker:
+    :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
+  ExpoLocation:
+    :path: "../node_modules/expo-location/ios"
+  ExpoMailComposer:
+    :path: "../node_modules/expo-mail-composer/ios"
   ExpoMediaLibrary:
     :path: "../node_modules/expo-media-library/ios"
   ExpoModulesCore:
@@ -2202,6 +2245,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-get-random-values:
+    :path: "../node_modules/react-native-get-random-values"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-view-shot:
@@ -2291,9 +2336,13 @@ SPEC CHECKSUMS:
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
   ExpoHead: cee2d16ef197aaadb0ac481cf221a663636eb074
+  ExpoImage: d840b256050f4428d2942bc2b6e9251f9e0d7021
   ExpoImageManipulator: 4aca9cc1d84e31f62a7e8075c19026d3ad62f852
+  ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
+  ExpoLocation: de58a60756fad907139ec422ccabb1ba734e080d
+  ExpoMailComposer: 05d7236221229740563ed12f008f8b2054ed0474
   ExpoMediaLibrary: 2709fc2e4fcf87d28767714abcc603c4bec228c6
   ExpoModulesCore: c25d77625038b1968ea1afefc719862c0d8dd993
   ExpoSplashScreen: 8261985ce9778f904abc7e31bed3538dce67ed4d
@@ -2305,6 +2354,8 @@ SPEC CHECKSUMS:
   fmt: 01b82d4ca6470831d1cc0852a1af644be019e8f6
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
+  libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
+  libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   RCT-Folly: ea9d9256ba7f9322ef911169a9f696e5857b9e17
   RCTDeprecation: ebe712bb05077934b16c6bf25228bdec34b64f83
@@ -2335,6 +2386,7 @@ SPEC CHECKSUMS:
   React-logger: c4052eb941cca9a097ef01b59543a656dc088559
   React-Mapbuffer: 33546a3ebefbccb8770c33a1f8a5554fa96a54de
   React-microtasksnativemodule: d80ff86c8902872d397d9622f1a97aadcc12cead
+  react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-safe-area-context: cd916088cac5300c3266876218377518987b995e
   react-native-view-shot: c6708fc5e7a841021007fdf7d6659d031e17efee
   react-native-webview: 6b9fc65c1951203a3e958ff3cc0a858d4b6be901
@@ -2370,7 +2422,9 @@ SPEC CHECKSUMS:
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: 362f4c861dd155f898908d5035d97b07a3f1a9d1
   RNSVG: b889dc9c1948eeea0576a16cc405c91c37a12c19
-  SDWebImage: f84b0feeb08d2d11e6a9b843cb06d75ebf5b8868
+  SDWebImage: 8a6b7b160b4d710e2a22b6900e25301075c34cb3
+  SDWebImageAVIFCoder: 00310d246aab3232ce77f1d8f0076f8c4b021d90
+  SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
