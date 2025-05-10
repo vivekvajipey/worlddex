@@ -38,6 +38,7 @@ interface PolaroidDevelopmentProps {
   label?: string; // Optional string for the identified subject
   onReject?: () => void; // Optional function to reject the capture
   onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
+  identificationComplete?: boolean; // prop to indicate when all identification is complete
 }
 
 export default function PolaroidDevelopment({
@@ -48,8 +49,15 @@ export default function PolaroidDevelopment({
   isIdentifying = false,
   label,
   onReject,
-  onSetPublic
+  onSetPublic,
+  identificationComplete = false // Default to false for backward compatibility
 }: PolaroidDevelopmentProps) {
+  // Add logging for props
+  console.log("==== POLAROID DEVELOPMENT PROPS ====");
+  console.log("captureSuccess:", captureSuccess);
+  console.log("isIdentifying:", isIdentifying);
+  console.log("label:", label);
+
   // Get user settings
   const { session } = useAuth();
   const userId = session?.user?.id || null;
@@ -502,6 +510,14 @@ export default function PolaroidDevelopment({
     }
   }, [isPublic, onSetPublic]);
 
+  // Add logging whenever the label is rendered
+  useEffect(() => {
+    if (captureSuccess === true && label) {
+      console.log("==== POLAROID RENDERING LABEL ====");
+      console.log("Label being rendered:", label);
+    }
+  }, [captureSuccess, label]);
+
   return (
     <View className="absolute inset-0">
       {/* Blurred background - gets touchable in final state */}
@@ -571,9 +587,29 @@ export default function PolaroidDevelopment({
         {/* Bottom space with label text */}
         <View className="flex items-center justify-center" style={{ height: FRAME_BOTTOM_PADDING }}>
           {captureSuccess === true && label && (
-            <Text className="font-shadows text-black text-center text-3xl">
-              {label}
-            </Text>
+            <View className="flex-row items-center justify-center">
+              <Text className="font-shadows text-black text-center text-3xl">
+                {label}
+              </Text>
+              
+              {/* Show loading dots when we have tier1 result but identification is not yet complete */}
+              {!identificationComplete && isIdentifying && (
+                <View className="flex-row ml-2 items-center">
+                  <Animated.View
+                    className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                    style={{ opacity: dot1Opacity }}
+                  />
+                  <Animated.View
+                    className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                    style={{ opacity: dot2Opacity }}
+                  />
+                  <Animated.View
+                    className="h-2 w-2 rounded-full bg-gray-700 mx-0.5"
+                    style={{ opacity: dot3Opacity }}
+                  />
+                </View>
+              )}
+            </View>
           )}
           {captureSuccess === null && isIdentifying && (
             <View className="flex-row items-center justify-center space-x-2">
@@ -707,8 +743,8 @@ export default function PolaroidDevelopment({
         </View>
       </Animated.View>
 
-      {/* Control buttons - only show after initial animation is done */}
-      {initialAnimationDone && !isRipping && !isMinimizing && (
+      {/* Control buttons - only show after initial animation is done AND identification is complete */}
+      {initialAnimationDone && !isRipping && !isMinimizing && identificationComplete && (
         <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
           {/* Reject/Accept buttons */}
           <View className="flex flex-row justify-center items-center">
