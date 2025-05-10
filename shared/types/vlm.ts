@@ -5,4 +5,6 @@ export interface VlmIdentificationRequest {
 
 export interface VlmIdentificationResponse {
     label: string | null;
+    category?: string | null;
+    subcategory?: string | null;
 }

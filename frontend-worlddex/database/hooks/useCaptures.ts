@@ -193,7 +193,9 @@ export const useTopCaptures = (
           itemId,
         });
 
-        setCaptures(result.captures);
+        setCaptures(prev =>
+          pageToFetch === 1 ? result.captures : [...prev, ...result.captures]
+        );
         setTotalCount(result.count);
         setHasMore(pageToFetch * limit < result.count);
         setPage(pageToFetch);
