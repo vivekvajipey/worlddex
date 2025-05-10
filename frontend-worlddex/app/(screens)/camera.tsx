@@ -3,18 +3,25 @@ import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Al
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraOnboarding from "../components/camera/CameraOnboarding";
-import { useVlmIdentify } from "../../src/hooks/useVlmIdentify";
+import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
-import type { Capture } from "../../database/types";
+import type { Capture, CollectionItem } from "../../database/types";
+import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
+import { 
+  createUserCollectionItem, 
+  checkUserHasCollectionItem 
+} from "../../database/hooks/useUserCollectionItems";
+import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -25,6 +32,7 @@ interface CameraScreenProps {
 export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
+  const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
 
   // Photo capture state
@@ -34,8 +42,18 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     x: 0, y: 0, width: 0, height: 0, aspectRatio: 1
   });
 
+  // Location state
+  const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   // VLM
-  const { identifyPhoto, isLoading: vlmLoading, error: vlmError, reset: resetVlm } = useVlmIdentify();
+  const {
+    identify,
+    tier1, tier2,
+    isLoading: idLoading,
+    error: idError,
+    reset
+  } = useIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
   const { session } = useAuth();
   const { user, updateUser } = useUser(session?.user?.id || null);
@@ -44,7 +62,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
   const [resetCounter, setResetCounter] = useState(0);
-
+  // Add state to track whether identification is fully complete (both tiers if applicable)
+  const [identificationComplete, setIdentificationComplete] = useState(false);
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -57,6 +76,39 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
+
+  // Request location permission after camera permission
+  useEffect(() => {
+    if (permission?.granted && !locationPermission?.granted) {
+      requestLocationPermission();
+    }
+  }, [permission?.granted, locationPermission]);
+
+  // Get location when permission is granted
+  useEffect(() => {
+    const getLocation = async () => {
+      if (!locationPermission?.granted) return;
+      
+      try {
+        setLocationError(null);
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        
+        setLocation({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude
+        });
+        console.log("Location fetched successfully:", currentLocation.coords);
+      } catch (error) {
+        console.error("Error getting location:", error);
+        setLocationError("Could not get location");
+        setLocation(null);
+      }
+    };
+
+    getLocation();
+  }, [locationPermission?.granted]);
 
   // Check if onboarding should be shown
   useEffect(() => {
@@ -88,6 +140,30 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     }
   }, [isCapturing, capturedUri]);
 
+  // Two–tier ID -----------------------------------------------
+  useEffect(() => {
+    console.log("==== TIER RESULTS UPDATED ====");
+    console.log("Tier1:", tier1 ? JSON.stringify(tier1) : "null");
+    console.log("Tier2:", tier2 ? JSON.stringify(tier2) : "null");
+    
+    // Tier-2 overrides Tier-1 if it exists
+    const label = tier2?.label ?? tier1?.label ?? null;
+    console.log("Selected label for display:", label);
+    
+    if (label) {
+      setIdentifiedLabel(label);
+      setVlmCaptureSuccess(true);
+      console.log("Updated identifiedLabel state:", label);
+      
+      // If we have tier2 result or tier1 result with status "done" (no tier2 needed)
+      // then identification is complete
+      if (tier2 || (tier1 && !idLoading)) {
+        console.log("Identification is now complete");
+        setIdentificationComplete(true);
+      }
+    }
+  }, [tier1, tier2, idLoading]);
+
   const handleCapture = useCallback(async (
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
@@ -107,7 +183,6 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     }
 
     // Reset VLM state for new capture
-    resetVlm();
     setVlmCaptureSuccess(null);
 
     try {
@@ -191,20 +266,24 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       // VLM Identification
       if (manipResult.base64) {
         try {
-          const vlmResult = await identifyPhoto({
+          // Format location data for the API
+          const gpsData = location ? {
+            lat: location.latitude,
+            lng: location.longitude
+          } : null;
+          
+          console.log("Sending location with capture:", gpsData);
+          
+          // Use new identify function instead of identifyPhoto
+          await identify({
             base64Data: manipResult.base64,
-            contentType: "image/jpeg"
+            contentType: "image/jpeg",
+            gps: gpsData
           });
-          console.log("VLM Identification Result:", vlmResult);
-          if (vlmResult?.label) {
-            setVlmCaptureSuccess(true);
-            setIdentifiedLabel(vlmResult.label);
-          } else {
-            setVlmCaptureSuccess(false);
-            setIdentifiedLabel(null);
-          }
-        } catch (vlmApiError) {
-          console.error("VLM Identification API Error:", vlmApiError);
+          
+          // success/failure will be set by the useEffect above
+        } catch (idError) {
+          console.error("VLM Identification API Error:", idError);
           setVlmCaptureSuccess(false);
         }
       } else {
@@ -218,10 +297,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setIsCapturing(false);
       setCapturedUri(null);
       cameraCaptureRef.current?.resetLasso();
-      resetVlm();
       setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
     }
-  }, [identifyPhoto, resetVlm, user]);
+  }, [identify, tier1, tier2, user, location]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -238,8 +317,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     }
 
     // Reset VLM state for new capture
-    resetVlm();
     setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
@@ -279,18 +358,22 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       // VLM Identification with the full photo
       if (photo.base64) {
         try {
-          const vlmResult = await identifyPhoto({
+          // Format location data for the API
+          const gpsData = location ? {
+            lat: location.latitude,
+            lng: location.longitude
+          } : null;
+          
+          console.log("Sending location with full screen capture:", gpsData);
+          
+          // Use new identify function instead of identifyPhoto
+          await identify({
             base64Data: photo.base64,
-            contentType: "image/jpeg"
+            contentType: "image/jpeg",
+            gps: gpsData
           });
 
-          if (vlmResult?.label) {
-            setVlmCaptureSuccess(true);
-            setIdentifiedLabel(vlmResult.label);
-          } else {
-            setVlmCaptureSuccess(false);
-            setIdentifiedLabel(null);
-          }
+          // success/failure will be set by the useEffect above
         } catch (vlmApiError) {
           console.error("VLM Identification API Error:", vlmApiError);
           setVlmCaptureSuccess(false);
@@ -303,10 +386,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       console.error("Error capturing full screen:", error);
       setIsCapturing(false);
       setCapturedUri(null);
-      resetVlm();
       setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
     }
-  }, [identifyPhoto, resetVlm, user, SCREEN_HEIGHT, SCREEN_WIDTH]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -332,12 +415,64 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
           daily_upvotes: 0
         };
 
-        await uploadCapturePhoto(
+        const captureRecord = await uploadCapturePhoto(
           capturedUri,
           "image/jpeg",
           `${Date.now()}.jpg`,
           capturePayload
         );
+
+        // Auto-add to user collections based on the identified label
+        if (captureRecord && identifiedLabel) {
+          console.log("Checking if capture matches any collection items...");
+          
+          try {
+            // Get all user collections
+            const userCollections = await fetchUserCollectionsByUser(session.user.id);
+            console.log(`Found ${userCollections.length} user collections to check`);
+            
+            // For each collection, find matching items
+            for (const userCollection of userCollections) {
+              // Get all items in this collection
+              const collectionItems = await fetchCollectionItems(userCollection.collection_id);
+              console.log(`Collection ${userCollection.collection_id} has ${collectionItems.length} items`);
+              
+              // Filter items that match the identified label
+              const matchingItems = collectionItems.filter((item: CollectionItem) => {
+                const itemNameMatch = item.name?.toLowerCase() === identifiedLabel.toLowerCase();
+                const displayNameMatch = item.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
+                return itemNameMatch || displayNameMatch;
+              });
+              
+              console.log(`Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
+              
+              // Add matching items to user's collection
+              for (const item of matchingItems) {
+                try {
+                  // Check if the user already has this item to avoid duplicates
+                  const hasItem = await checkUserHasCollectionItem(session.user.id, item.id);
+                  
+                  if (!hasItem) {
+                    await createUserCollectionItem({
+                      user_id: session.user.id,
+                      collection_item_id: item.id,
+                      capture_id: captureRecord.id,
+                      collection_id: item.collection_id,
+                    });
+                    console.log(`Added ${identifiedLabel} to collection ${item.collection_id}`);
+                  } else {
+                    console.log(`User already has item ${item.id} in their collection`);
+                  }
+                } catch (collectionErr) {
+                  console.error("Error adding item to user collection:", collectionErr);
+                  // Continue with next item even if this one fails
+                }
+              }
+            }
+          } catch (collectionErr) {
+            console.error("Error handling collections:", collectionErr);
+          }
+        }
 
         // Increment daily_captures_used for the user
         await incrementUserField(session.user.id, "daily_captures_used", 1);
@@ -350,12 +485,11 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
-    resetVlm();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     setIsCapturePublic(true); // Reset to default
     isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, resetVlm, incrementOrCreateItem]);
+  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading
@@ -386,6 +520,12 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     );
   }
 
+  // Location permission UI (optional)
+  if (!locationPermission?.granted) {
+    // Continue without location, but show a message
+    console.log("Location permission not granted. Some features may be limited.");
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
@@ -404,13 +544,14 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
-            isIdentifying={vlmLoading}
-            label={identifiedLabel || ""}
+            isIdentifying={idLoading}
+            label={identifiedLabel ?? ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
               isRejectedRef.current = true;
             }}
             onSetPublic={setIsCapturePublic}
+            identificationComplete={identificationComplete}
           />
         )}
 
@@ -422,7 +563,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             capturesButtonClicked={capturesButtonClicked}
             hasCapture={hasCapture}
             showingCaptureReview={showingCaptureReview}
-            captureLabel={identifiedLabel || ""}
+            captureLabel={identifiedLabel ?? ""}
             onRequestReset={handleOnboardingReset}
           />
         )}
