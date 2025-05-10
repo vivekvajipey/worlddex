@@ -19,9 +19,9 @@ import type { Capture, CollectionItem } from "../../database/types";
 import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
 import CoinRewardModal from "../components/CoinRewardModal";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
-import { 
-  createUserCollectionItem, 
-  checkUserHasCollectionItem 
+import {
+  createUserCollectionItem,
+  checkUserHasCollectionItem
 } from "../../database/hooks/useUserCollectionItems";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 
@@ -45,7 +45,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   });
 
   // Location state
-  const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // VLM
@@ -94,13 +94,13 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   useEffect(() => {
     const getLocation = async () => {
       if (!locationPermission?.granted) return;
-      
+
       try {
         setLocationError(null);
         const currentLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced
         });
-        
+
         setLocation({
           latitude: currentLocation.coords.latitude,
           longitude: currentLocation.coords.longitude
@@ -151,16 +151,16 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     console.log("==== TIER RESULTS UPDATED ====");
     console.log("Tier1:", tier1 ? JSON.stringify(tier1) : "null");
     console.log("Tier2:", tier2 ? JSON.stringify(tier2) : "null");
-    
+
     // Tier-2 overrides Tier-1 if it exists
     const label = tier2?.label ?? tier1?.label ?? null;
     console.log("Selected label for display:", label);
-    
+
     if (label) {
       setIdentifiedLabel(label);
       setVlmCaptureSuccess(true);
       console.log("Updated identifiedLabel state:", label);
-      
+
       // If we have tier2 result or tier1 result with status "done" (no tier2 needed)
       // then identification is complete
       if (tier2 || (tier1 && !idLoading)) {
@@ -277,16 +277,16 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             lat: location.latitude,
             lng: location.longitude
           } : null;
-          
+
           console.log("Sending location with capture:", gpsData);
-          
+
           // Use new identify function instead of identifyPhoto
           await identify({
             base64Data: manipResult.base64,
             contentType: "image/jpeg",
             gps: gpsData
           });
-          
+
           // success/failure will be set by the useEffect above
         } catch (idError) {
           console.error("VLM Identification API Error:", idError);
@@ -369,9 +369,9 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             lat: location.latitude,
             lng: location.longitude
           } : null;
-          
+
           console.log("Sending location with full screen capture:", gpsData);
-          
+
           // Use new identify function instead of identifyPhoto
           await identify({
             base64Data: photo.base64,
@@ -431,33 +431,33 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
         // Auto-add to user collections based on the identified label
         if (captureRecord && identifiedLabel) {
           console.log("Checking if capture matches any collection items...");
-          
+
           try {
             // Get all user collections
             const userCollections = await fetchUserCollectionsByUser(session.user.id);
             console.log(`Found ${userCollections.length} user collections to check`);
-            
+
             // For each collection, find matching items
             for (const userCollection of userCollections) {
               // Get all items in this collection
               const collectionItems = await fetchCollectionItems(userCollection.collection_id);
               console.log(`Collection ${userCollection.collection_id} has ${collectionItems.length} items`);
-              
+
               // Filter items that match the identified label
               const matchingItems = collectionItems.filter((item: CollectionItem) => {
                 const itemNameMatch = item.name?.toLowerCase() === identifiedLabel.toLowerCase();
                 const displayNameMatch = item.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
                 return itemNameMatch || displayNameMatch;
               });
-              
+
               console.log(`Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
-              
+
               // Add matching items to user's collection
               for (const item of matchingItems) {
                 try {
                   // Check if the user already has this item to avoid duplicates
                   const hasItem = await checkUserHasCollectionItem(session.user.id, item.id);
-                  
+
                   if (!hasItem) {
                     await createUserCollectionItem({
                       user_id: session.user.id,

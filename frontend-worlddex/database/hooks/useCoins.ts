@@ -5,13 +5,13 @@ import { fetchCaptureCount } from "./useCaptureCount";
 export const COIN_REWARDS = {
   FIRST_CAPTURE_OF_DAY: 2,
   STREAK_BONUSES: {
-    1: 5,
+    7: 5,
     30: 20,
     100: 75,
     365: 300,
   },
   CAPTURE_MILESTONES: {
-    3: 10,
+    50: 10,
     200: 30,
     500: 100,
     1000: 250,

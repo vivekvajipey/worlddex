@@ -110,6 +110,8 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
             <CollectionThumbnail
               collection={item}
               onPress={() => handleCollectionPress(item.id)}
+              downloadUrl={item.cover_photo_key ? urlMap[item.cover_photo_key] : null}
+              loading={urlsLoading}
             />
             {item.is_featured && (
               <View className="absolute right-6 top-4 bg-orange-500 px-2 py-1 rounded-full">

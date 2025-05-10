@@ -141,7 +141,7 @@ export default function PolaroidDevelopment({
           })
         ])
       );
-      
+
       const dot2Animation = Animated.loop(
         Animated.sequence([
           Animated.delay(150),
@@ -158,7 +158,7 @@ export default function PolaroidDevelopment({
           Animated.delay(150)
         ])
       );
-      
+
       const dot3Animation = Animated.loop(
         Animated.sequence([
           Animated.delay(300),
@@ -175,12 +175,12 @@ export default function PolaroidDevelopment({
           Animated.delay(300)
         ])
       );
-      
+
       // Start all animations
       dot1Animation.start();
       dot2Animation.start();
       dot3Animation.start();
-      
+
       // Clean up on component unmount or when identification is done
       return () => {
         dot1Animation.stop();
@@ -238,7 +238,7 @@ export default function PolaroidDevelopment({
     if (initialAnimationDone) {
       if (captureSuccess === true) {
         setIsCompleted(true);
-      } else if (captureSuccess === false) {
+      } else {
         if (!isRipping && !isMinimizing) {
           runRipAnimation();
         }
@@ -591,7 +591,7 @@ export default function PolaroidDevelopment({
               <Text className="font-shadows text-black text-center text-3xl">
                 {label}
               </Text>
-              
+
               {/* Show loading dots when we have tier1 result but identification is not yet complete */}
               {!identificationComplete && isIdentifying && (
                 <View className="flex-row ml-2 items-center">
@@ -748,23 +748,23 @@ export default function PolaroidDevelopment({
         <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
           {/* Reject/Accept buttons */}
           <View className="flex flex-row justify-center items-center">
-          {/* Reject button */}
-          <TouchableOpacity
-            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
-            onPress={handleReject}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="close" size={36} color="red" />
-          </TouchableOpacity>
+            {/* Reject button */}
+            <TouchableOpacity
+              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg mr-20"
+              onPress={handleReject}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={36} color="red" />
+            </TouchableOpacity>
 
-          {/* Accept button */}
-          <TouchableOpacity
-            className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
-            onPress={handleBackgroundPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="checkmark" size={36} color="green" />
-          </TouchableOpacity>
+            {/* Accept button */}
+            <TouchableOpacity
+              className="bg-background rounded-full w-16 h-16 flex items-center justify-center shadow-lg"
+              onPress={handleBackgroundPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="checkmark" size={36} color="green" />
+            </TouchableOpacity>
           </View>
         </View>
       )}
