@@ -193,9 +193,14 @@ export const useTopCaptures = (
           itemId,
         });
 
-        setCaptures(prev =>
-          pageToFetch === 1 ? result.captures : [...prev, ...result.captures]
-        );
+        setCaptures(prev => {
+          const seen = new Set(prev.map(c => c.id ?? c.image_key));
+          const deduped = result.captures.filter(c =>
+            !seen.has(c.id ?? c.image_key)
+          );
+          return pageToFetch === 1 ? result.captures : [...prev, ...deduped];
+        });
+        
         setTotalCount(result.count);
         setHasMore(pageToFetch * limit < result.count);
         setPage(pageToFetch);
