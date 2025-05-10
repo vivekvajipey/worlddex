@@ -15,6 +15,8 @@ import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture } from "../../database/types";
+import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
+import CoinRewardModal from "../components/CoinRewardModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -53,6 +55,10 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
+
+  // Add state for coin reward modal
+  const [coinModalVisible, setCoinModalVisible] = useState(false);
+  const [coinModalData, setCoinModalData] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
 
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
@@ -341,6 +347,13 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
         // Increment daily_captures_used for the user
         await incrementUserField(session.user.id, "daily_captures_used", 1);
+
+        // Calculate and award coins
+        const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
+        if (coinsAwarded > 0) {
+          setCoinModalData({ total: coinsAwarded, rewards });
+          setCoinModalVisible(true);
+        }
       } catch (err) {
         console.error("Upload failed:", err);
       }
@@ -426,6 +439,13 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             onRequestReset={handleOnboardingReset}
           />
         )}
+
+        <CoinRewardModal
+          visible={coinModalVisible}
+          onClose={() => setCoinModalVisible(false)}
+          total={coinModalData.total}
+          rewards={coinModalData.rewards}
+        />
 
       </View>
     </GestureHandlerRootView>
