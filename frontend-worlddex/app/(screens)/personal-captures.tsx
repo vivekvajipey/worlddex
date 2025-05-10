@@ -44,6 +44,8 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
+  // Add a ref to track if we're responding to a tab click
+  const isTabClickRef = useRef(false);
   const { session } = useAuth();
   const userId = session?.user?.id || null;
 
@@ -167,6 +169,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   // Effect to update active tab based on scroll position
   useEffect(() => {
     const listener = scrollX.addListener(({ value }) => {
+      // Skip updating the active tab if we're currently responding to a tab click
+      if (isTabClickRef.current) return;
+
       if (value < width / 2) {
         setActiveTab("WorldDex");
       } else {
@@ -190,11 +195,24 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   };
 
   const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
+    // Set the flag to indicate we're responding to a tab click
+    isTabClickRef.current = true;
+
+    // Don't update the activeTab immediately
     scrollViewRef.current?.scrollTo({
       x: tab === "WorldDex" ? 0 : width,
       animated: true
     });
+
+    // Update activeTab after a delay to match the scroll animation
+    setTimeout(() => {
+      setActiveTab(tab);
+
+      // Clear the flag after the animation is complete
+      setTimeout(() => {
+        isTabClickRef.current = false;
+      }, 50);
+    }, 200); // Most of the scroll animation duration
   };
 
   const handleCollectionClose = () => {
@@ -260,7 +278,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       const updatedCapture = await updateCapture(capture.id, updates);
       if (updatedCapture) {
         // Update the captures list with the updated capture
-        setRefreshedCaptures(prev => 
+        setRefreshedCaptures(prev =>
           prev.map(c => c.id === updatedCapture.id ? updatedCapture : c)
         );
       }
@@ -396,4 +414,4 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   );
 };
 
-export default CapturesModal; 
+export default CapturesModal;

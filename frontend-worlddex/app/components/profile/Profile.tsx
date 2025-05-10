@@ -11,6 +11,7 @@ import { deleteAllUserData } from "../../../database/supabase";
 import Colors from "../../../src/utils/colors";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
+import retroCoin from "../../../assets/images/retro_coin.png";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -228,14 +229,22 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   // Toggle default public/private setting
   const toggleDefaultPublicCaptures = async (value: boolean) => {
     try {
+      // Update state immediately for a smooth UI experience
       setDefaultPublicCaptures(value);
 
-      // Save immediately without waiting for "Save" button
-      if (!isEditing) {
-        await updateUser({ default_public_captures: value });
-        await refreshUserData();
+      // Update the user data in the database but don't refresh the entire component
+      await updateUser({ default_public_captures: value });
+
+      // Update the refreshedUser state locally without triggering a full refresh
+      if (refreshedUser) {
+        setRefreshedUser({
+          ...refreshedUser,
+          default_public_captures: value
+        });
       }
     } catch (error) {
+      // Revert the switch if there was an error
+      setDefaultPublicCaptures(!value);
       console.error("Error updating privacy setting:", error);
     }
   };
@@ -290,7 +299,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               className="absolute inset-0 bg-black/40"
               onPress={() => setModalVisible(false)}
             />
-            <View className="bg-surface rounded-t-3xl p-6 pb-10">
+            <View className="bg-background rounded-t-3xl p-6 pb-10">
               <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
 
               {loading || isRefreshing ? (
@@ -298,9 +307,17 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               ) : (
                 <>
                   <View className="flex-row items-center mb-8">
-                    <TouchableOpacity className="absolute top-0 right-0" onPress={handleDeleteAccount}>
-                      <Ionicons name="trash-outline" size={24} color={Colors.error.DEFAULT} />
-                    </TouchableOpacity>
+                    {/* Balance display */}
+                    <View className="absolute top-1/2 right-0 -translate-y-1/2 flex-row items-center">
+                      <View className="flex-row items-center justify-center bg-accent-200 border border-primary rounded-full px-3 py-1" style={{ minWidth: 54 }}>
+                        <Image
+                          source={retroCoin}
+                          style={{ width: 22, height: 22, marginRight: 4 }}
+                          contentFit="contain"
+                        />
+                        <Text className="text-primary font-lexend-bold text-lg">{refreshedUser?.balance ?? 0}</Text>
+                      </View>
+                    </View>
 
                     <TouchableOpacity onPress={pickImage} className="relative mr-4">
                       {loadingProfilePic || isUploading || isInitialLoading ? (
@@ -348,7 +365,12 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                           </TouchableOpacity>
                         </View>
                       )}
-                      <Text className="text-text-secondary font-lexend-medium">
+                      <Text
+                        className="text-text-secondary font-lexend-medium"
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={{ maxWidth: 180 }}
+                      >
                         {userEmail}
                       </Text>
                     </View>
@@ -416,6 +438,14 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                   >
                     <Ionicons name="help-circle-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
                     <Text className="text-text-primary font-lexend-medium">Help & Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="flex-row items-center py-4 border-t border-gray-100"
+                    onPress={handleDeleteAccount}
+                  >
+                    <Ionicons name="trash-outline" size={24} color={Colors.error.DEFAULT} style={{ marginRight: 12 }} />
+                    <Text className="text-error font-lexend-medium">Delete Account</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

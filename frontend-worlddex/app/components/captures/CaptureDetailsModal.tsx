@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { Capture } from "../../../database/types";
 import { fetchItem } from "../../../database/hooks/useItems";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { useUser } from "../../../database/hooks/useUsers";
 
 interface CaptureDetailsModalProps {
   visible: boolean;
@@ -25,6 +27,9 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   const [totalCaptures, setTotalCaptures] = useState<number | null>(null);
   const [isLoadingItem, setIsLoadingItem] = useState(false);
   const [isPublic, setIsPublic] = useState<boolean>(false);
+  const { session } = useAuth();
+  const { user: currentUser } = useUser(session?.user?.id || null);
+  const { user: previousOwner } = useUser(capture?.last_owner_id || null);
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -155,15 +160,15 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
             {onUpdate && (
               <View className="flex-row items-center justify-center mt-4 mb-2">
                 <View className="flex-row items-center bg-gray-100 px-4 py-2 rounded-lg">
-                  <Ionicons 
-                    name={isPublic ? "globe-outline" : "lock-closed-outline"} 
-                    size={20} 
-                    color="#000" 
+                  <Ionicons
+                    name={isPublic ? "globe-outline" : "lock-closed-outline"}
+                    size={20}
+                    color="#000"
                   />
                   <Text className="mx-2 font-lexend-medium">
                     {isPublic ? "Public" : "Private"}
                   </Text>
-                  <Switch 
+                  <Switch
                     value={isPublic}
                     onValueChange={handleTogglePublic}
                     trackColor={{ false: "#E0E0E0", true: "#BEE3F8" }}
@@ -173,9 +178,43 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
               </View>
             )}
 
+            <View className="flex-1" />
+
+            {capture.last_owner_id && capture.last_owner_id !== capture.user_id && (
+              <View className="flex-row justify-center mb-4">
+                <View className={`flex-row items-center px-4 py-2 rounded-lg ${capture.transaction_type === "buy-now" ? "bg-green-100" :
+                  capture.transaction_type === "auction" ? "bg-blue-100" :
+                    "bg-yellow-100"
+                  }`}>
+                  <Ionicons
+                    name={
+                      capture.transaction_type === "buy-now" ? "pricetag" :
+                        capture.transaction_type === "auction" ? "hammer" :
+                          "swap-horizontal"
+                    }
+                    size={18}
+                    color={
+                      capture.transaction_type === "buy-now" ? "#16A34A" :
+                        capture.transaction_type === "auction" ? "#2563EB" :
+                          "#F59E42"
+                    }
+                  />
+                  <Text className={`ml-2 text-sm font-lexend-medium ${capture.transaction_type === "buy-now" ? "text-green-700" :
+                    capture.transaction_type === "auction" ? "text-blue-700" :
+                      "text-yellow-700"
+                    }`}>
+                    {capture.transaction_type === "buy-now" ? "Bought from: " :
+                      capture.transaction_type === "auction" ? "Auctioned from: " :
+                        "Traded from: "}
+                    {previousOwner?.username || "Unknown user"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {onDelete && (
               <TouchableOpacity
-                className="mt-auto bg-red-500 py-3 rounded-lg items-center"
+                className="bg-red-500 py-3 rounded-lg items-center"
                 onPress={handleDelete}
               >
                 <Text className="text-white font-lexend-bold">Delete Capture</Text>

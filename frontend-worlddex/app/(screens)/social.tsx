@@ -19,9 +19,15 @@ import CaptureLeaderboard from "../components/leaderboard/CaptureLeaderboard";
 import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderboards";
 import { useTopCaptures } from "../../database/hooks/useCaptures";
 import CapturePost from "../components/social/CapturePost";
-import { Capture } from "../../database/types";
-import { useRouter } from "expo-router";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
+import MarketplaceFeed from "../components/marketplace/MarketplaceFeed";
+import { Listing } from "../../database/types";
+import CreateListingScreen from "../components/marketplace/CreateListingScreen";
+import { useAuth } from "../../src/contexts/AuthContext";
+import { useUser } from "../../database/hooks/useUsers";
+import { Image } from "expo-image";
+import retroCoin from "../../assets/images/retro_coin.png";
+import { supabase } from "../../database/supabase-client";
 
 const { width } = Dimensions.get("window");
 
@@ -50,9 +56,6 @@ const LeaderboardTab = () => {
 };
 
 const SocialTab = () => {
-  const router = useRouter();
-  const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
-  
   // Use the top captures hook with pagination
   const {
     captures,
@@ -87,15 +90,9 @@ const SocialTab = () => {
     // We'll implement proper navigation when routes are set up
   }, []);
 
-  const handleCapturePress = useCallback((capture: Capture) => {
-    setSelectedCapture(capture);
-    // For demonstration, just log the capture
-    console.log("Capture pressed:", capture.id);
-  }, []);
-
   const renderFooter = () => {
     if (!hasMore) return null;
-    
+
     return (
       <View className="py-4 items-center">
         <ActivityIndicator size="small" color="#3B82F6" />
@@ -108,7 +105,7 @@ const SocialTab = () => {
 
   const renderEmpty = () => {
     if (loading) return null;
-    
+
     return (
       <View className="py-20 items-center">
         <Ionicons name="images-outline" size={64} color="#CBD5E1" />
@@ -132,12 +129,11 @@ const SocialTab = () => {
           <CapturePost
             capture={item}
             onUserPress={handleUserPress}
-            onCapturePress={handleCapturePress}
             imageUrl={imageUrlMap[item.image_key]}
             imageLoading={imageUrlsLoading}
           />
         )}
-        contentContainerStyle={{ 
+        contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
           paddingBottom: 120,
@@ -160,7 +156,7 @@ const SocialTab = () => {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
       />
-      
+
       {/* Pagination indicator */}
       {pageCount > 1 && (
         <View className="absolute bottom-4 left-0 right-0 items-center">
@@ -176,32 +172,99 @@ const SocialTab = () => {
 };
 
 const MarketplaceTab = () => {
+  const { session } = useAuth();
+  const { user } = useUser(session?.user?.id || null);
+  const [localBalance, setLocalBalance] = useState(user?.balance ?? 0);
+  useEffect(() => {
+    setLocalBalance(user?.balance ?? 0);
+  }, [user?.balance]);
+
+  const refreshUserBalance = async () => {
+    if (!user?.id) return;
+    const { data, error } = await supabase
+      .from("users")
+      .select("balance")
+      .eq("id", user.id)
+      .single();
+    if (!error && data) setLocalBalance(data.balance);
+  };
+
+  const [createListingVisible, setCreateListingVisible] = useState(false);
+  const [marketplaceFeedKey, setMarketplaceFeedKey] = useState(0);
+  const [marketplaceRefreshKey, setMarketplaceRefreshKey] = useState(0);
+
+  const handleMarketplaceRefresh = () => {
+    setMarketplaceRefreshKey((k) => k + 1);
+    refreshUserBalance();
+  };
+
+  const refreshMarketplaceFeed = () => {
+    setMarketplaceFeedKey((k) => k + 1);
+  };
+
+  const handleUserPress = (userId: string) => {
+    // Navigate to user profile
+    console.log("Navigate to user profile:", userId);
+  };
+
   return (
-    <View className="flex-1 justify-center items-center">
-      <Ionicons name="cart-outline" size={48} color="#ccc" />
-      <Text className="text-lg font-lexend-medium text-gray-400 mt-4">
-        Marketplace Coming Soon
-      </Text>
+    <View className="flex-1 bg-background">
+      {/* Floating user balance icon */}
+      <View style={{ position: "absolute", top: 10, right: 20, zIndex: 20 }}>
+        <View className="flex-row items-center justify-center bg-accent-200 border border-primary rounded-full px-3 py-1 shadow-md" style={{ minWidth: 54 }}>
+          <Image
+            source={retroCoin}
+            style={{ width: 22, height: 22, marginRight: 4 }}
+            contentFit="contain"
+          />
+          <Text className="text-primary font-lexend-bold text-lg">{localBalance}</Text>
+        </View>
+      </View>
+      <MarketplaceFeed
+        onUserBalanceChanged={refreshUserBalance}
+        onRefreshed={handleMarketplaceRefresh}
+        key={marketplaceFeedKey}
+        refreshKey={marketplaceRefreshKey}
+        onUserPress={handleUserPress}
+      />
+
+      {/* Create Listing FAB */}
+      <TouchableOpacity
+        onPress={() => setCreateListingVisible(true)}
+        className="absolute bottom-6 right-6 w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg"
+      >
+        <Ionicons name="add" size={30} color="#FFF" />
+      </TouchableOpacity>
+
+      {/* Create Listing Modal */}
+      <CreateListingScreen
+        visible={createListingVisible}
+        onClose={() => setCreateListingVisible(false)}
+        onListingCreated={refreshMarketplaceFeed}
+      />
     </View>
   );
 };
 
 const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
-  const [activeTab, setActiveTab] = useState("Leaderboard");
-  const scrollX = useRef(new Animated.Value(0)).current;
+  // Changed initial state to "Social" instead of "Leaderboard"
+  const [activeTab, setActiveTab] = useState("Social");
+  const scrollX = useRef(new Animated.Value(width)).current; // Initialize to width (Social tab position)
   const scrollViewRef = useRef<ScrollView>(null);
-  const currentPageRef = useRef(0);
-  const router = useRouter();
+  const currentPageRef = useRef(1); // Initialize to 1 (Social tab index)
+  // Add a ref to track if we're responding to a tab click
+  const isTabClickRef = useRef(false);
 
-  // Reset to Leaderboard tab when modal opens
+  // Reset to Social tab when modal opens
   useEffect(() => {
     if (visible) {
-      setActiveTab("Leaderboard");
-      scrollX.setValue(0);
-      currentPageRef.current = 0;
-      // Ensure the scroll view is at position 0
+      setActiveTab("Social");
+      scrollX.setValue(width); // Set to width (Social tab position)
+      currentPageRef.current = 1; // Set to 1 (Social tab index)
+
+      // Ensure the scroll view is at the Social tab position
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: 0, animated: false });
+        scrollViewRef.current?.scrollTo({ x: width, animated: false });
       }, 100);
     }
   }, [visible]);
@@ -209,6 +272,9 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   // Effect to update active tab based on scroll position
   useEffect(() => {
     const listener = scrollX.addListener(({ value }) => {
+      // Skip updating the active tab if we're currently responding to a tab click
+      if (isTabClickRef.current) return;
+
       // Calculate which page we're on based on scroll position
       const pageIndex = Math.round(value / width);
 
@@ -230,7 +296,9 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   }, []);
 
   const handleTabPress = (tab: string) => {
-    setActiveTab(tab);
+    // Set the flag to indicate we're responding to a tab click
+    isTabClickRef.current = true;
+
     let pageIndex = 0;
 
     if (tab === "Leaderboard") {
@@ -241,11 +309,22 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
       pageIndex = 2;
     }
 
+    // Don't update the activeTab immediately
     currentPageRef.current = pageIndex;
     scrollViewRef.current?.scrollTo({
       x: pageIndex * width,
       animated: true
     });
+
+    // Update activeTab after a delay to match the scroll animation
+    setTimeout(() => {
+      setActiveTab(tab);
+
+      // Clear the flag after the animation is complete
+      setTimeout(() => {
+        isTabClickRef.current = false;
+      }, 50);
+    }, 200); // Most of the scroll animation duration
   };
 
   // Create pan responder for swipe gestures
@@ -280,7 +359,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
         <StatusBar barStyle="dark-content" />
-        
+
         {/* Header Tabs */}
         <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-6">
@@ -289,7 +368,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Leaderboard" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Leaderboard" ? "text-primary" : "text-gray-400"}`}
               >
                 Leaderboard
               </Text>
@@ -305,7 +384,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Social" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Social" ? "text-primary" : "text-gray-400"}`}
               >
                 Social
               </Text>
@@ -321,7 +400,7 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
               className="flex-row items-center"
             >
               <Text
-                className={`text-lg font-lexend-bold ml-2 ${activeTab === "Marketplace" ? "text-primary" : "text-gray-400"}`}
+                className={`text-lg font-lexend-bold ${activeTab === "Marketplace" ? "text-primary" : "text-gray-400"}`}
               >
                 Marketplace
               </Text>
@@ -376,4 +455,4 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   );
 };
 
-export default SocialModal; 
+export default SocialModal;

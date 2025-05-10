@@ -57,7 +57,8 @@ export const incrementUserField = async (
     | "reputation_points"
     | "capture_tier"
     | "daily_captures_used"
-    | "capture_streak",
+    | "capture_streak"
+    | "balance",
   value: number = 1
 ): Promise<boolean> => {
   // First get the current value
@@ -77,6 +78,13 @@ export const incrementUserField = async (
   const newValue = currentValue + value;
 
   return await updateUserField(userId, field, newValue);
+};
+
+export const updateUserBalance = async (
+  userId: string,
+  amount: number
+): Promise<boolean> => {
+  return incrementUserField(userId, "balance", amount);
 };
 
 export const isUsernameAvailable = async (
@@ -169,5 +177,22 @@ export const useUser = (userId: string | null) => {
     }
   };
 
-  return { user, loading, error, updateUser };
+  const updateBalance = async (amount: number): Promise<boolean> => {
+    if (!user || !userId) return false;
+
+    try {
+      const success = await updateUserBalance(userId, amount);
+      if (success && user) {
+        setUser({ ...user, balance: (user.balance || 0) + amount });
+      }
+      return success;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error("Unknown error updating balance")
+      );
+      return false;
+    }
+  };
+
+  return { user, loading, error, updateUser, updateBalance };
 };
