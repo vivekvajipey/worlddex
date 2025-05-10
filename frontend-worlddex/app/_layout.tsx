@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
+import { PostHogProvider } from "posthog-react-native";
 
 
 // Keep the splash screen visible while we fetch resources
@@ -107,10 +108,14 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <AppLayoutContent />
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <PostHogProvider apiKey="phc_EyLCiDrJnGPqXma1f21WFwgAmRf35KANelGXVzmDDz4" options={{
+      host: "https://us.i.posthog.com",
+    }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthProvider>
+          <AppLayoutContent />
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </PostHogProvider>
   );
 }
