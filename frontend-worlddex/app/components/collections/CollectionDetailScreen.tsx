@@ -12,6 +12,8 @@ import { useAuth } from "../../../src/contexts/AuthContext";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { deleteCollection } from "../../../database/hooks/useCollections";
+import { calculateAndAwardCoins } from "../../../database/hooks/useCoins";
+import CoinRewardModal from "../CoinRewardModal";
 
 interface CollectionDetailScreenProps {
   collectionId: string;
@@ -38,6 +40,8 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [toggleLoading, setToggleLoading] = useState(false);
   const [activeToggleLoading, setActiveToggleLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showCoinReward, setShowCoinReward] = useState(false);
+  const [coinReward, setCoinReward] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
 
   // Get keys for all collection items - use thumb_key with fallback to silhouette_key
   const itemImageKeys = useMemo(() => {
@@ -127,13 +131,22 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
 
         setCollectedItemIds(collectedIds);
         setCollectionProgress({ collected: collectedCount, total: refreshedItems.length });
+
+        // Check if user has completed the collection and award coins if applicable
+        if (collectedCount === refreshedItems.length && refreshedItems.length >= 2) {
+          const reward = await calculateAndAwardCoins(userId, collectionId);
+          if (reward.total > 0) {
+            setCoinReward(reward);
+            setShowCoinReward(true);
+          }
+        }
       } catch (err) {
         console.error("Error checking user collection items:", err);
       }
     };
 
     checkUserItems();
-  }, [userId, refreshedItems]);
+  }, [userId, refreshedItems, collectionId]);
 
   const toggleCollection = async () => {
     if (!userId || !collectionId) return;
@@ -378,6 +391,12 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
       statusBarTranslucent
     >
       {renderContent()}
+      <CoinRewardModal
+        visible={showCoinReward}
+        onClose={() => setShowCoinReward(false)}
+        total={coinReward.total}
+        rewards={coinReward.rewards}
+      />
     </Modal>
   );
 };

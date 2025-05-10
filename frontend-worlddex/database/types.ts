@@ -80,6 +80,7 @@ export type UserCollection = {
   collection_id: string;
   added_at?: string;
   is_active: boolean;
+  collected_reward: boolean;
 };
 
 export type CaptureLike = {

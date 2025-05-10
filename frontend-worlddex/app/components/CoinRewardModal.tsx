@@ -26,12 +26,14 @@ export default function CoinRewardModal({
           </Text>
           <View className="w-full mb-4">
             {rewards.map((r, i) => (
-              <View key={i} className="flex-row items-center mb-1">
-                <Image source={retroCoin} style={{ width: 18, height: 18, marginRight: 6 }} />
-                <Text className="text-text-primary font-lexend-medium text-base">
+              <View key={i} className="flex-row items-start mb-1">
+                <Image source={retroCoin} style={{ width: 18, height: 18, marginRight: 6, marginTop: 2 }} />
+                <Text className="text-primary font-lexend-medium text-base">
                   +{r.amount}
                 </Text>
-                <Text className="text-text-secondary ml-2">{r.reason}</Text>
+                <Text className="text-text-secondary ml-2 flex-1" numberOfLines={2}>
+                  {r.reason}
+                </Text>
               </View>
             ))}
           </View>

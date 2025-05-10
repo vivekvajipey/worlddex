@@ -128,9 +128,99 @@ async function checkCaptureMilestone(userId: string): Promise<CoinReward> {
   }
 }
 
+// Function to check collection completion reward
+async function checkCollectionCompletionReward(
+  userId: string,
+  collectionId: string
+): Promise<CoinReward> {
+  try {
+    // First check if user has already collected the reward for this collection
+    const { data: userCollection, error: userCollectionError } = await supabase
+      .from("user_collections")
+      .select("collected_reward")
+      .eq("user_id", userId)
+      .eq("collection_id", collectionId)
+      .single();
+
+    if (userCollectionError) {
+      console.error("Error checking user collection:", userCollectionError);
+      return { amount: 0, reason: "" };
+    }
+
+    // If user has already collected the reward, return no reward
+    if (userCollection?.collected_reward) {
+      return { amount: 0, reason: "" };
+    }
+
+    // Get all items in the collection
+    const { data: collectionItems, error: itemsError } = await supabase
+      .from("collection_items")
+      .select("id")
+      .eq("collection_id", collectionId);
+
+    if (itemsError || !collectionItems) {
+      console.error("Error fetching collection items:", itemsError);
+      return { amount: 0, reason: "" };
+    }
+
+    // If collection has 10 or fewer items, no reward
+    if (collectionItems.length <= 1) {
+      return { amount: 0, reason: "" };
+    }
+
+    // Get all items the user has collected in this collection
+    const { data: userItems, error: userError } = await supabase
+      .from("user_collection_items")
+      .select("collection_item_id")
+      .eq("user_id", userId)
+      .eq("collection_id", collectionId);
+
+    if (userError || !userItems) {
+      console.error("Error fetching user collection items:", userError);
+      return { amount: 0, reason: "" };
+    }
+
+    // Check if user has collected all items
+    const collectedItemIds = new Set(
+      userItems.map((item) => item.collection_item_id)
+    );
+    const hasAllItems = collectionItems.every((item) =>
+      collectedItemIds.has(item.id)
+    );
+
+    if (hasAllItems) {
+      // Calculate reward: 1 coin per item, capped at 100
+      const reward = Math.min(collectionItems.length, 100);
+
+      // Update the collected_reward flag
+      const { error: updateError } = await supabase
+        .from("user_collections")
+        .update({ collected_reward: true })
+        .eq("user_id", userId)
+        .eq("collection_id", collectionId);
+
+      if (updateError) {
+        console.error("Error updating collected_reward flag:", updateError);
+        return { amount: 0, reason: "" };
+      }
+
+      return {
+        amount: reward,
+        reason: `Completed collection with ${collectionItems.length} items!`,
+      };
+    }
+
+    return { amount: 0, reason: "" };
+  } catch (error) {
+    console.error("Error checking collection completion:", error);
+    return { amount: 0, reason: "" };
+  }
+}
+
 // Main function to calculate and award coins
 export async function calculateAndAwardCoins(
-  userId: string
+  userId: string,
+  collectionId?: string // Add optional collectionId parameter
 ): Promise<{ total: number; rewards: { amount: number; reason: string }[] }> {
   if (!userId) return { total: 0, rewards: [] };
 
@@ -157,6 +247,18 @@ export async function calculateAndAwardCoins(
     if (milestoneReward.amount > 0) {
       totalCoins += milestoneReward.amount;
       rewards.push(milestoneReward);
+    }
+
+    // Check collection completion reward if collectionId is provided
+    if (collectionId) {
+      const collectionReward = await checkCollectionCompletionReward(
+        userId,
+        collectionId
+      );
+      if (collectionReward.amount > 0) {
+        totalCoins += collectionReward.amount;
+        rewards.push(collectionReward);
+      }
     }
 
     // If we have coins to award, update the user's balance
