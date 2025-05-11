@@ -215,6 +215,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
+    setIdentificationComplete(false);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -350,6 +352,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     // Reset VLM state for new capture
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
+    setIdentificationComplete(false);
 
     // Start capture state - freeze UI
     setIsCapturing(true);
@@ -424,110 +427,171 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
-    if (capturedUri && session && !isRejectedRef.current) {
+    console.log("==== handleDismissPreview called ====");
+    console.log("Current state: identificationComplete:", identificationComplete, "vlmCaptureSuccess:", vlmCaptureSuccess, "identifiedLabel:", identifiedLabel, "isRejectedRef.current:", isRejectedRef.current);
+
+    // Only proceed if identification is complete, was successful, a label exists,
+    // there's a captured URI, a session, and the user didn't explicitly reject it.
+    if (
+      identificationComplete &&
+      vlmCaptureSuccess === true && // Explicitly check for true
+      identifiedLabel &&
+      capturedUri &&
+      session &&
+      !isRejectedRef.current
+    ) {
+      console.log("Proceeding with capture save logic.");
       try {
-        const label = identifiedLabel;
-        if (!label) throw new Error("Missing label for capture");
+        const label = identifiedLabel; // Already checked it's not null
 
         const item = await incrementOrCreateItem(label);
         if (!item) {
           console.warn(`Failed to create or increment item for label: ${label}`);
-          throw new Error("No matching item");
-        }
+          // Don't throw here, allow cleanup to happen, but log it as a more critical error.
+          // Consider if this case needs specific user feedback or just backend logging.
+          console.error("Critical: No matching item found or created for label:", label);
+          // Fall through to cleanup.
+        } else {
+          // Proceed with creating the capture record only if item was successfully obtained
+          const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
+            user_id: session.user.id,
+            item_id: item.id,
+            item_name: item.name,
+            capture_number: item.total_captures,
+            image_key: "", // This will be set by uploadCapturePhoto
+            is_public: isCapturePublic,
+            like_count: 0,
+            daily_upvotes: 0
+          };
 
-        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
-          user_id: session.user.id,
-          item_id: item.id,
-          item_name: item.name,
-          capture_number: item.total_captures,
-          image_key: "",
-          is_public: isCapturePublic,
-          like_count: 0,
-          daily_upvotes: 0
-        };
+          const captureRecord = await uploadCapturePhoto(
+            capturedUri,
+            "image/jpeg",
+            `${Date.now()}.jpg`,
+            capturePayload
+          );
 
-        const captureRecord = await uploadCapturePhoto(
-          capturedUri,
-          "image/jpeg",
-          `${Date.now()}.jpg`,
-          capturePayload
-        );
+          // Auto-add to user collections based on the identified label
+          if (captureRecord && identifiedLabel) { // Re-check identifiedLabel for safety, though it should be set
+            console.log("Checking if capture matches any collection items...");
 
-        // Auto-add to user collections based on the identified label
-        if (captureRecord && identifiedLabel) {
-          console.log("Checking if capture matches any collection items...");
+            try {
+              // Get all user collections
+              const userCollections = await fetchUserCollectionsByUser(session.user.id);
+              console.log(`Found ${userCollections.length} user collections to check`);
 
-          try {
-            // Get all user collections
-            const userCollections = await fetchUserCollectionsByUser(session.user.id);
-            console.log(`Found ${userCollections.length} user collections to check`);
+              // For each collection, find matching items
+              for (const userCollection of userCollections) {
+                // Get all items in this collection
+                const collectionItems = await fetchCollectionItems(userCollection.collection_id);
+                console.log(`Collection ${userCollection.collection_id} has ${collectionItems.length} items`);
 
-            // For each collection, find matching items
-            for (const userCollection of userCollections) {
-              // Get all items in this collection
-              const collectionItems = await fetchCollectionItems(userCollection.collection_id);
-              console.log(`Collection ${userCollection.collection_id} has ${collectionItems.length} items`);
+                // Filter items that match the identified label
+                const matchingItems = collectionItems.filter((ci: CollectionItem) => { // Explicitly type ci
+                  const itemNameMatch = ci.name?.toLowerCase() === identifiedLabel.toLowerCase();
+                  const displayNameMatch = ci.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
+                  return itemNameMatch || displayNameMatch;
+                });
 
-              // Filter items that match the identified label
-              const matchingItems = collectionItems.filter((item: CollectionItem) => {
-                const itemNameMatch = item.name?.toLowerCase() === identifiedLabel.toLowerCase();
-                const displayNameMatch = item.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
-                return itemNameMatch || displayNameMatch;
-              });
+                console.log(`Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
 
-              console.log(`Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
+                // Add matching items to user's collection
+                for (const collectionItem of matchingItems) { // Renamed to avoid conflict
+                  try {
+                    // Check if the user already has this item to avoid duplicates
+                    const hasItem = await checkUserHasCollectionItem(session.user.id, collectionItem.id);
 
-              // Add matching items to user's collection
-              for (const item of matchingItems) {
-                try {
-                  // Check if the user already has this item to avoid duplicates
-                  const hasItem = await checkUserHasCollectionItem(session.user.id, item.id);
-
-                  if (!hasItem) {
-                    await createUserCollectionItem({
-                      user_id: session.user.id,
-                      collection_item_id: item.id,
-                      capture_id: captureRecord.id,
-                      collection_id: item.collection_id,
-                    });
-                    console.log(`Added ${identifiedLabel} to collection ${item.collection_id}`);
-                  } else {
-                    console.log(`User already has item ${item.id} in their collection`);
+                    if (!hasItem) {
+                      await createUserCollectionItem({
+                        user_id: session.user.id,
+                        collection_item_id: collectionItem.id,
+                        capture_id: captureRecord.id,
+                        collection_id: collectionItem.collection_id,
+                      });
+                      console.log(`Added ${identifiedLabel} to collection ${collectionItem.collection_id}`);
+                    } else {
+                      console.log(`User already has item ${collectionItem.id} in their collection`);
+                    }
+                  } catch (collectionErr) {
+                    console.error("Error adding item to user collection:", collectionErr);
+                    // Continue with next item even if this one fails
                   }
-                } catch (collectionErr) {
-                  console.error("Error adding item to user collection:", collectionErr);
-                  // Continue with next item even if this one fails
                 }
               }
+            } catch (collectionErr) {
+              console.error("Error handling collections:", collectionErr);
             }
-          } catch (collectionErr) {
-            console.error("Error handling collections:", collectionErr);
+          }
+
+          // Increment daily_captures_used for the user
+          await incrementUserField(session.user.id, "daily_captures_used", 1);
+
+          // Calculate and award coins
+          const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
+          if (coinsAwarded > 0) {
+            setCoinModalData({ total: coinsAwarded, rewards });
+            setCoinModalVisible(true);
           }
         }
-
-        // Increment daily_captures_used for the user
-        await incrementUserField(session.user.id, "daily_captures_used", 1);
-
-        // Calculate and award coins
-        const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
-        if (coinsAwarded > 0) {
-          setCoinModalData({ total: coinsAwarded, rewards });
-          setCoinModalVisible(true);
-        }
       } catch (err) {
-        console.error("Upload failed:", err);
+        // This catch block now primarily handles errors from uploadCapturePhoto, incrementUserField, calculateAndAwardCoins, etc.
+        // The "Missing label" error should be prevented by the checks above.
+        console.error("Error during capture processing (upload, collections, coins):", err);
+        // Optionally, provide user feedback about the failure if it's not already handled.
+      }
+    } else {
+      // Log why we are not proceeding
+      if (isRejectedRef.current) {
+        console.log("Not proceeding with save: User rejected the capture.");
+      } else if (!identificationComplete) {
+        console.log("Not proceeding with save: Identification not complete.");
+      } else if (vlmCaptureSuccess !== true) {
+        console.log("Not proceeding with save: VLM capture was not successful.");
+      } else if (!identifiedLabel) {
+        console.log("Not proceeding with save: No identified label.");
+      } else if (!capturedUri) {
+        console.log("Not proceeding with save: No captured URI.");
+      } else if (!session) {
+        console.log("Not proceeding with save: No active session.");
       }
     }
 
-    // Reset all states regardless of whether it was accepted or rejected
+    // Reset all states regardless of whether it was accepted or rejected, or if processing happened
+    console.log("Resetting states in handleDismissPreview.");
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
-    setIsCapturePublic(true); // Reset to default
-    isRejectedRef.current = false;
-  }, [capturedUri, session, identifiedLabel, uploadCapturePhoto, reset, incrementOrCreateItem]);
+    setIdentificationComplete(false); // Reset for the next capture cycle
+    setIsCapturePublic(true); // Reset to default public status
+    isRejectedRef.current = false; // Reset rejection flag
+
+    // Reset the useIdentify hook's internal state if a reset function is available
+    if (reset) {
+      console.log("Calling reset on useIdentify hook.");
+      reset();
+    }
+  }, [
+    capturedUri,
+    session,
+    identifiedLabel,
+    uploadCapturePhoto,
+    reset, // Add reset to dependency array
+    incrementOrCreateItem,
+    isCapturePublic, // Add to dependency array
+    identificationComplete, // Add to dependency array
+    vlmCaptureSuccess, // Add to dependency array
+    // Dependencies for collection logic
+    fetchUserCollectionsByUser,
+    fetchCollectionItems,
+    checkUserHasCollectionItem,
+    createUserCollectionItem,
+    // Dependencies for coin logic
+    calculateAndAwardCoins,
+    // Dependencies for user field updates
+    incrementUserField
+  ]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading

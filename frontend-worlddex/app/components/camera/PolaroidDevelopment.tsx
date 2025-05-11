@@ -238,12 +238,15 @@ export default function PolaroidDevelopment({
     if (initialAnimationDone) {
       if (captureSuccess === true) {
         setIsCompleted(true);
-      } else {
+      } else if (captureSuccess === false) { // Explicitly check for false
+        // Only run rip animation if capture has definitively failed
+        // and not already ripping or minimizing
         if (!isRipping && !isMinimizing) {
           runRipAnimation();
         }
       }
-      // If captureSuccess is null, do nothing - wait for VLM result
+      // If captureSuccess is null, do nothing here. This means identification is still in progress.
+      // The UI will show "Identifying..." or the label with loading dots based on other props.
     }
   }, [captureSuccess, initialAnimationDone, isRipping, isMinimizing]);
 
