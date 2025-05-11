@@ -26,9 +26,50 @@ import {
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
+const IMAGE_COMPRESSION_LEVEL = 0.8; // JPEG compression level
 
 interface CameraScreenProps {
   capturesButtonClicked?: boolean;
+}
+
+// Helper function to resize and compress images
+async function processImageForVLM(
+  uri: string,
+  originalWidth: number,
+  originalHeight: number
+): Promise<ImageManipulator.ImageResult | null> {
+  try {
+    let resizeWidth = originalWidth;
+    let resizeHeight = originalHeight;
+
+    if (originalWidth > MAX_IMAGE_DIMENSION || originalHeight > MAX_IMAGE_DIMENSION) {
+      if (originalWidth > originalHeight) {
+        resizeWidth = MAX_IMAGE_DIMENSION;
+        resizeHeight = (originalHeight / originalWidth) * MAX_IMAGE_DIMENSION;
+      } else {
+        resizeHeight = MAX_IMAGE_DIMENSION;
+        resizeWidth = (originalWidth / originalHeight) * MAX_IMAGE_DIMENSION;
+      }
+    }
+
+    const manipulatedImage = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: Math.round(resizeWidth), height: Math.round(resizeHeight) } }],
+      {
+        compress: IMAGE_COMPRESSION_LEVEL,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+    console.log(
+      `Image processed for VLM: Original ${originalWidth}x${originalHeight} -> Resized ${Math.round(resizeWidth)}x${Math.round(resizeHeight)}, New Size: ${manipulatedImage.base64 ? manipulatedImage.base64.length * 3/4 / 1024 : 'N/A'} KB`
+    );
+    return manipulatedImage;
+  } catch (error) {
+    console.error("Error processing image for VLM:", error);
+    return null;
+  }
 }
 
 export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
@@ -220,8 +261,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 1,
-        base64: true, // Need base64 for VLM
+        quality: 1, // Take high quality initially
+        base64: false, // No need for base64 at this stage
         skipProcessing: false
       });
 
@@ -271,14 +312,12 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
         aspectRatio
       });
 
-      // Ensure we have a valid crop area - use a smaller minimum size
-      // Some devices might have different pixel densities causing small lasso to be below threshold
       if (cropWidth < 5 || cropHeight < 5) {
         throw new Error("Selection area too small");
       }
 
       // Crop the image
-      const manipResult = await ImageManipulator.manipulateAsync(
+      const cropResult = await ImageManipulator.manipulateAsync(
         photo.uri,
         [
           {
@@ -290,41 +329,42 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
             },
           },
         ],
-        { compress: 0.95, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        // No need for base64 or high compression here yet, just get the cropped URI
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Store the captured URI for the animation
-      setCapturedUri(manipResult.uri);
+      // Store the captured URI for the animation (use the cropped one)
+      setCapturedUri(cropResult.uri);
+
+      // Resize and compress the CROPPED image for VLM
+      const vlmImage = await processImageForVLM(cropResult.uri, cropResult.width, cropResult.height);
+
+      if (!vlmImage || !vlmImage.base64) {
+        console.warn("Failed to process cropped image for VLM or missing base64 data.");
+        setVlmCaptureSuccess(false);
+        setIsCapturing(false); // Allow new capture
+        setCapturedUri(null); // Clear preview
+        cameraCaptureRef.current?.resetLasso();
+        return;
+      }
 
       // VLM Identification
-      if (manipResult.base64) {
-        try {
-          // Format location data for the API
-          const gpsData = location ? {
-            lat: location.latitude,
-            lng: location.longitude
-          } : null;
+      try {
+        const gpsData = location ? {
+          lat: location.latitude,
+          lng: location.longitude
+        } : null;
+        console.log("Sending location with capture:", gpsData);
 
-          console.log("Sending location with capture:", gpsData);
-
-          // Use new identify function instead of identifyPhoto
-          await identify({
-            base64Data: manipResult.base64,
-            contentType: "image/jpeg",
-            gps: gpsData
-          });
-
-          // success/failure will be set by the useEffect above
-        } catch (idError) {
-          console.error("VLM Identification API Error:", idError);
-          setVlmCaptureSuccess(false);
-        }
-      } else {
-        console.warn("No base64 data available for VLM identification.");
-        setVlmCaptureSuccess(false); // Treating missing base64 as capture failure
+        await identify({
+          base64Data: vlmImage.base64,
+          contentType: "image/jpeg",
+          gps: gpsData
+        });
+      } catch (idError) {
+        console.error("VLM Identification API Error:", idError);
+        setVlmCaptureSuccess(false);
       }
-      // ----------------------------------------------------
-
     } catch (error) {
       console.error("Error capturing selected area:", error);
       setIsCapturing(false);
@@ -367,8 +407,8 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
     try {
       // Take a photo of the entire screen
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 1,
-        base64: true,
+        quality: 1, // Take high quality initially
+        base64: false, // No need for base64 at this stage
         skipProcessing: false
       });
 
@@ -376,44 +416,44 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
         throw new Error("Failed to capture photo");
       }
 
-      // Set full screen capture box dimensions to allow for polaroid animation
-      // Center the capture box on the screen
+      // Store the captured URI for the animation (use the original full res for polaroid preview)
+      setCapturedUri(photo.uri);
+
+      // Set full screen capture box dimensions for polaroid animation
       setCaptureBox({
         x: SCREEN_WIDTH * 0.1,
         y: SCREEN_HEIGHT * 0.2,
         width: SCREEN_WIDTH * 0.8,
-        height: SCREEN_WIDTH * 0.8, // Make it square by default
+        height: SCREEN_WIDTH * 0.8,
         aspectRatio: 1
       });
 
-      // Store the captured URI for the animation
-      setCapturedUri(photo.uri);
+      // Resize and compress the FULL image for VLM
+      const vlmImage = await processImageForVLM(photo.uri, photo.width, photo.height);
 
-      // VLM Identification with the full photo
-      if (photo.base64) {
-        try {
-          // Format location data for the API
-          const gpsData = location ? {
-            lat: location.latitude,
-            lng: location.longitude
-          } : null;
+      if (!vlmImage || !vlmImage.base64) {
+        console.warn("Failed to process full screen image for VLM or missing base64 data.");
+        setVlmCaptureSuccess(false);
+        setIsCapturing(false); // Allow new capture
+        setCapturedUri(null); // Clear preview
+        return;
+      }
 
-          console.log("Sending location with full screen capture:", gpsData);
+      // VLM Identification with the processed full photo
+      try {
+        const gpsData = location ? {
+          lat: location.latitude,
+          lng: location.longitude
+        } : null;
+        console.log("Sending location with full screen capture:", gpsData);
 
-          // Use new identify function instead of identifyPhoto
-          await identify({
-            base64Data: photo.base64,
-            contentType: "image/jpeg",
-            gps: gpsData
-          });
-
-          // success/failure will be set by the useEffect above
-        } catch (vlmApiError) {
-          console.error("VLM Identification API Error:", vlmApiError);
-          setVlmCaptureSuccess(false);
-        }
-      } else {
-        console.warn("No base64 data available for VLM identification.");
+        await identify({
+          base64Data: vlmImage.base64,
+          contentType: "image/jpeg",
+          gps: gpsData
+        });
+      } catch (vlmApiError) {
+        console.error("VLM Identification API Error:", vlmApiError);
         setVlmCaptureSuccess(false);
       }
     } catch (error) {
