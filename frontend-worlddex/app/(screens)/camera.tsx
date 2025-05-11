@@ -148,12 +148,17 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
   // Two–tier ID -----------------------------------------------
   useEffect(() => {
-    console.log("==== TIER RESULTS UPDATED ====");
-    console.log("Tier1:", tier1 ? JSON.stringify(tier1) : "null");
-    console.log("Tier2:", tier2 ? JSON.stringify(tier2) : "null");
+    console.log("==== TIER RESULTS UPDATED (camera.tsx hook) ====");
+    const currentTier1 = tier1;
+    const currentTier2 = tier2;
+    const currentIdLoading = idLoading;
+
+    console.log("Current Tier1:", currentTier1 ? JSON.stringify(currentTier1) : "null");
+    console.log("Current Tier2:", currentTier2 ? JSON.stringify(currentTier2) : "null");
+    console.log("Current idLoading:", currentIdLoading);
 
     // Tier-2 overrides Tier-1 if it exists
-    const label = tier2?.label ?? tier1?.label ?? null;
+    const label = currentTier2?.label ?? currentTier1?.label ?? null;
     console.log("Selected label for display:", label);
 
     if (label) {
@@ -163,9 +168,29 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
 
       // If we have tier2 result or tier1 result with status "done" (no tier2 needed)
       // then identification is complete
-      if (tier2 || (tier1 && !idLoading)) {
-        console.log("Identification is now complete");
+      if (currentTier2 || (currentTier1 && !currentIdLoading)) {
+        console.log("Identification is now complete (SUCCESS).");
         setIdentificationComplete(true);
+      } else if (currentIdLoading) {
+        // Still loading (e.g. tier1 received, waiting for potential tier2)
+        // Keep identificationComplete as is or set to false if it wasn't already processing a multi-tier result
+        console.log("Have a label, but still loading (potentially waiting for Tier2). Identification NOT YET fully complete.");
+        // setIdentificationComplete(false); // Explicitly false if we expect more
+      }
+    } else {
+      // No label found
+      if (!currentIdLoading) {
+        // Identification attempt is finished (not loading anymore) and no label was found
+        console.log("Identification is now complete (FAILURE - no label found).");
+        setIdentifiedLabel(null);    // Ensure it's null
+        setVlmCaptureSuccess(false); // Mark as unsuccessful
+        setIdentificationComplete(true); // Identification process is complete
+      } else {
+        // Still loading, and no label yet. VLM might still be processing.
+        console.log("No label yet, and still loading. Waiting for VLM response.");
+        // Do not change vlmCaptureSuccess from its initial null state yet (should be null).
+        // Do not change identifiedLabel yet.
+        // setIdentificationComplete(false); // Mark as not complete while loading
       }
     }
   }, [tier1, tier2, idLoading]);
