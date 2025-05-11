@@ -24,6 +24,7 @@ import {
   checkUserHasCollectionItem
 } from "../../database/hooks/useUserCollectionItems";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
+import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
@@ -33,46 +34,8 @@ interface CameraScreenProps {
   capturesButtonClicked?: boolean;
 }
 
-// Helper function to resize and compress images
-async function processImageForVLM(
-  uri: string,
-  originalWidth: number,
-  originalHeight: number
-): Promise<ImageManipulator.ImageResult | null> {
-  try {
-    let resizeWidth = originalWidth;
-    let resizeHeight = originalHeight;
-
-    if (originalWidth > MAX_IMAGE_DIMENSION || originalHeight > MAX_IMAGE_DIMENSION) {
-      if (originalWidth > originalHeight) {
-        resizeWidth = MAX_IMAGE_DIMENSION;
-        resizeHeight = (originalHeight / originalWidth) * MAX_IMAGE_DIMENSION;
-      } else {
-        resizeHeight = MAX_IMAGE_DIMENSION;
-        resizeWidth = (originalWidth / originalHeight) * MAX_IMAGE_DIMENSION;
-      }
-    }
-
-    const manipulatedImage = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: Math.round(resizeWidth), height: Math.round(resizeHeight) } }],
-      {
-        compress: IMAGE_COMPRESSION_LEVEL,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: true,
-      }
-    );
-    console.log(
-      `Image processed for VLM: Original ${originalWidth}x${originalHeight} -> Resized ${Math.round(resizeWidth)}x${Math.round(resizeHeight)}, New Size: ${manipulatedImage.base64 ? manipulatedImage.base64.length * 3/4 / 1024 : 'N/A'} KB`
-    );
-    return manipulatedImage;
-  } catch (error) {
-    console.error("Error processing image for VLM:", error);
-    return null;
-  }
-}
-
 export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
+  const { processImageForVLM } = useImageProcessor();
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
