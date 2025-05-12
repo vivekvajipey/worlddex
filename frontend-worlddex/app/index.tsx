@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
@@ -9,14 +9,19 @@ import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
 import CapturesModal from './(screens)/personal-captures';
 import SocialModal from './(screens)/social';
+import { checkServerStatus } from '../src/services/apiService';
 
 // This is the home route component at "/"
 export default function HomeScreen() {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading: authLoading } = useAuth();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [capturesModalVisible, setCapturesModalVisible] = useState(false);
   const [socialModalVisible, setSocialModalVisible] = useState(false);
   const [capturesButtonClicked, setCapturesButtonClicked] = useState(false);
+
+  // Server connection state
+  const [isServerConnected, setIsServerConnected] = useState(true);
+  const [isCheckingServer, setIsCheckingServer] = useState(true);
 
   // Handler for when the captures button is clicked
   const handleCapturesButtonClick = useCallback(() => {
@@ -24,9 +29,27 @@ export default function HomeScreen() {
     setCapturesModalVisible(true);
   }, []);
 
-  // If loading, show nothing 
+  // Effect to check server status on mount or when session changes
+  useEffect(() => {
+    const performHealthCheck = async () => {
+      if (session && !authLoading) {
+        setIsCheckingServer(true);
+        const status = await checkServerStatus();
+        setIsServerConnected(status);
+        setIsCheckingServer(false);
+      }
+    };
+
+    performHealthCheck();
+
+    // Optional: Set up an interval to periodically check server status
+    const intervalId = setInterval(performHealthCheck, 5000); // Check every 30 seconds
+    return () => clearInterval(intervalId); // Cleanup interval on unmount
+  }, [session, authLoading]);
+
+  // If auth is loading, show nothing
   // (the splash screen is handled by _layout.tsx)
-  if (isLoading) {
+  if (authLoading) {
     return null;
   }
 
@@ -38,7 +61,11 @@ export default function HomeScreen() {
   // For authenticated users, show the home screen content
   return (
     <View className="flex-1">
-      <CameraScreen capturesButtonClicked={capturesButtonClicked} />
+      <CameraScreen 
+        capturesButtonClicked={capturesButtonClicked} 
+        isServerConnected={isServerConnected}
+        isCheckingServer={isCheckingServer}
+      />
       <Profile onOpenFeedback={() => setFeedbackVisible(true)} />
       <FeedbackForm
         visible={feedbackVisible}

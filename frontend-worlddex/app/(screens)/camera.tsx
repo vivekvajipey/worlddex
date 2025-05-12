@@ -5,6 +5,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -32,10 +33,17 @@ const IMAGE_COMPRESSION_LEVEL = 0.8; // JPEG compression level
 
 interface CameraScreenProps {
   capturesButtonClicked?: boolean;
+  isServerConnected?: boolean;
+  isCheckingServer?: boolean;
 }
 
-export default function CameraScreen({ capturesButtonClicked = false }: CameraScreenProps) {
+export default function CameraScreen({ 
+  capturesButtonClicked = false, 
+  isServerConnected = true,
+  isCheckingServer = false,
+}: CameraScreenProps) {
   const { processImageForVLM } = useImageProcessor();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
@@ -205,6 +213,18 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   ) => {
     if (!cameraRef.current || points.length < 3) return;
 
+    // Prevent capture if offline or checking
+    if (isCheckingServer) {
+      Alert.alert("Connecting...", "Please wait while we check the server connection.");
+      cameraCaptureRef.current?.resetLasso();
+      return;
+    }
+    if (!isServerConnected) {
+      Alert.alert("Offline", "Cannot start capture. Please check your internet connection and try again.");
+      cameraCaptureRef.current?.resetLasso();
+      return;
+    }
+
     // Check if user has reached their daily capture limit
     if (user && user.daily_captures_used >= 10) {
       Alert.alert(
@@ -336,11 +356,21 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
     if (!cameraCaptureRef.current) return;
+
+    // Prevent capture if offline or checking
+    if (isCheckingServer) {
+      Alert.alert("Connecting...", "Please wait while we check the server connection.");
+      return;
+    }
+    if (!isServerConnected) {
+      Alert.alert("Offline", "Cannot start capture. Please check your internet connection and try again.");
+      return;
+    }
 
     // Check if user has reached their daily capture limit
     if (user && user.daily_captures_used >= 10) {
@@ -426,7 +456,7 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -634,6 +664,24 @@ export default function CameraScreen({ capturesButtonClicked = false }: CameraSc
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1">
+        {/* Server Status Indicator - Styled as a rounded rectangle */}
+        {isCheckingServer && (
+          <View 
+            className="absolute self-center bg-yellow-500 px-4 py-2 rounded-lg shadow-md z-50"
+            style={{ top: insets.top + 8 }} // Position below status bar with a small margin
+          >
+            <Text className="text-white font-lexend-bold text-sm">Checking connection...</Text>
+          </View>
+        )}
+        {!isCheckingServer && !isServerConnected && (
+          <View 
+            className="absolute self-center bg-red-600 px-4 py-2 rounded-lg shadow-md z-50"
+            style={{ top: insets.top + 8 }} // Position below status bar with a small margin
+          >
+            <Text className="text-white font-lexend-bold text-sm">Offline - Capture unavailable</Text>
+          </View>
+        )}
+
         {/* Camera capture component */}
         <CameraCapture
           ref={cameraCaptureRef}

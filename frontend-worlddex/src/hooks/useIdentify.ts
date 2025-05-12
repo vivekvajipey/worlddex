@@ -2,9 +2,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { IdentifyRequest, IdentifyResponse, Tier1Result, Tier2Result } from "../../../shared/types/identify";
 import { API_URL } from "../config";
 
-// pick whichever EventSource impl you installed ⬇️
-import EventSource from "react-native-sse";         // <-- if you chose react-native-sse
-// import { EventSourcePolyfill as EventSource } from "event-source-polyfill";
+import EventSource from "react-native-sse";
 
 // EventSource type augmentation to allow string event types
 declare module "react-native-sse" {

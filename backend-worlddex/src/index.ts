@@ -22,6 +22,11 @@ app.use((req, res, next) => {
 app.use('/api/photos', photoRoutes);
 app.use('/api/identify', identifyRoutes);
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: "ok", message: "Server is healthy" });
+});
+
 app.get('/api/queues/status', async (req, res) => {
   try {
     const counts = await tier2Queue.getJobCounts();
