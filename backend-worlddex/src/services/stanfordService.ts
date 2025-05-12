@@ -1,6 +1,7 @@
 import { OpenAI } from "openai";
 import { Tier2Result } from "../../../shared/types/identify";
 import { calculateDistance } from "../utils/geoUtils";
+import { STANFORD_LANDMARKS, StanfordLandmark } from "../data/stanford-landmarks";
 
 // Get API key - with logging to help debug
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -12,132 +13,161 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 /**
- * Stanford landmark definition with coordinates and identification radius
- */
-interface StanfordLandmark {
-  id: string;
-  name: string;
-  coordinates: { lat: number; lng: number };
-  radius: number; // in meters
-}
-
-/**
- * List of Stanford landmarks with their coordinates and identification radii
- * Radii are increased to account for landmark visibility from a distance
- */
-const STANFORD_LANDMARKS: StanfordLandmark[] = [
-  {
-    id: "the-claw",
-    name: "The Claw (White Memorial Fountain)",
-    coordinates: { lat: 37.425148859146304, lng: -122.16927807280942 },
-    radius: 100 // meters - increased from 30
-  },
-  {
-    id: "hoover-tower",
-    name: "Hoover Tower",
-    coordinates: { lat: 37.427467, lng: -122.166962 },
-    radius: 300 // meters - significantly increased since visible from far away
-  },
-  {
-    id: "memorial-church",
-    name: "Memorial Church",
-    coordinates: { lat: 37.426751, lng: -122.170054 },
-    radius: 200 // meters - increased from 40
-  },
-  {
-    id: "cantor-museum",
-    name: "Cantor Museum",
-    coordinates: { lat: 37.430919, lng: -122.167281 },
-    radius: 150 // meters - increased from 40
-  },
-  {
-    id: "main-quad",
-    name: "Main Quad",
-    coordinates: { lat: 37.427238, lng: -122.169438 },
-    radius: 200 // meters - increased from 80
-  },
-  {
-    id: "green-library",
-    name: "Green Library",
-    coordinates: { lat: 37.426933, lng: -122.165844 },
-    radius: 150 // meters - increased from 40
-  }
-];
-
-/**
  * Get landmarks that are near the user's current location
  * @param gps User's GPS coordinates
  * @returns Array of landmarks within their defined radii of the user
  */
-function getNearbyLandmarks(gps: { lat: number; lng: number }): StanfordLandmark[] {
+function getNearbyLandmarks(gps?: { lat: number; lng: number } | null): StanfordLandmark[] {
+  if (!gps) {
+    // Without GPS, consider all landmarks (useful for testing)
+    return STANFORD_LANDMARKS;
+  }
+  
+  // Filter landmarks within their defined radii
   return STANFORD_LANDMARKS.filter(landmark => {
     const distance = calculateDistance(
-      gps.lat, gps.lng,
-      landmark.coordinates.lat, landmark.coordinates.lng
+      gps.lat, 
+      gps.lng, 
+      landmark.coordinates.lat, 
+      landmark.coordinates.lng
     );
-    return distance <= landmark.radius;
+    
+    // Convert to meters (calculateDistance returns km)
+    const distanceMeters = distance * 1000;
+    return distanceMeters <= landmark.radius;
   });
 }
 
-/**
- * Identify a Stanford landmark from an image, with optional GPS filtering
- * @param base64Data Base64-encoded image data
- * @param gps Optional GPS coordinates of the image
- * @returns Tier2Result with landmark name or null if not identified
- */
-export async function identifyLandmark(
-  base64Data: string,
-  gps?: { lat: number; lng: number } | null
-): Promise<Tier2Result> {
-  // If GPS coordinates are provided, only include landmarks that are within range
-  const landmarks = gps ? getNearbyLandmarks(gps) : STANFORD_LANDMARKS;
+// Build name lookup map for exact matching
+const landmarkNameToId: Record<string, string> = {};
+const landmarkIdToName: Record<string, string> = {};
+
+// Initialize the lookup maps
+for (const landmark of STANFORD_LANDMARKS) {
+  landmarkNameToId[landmark.name.toLowerCase()] = landmark.id;
+  landmarkIdToName[landmark.id.toLowerCase()] = landmark.name;
   
-  // If there are no nearby landmarks and GPS was provided, return unknown
-  if (gps && landmarks.length === 0) {
-    console.log("No Stanford landmarks within range of user's location");
+  // Add special cases for known mismatches
+  if (landmark.id === "claw-fountain") {
+    landmarkNameToId["the claw"] = "claw-fountain";
+    landmarkNameToId["white memorial fountain"] = "claw-fountain";
+  }
+  if (landmark.id === "dish-turkey") {
+    landmarkNameToId["dish trail turkeys"] = "dish-turkey";
+    landmarkNameToId["wild turkeys"] = "dish-turkey";
+  }
+  if (landmark.id === "rodin-sculptures") {
+    landmarkNameToId["rodin sculpture garden"] = "rodin-sculptures";
+    landmarkNameToId["rodin garden"] = "rodin-sculptures";
+  }
+  if (landmark.id === "stone-sphere") {
+    landmarkNameToId["stone sphere fountain"] = "stone-sphere";
+    landmarkNameToId["floating sphere"] = "stone-sphere";
+    landmarkNameToId["granite sphere"] = "stone-sphere";
+  }
+}
+
+/**
+ * Identify a Stanford landmark from a photo
+ */
+export async function identifyLandmark(base64Data: string, gps?: { lat: number; lng: number } | null): Promise<Tier2Result> {
+  const nearbyLandmarks = getNearbyLandmarks(gps);
+  
+  if (nearbyLandmarks.length === 0) {
+    console.log("No nearby landmarks found");
     return {
       label: null,
-      provider: "GPS+OpenAI",
-      confidence: 1
+      provider: "Stanford GPS+VLM",
+      confidence: 0
     };
   }
   
-  // Build a prompt with filtered landmarks
-  const landmarkList = landmarks.map(l => `- ${l.name}`).join("\n");
+  console.log("Stanford landmarks being considered:", nearbyLandmarks.map(l => l.name));
   
-  const prompt = `
-You are a Stanford University tour guide. Based on the image, identify which of the following Stanford landmarks is shown:
-${landmarkList}
-
-If none of these landmarks are in the image, respond with "Unknown".
-Respond ONLY with the exact name of the landmark from the list or "Unknown".`;
-
-  console.log("Stanford landmarks being considered:", landmarks.map(l => l.name));
-
   try {
-    const chat = await openai.chat.completions.create({
-      model: "gpt-4.1-mini-2025-04-14",
-      temperature: 0,
-      max_tokens: 15,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
-        ]
-      }]
+    // Call OpenAI Vision API to identify the landmark
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert Stanford University landmark identifier. Given an image, identify which Stanford landmark it shows. Respond with ONLY the exact name of the landmark from the provided list, nothing else."
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Which Stanford landmark is shown in this image? Choose ONLY from this list: ${nearbyLandmarks.map(l => `"${l.name}"`).join(", ")}. 
+              
+Respond with only the exact name of the landmark, nothing else. Do not include any explanations or descriptions.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Data}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 50
     });
-
-    const response = chat.choices[0].message.content?.trim() || null;
-    console.log("Stanford landmark identification response:", response);
+    
+    const identifiedName = response.choices[0].message.content?.trim() || "";
+    console.log("Stanford landmark identification response:", identifiedName);
+    
+    // Find the landmark by name (case-insensitive)
+    const identifiedNameLower = identifiedName.toLowerCase();
+    let landmarkId: string | undefined = landmarkNameToId[identifiedNameLower];
+    
+    // If no exact match found, try to find the most similar landmark name
+    if (!landmarkId) {
+      // Look for partial matches (e.g., if model returns just "The Claw" instead of full name)
+      for (const [name, id] of Object.entries(landmarkNameToId)) {
+        if (identifiedNameLower.includes(name) || name.includes(identifiedNameLower)) {
+          landmarkId = id;
+          break;
+        }
+      }
+    }
+    
+    // If still no match, use the best guess from the model
+    if (!landmarkId) {
+      console.log("No matching landmark found for:", identifiedName);
+      return {
+        label: null,
+        provider: "Stanford GPS+VLM",
+        confidence: 0
+      };
+    }
+    
+    // Normalize the identifiedName to match a known landmark
+    const landmark = STANFORD_LANDMARKS.find(l => l.id === landmarkId);
+    
+    if (!landmark) {
+      return {
+        label: null,
+        provider: "Stanford GPS+VLM",
+        confidence: 0
+      };
+    }
+    
+    // Store landmark metadata in a global cache for collection reference
+    // (This would be expanded in a production system)
+    console.log("Identified landmark:", landmark.name);
     
     return {
-      label: response === "Unknown" ? null : response,
+      label: landmark.name,
       provider: "Stanford GPS+VLM",
-      confidence: 1 // Fixed confidence as requested
+      confidence: 1.0
     };
   } catch (error) {
     console.error("Error identifying Stanford landmark:", error);
-    throw error;
+    return {
+      label: null,
+      provider: "Stanford GPS+VLM",
+      confidence: 0
+    };
   }
 }
