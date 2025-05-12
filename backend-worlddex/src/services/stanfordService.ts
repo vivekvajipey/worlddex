@@ -13,29 +13,63 @@ if (!OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 /**
- * Get landmarks that are near the user's current location
+ * Get landmarks that are near the user's current location with distance information
  * @param gps User's GPS coordinates
- * @returns Array of landmarks within their defined radii of the user
+ * @returns Array of landmarks within their defined radii of the user, with distance information
  */
-function getNearbyLandmarks(gps?: { lat: number; lng: number } | null): StanfordLandmark[] {
+function getNearbyLandmarksWithDistance(gps?: { lat: number; lng: number } | null): Array<StanfordLandmark & { distanceMeters?: number, distanceMiles?: number }> {
   if (!gps) {
     // Without GPS, consider all landmarks (useful for testing)
     return STANFORD_LANDMARKS;
   }
   
-  // Filter landmarks within their defined radii
-  return STANFORD_LANDMARKS.filter(landmark => {
-    const distance = calculateDistance(
+  console.log(`Finding landmarks near coordinates: ${gps.lat}, ${gps.lng}`);
+  
+  // Calculate distance to each landmark and filter by radius
+  const landmarksWithDistance = STANFORD_LANDMARKS.map(landmark => {
+    // Calculate distance in kilometers
+    const distanceKm = calculateDistance(
       gps.lat, 
       gps.lng, 
       landmark.coordinates.lat, 
       landmark.coordinates.lng
     );
     
-    // Convert to meters (calculateDistance returns km)
-    const distanceMeters = distance * 1000;
-    return distanceMeters <= landmark.radius;
+    // Convert to meters and miles
+    const distanceMeters = distanceKm * 1000;
+    const distanceMiles = distanceKm * 0.621371;
+    
+    const radiusKm = landmark.radius / 1000; // Convert landmark radius from meters to km
+    console.log(`Landmark: ${landmark.name}, Distance: ${distanceKm.toFixed(3)}km, Radius: ${radiusKm.toFixed(3)}km`);
+    
+    return {
+      ...landmark,
+      distanceMeters,
+      distanceMiles
+    };
   });
+  
+  // For testing purposes, use a much larger radius (1km) to ensure we get some matches
+  // In production, this would be the actual radius from the landmark data
+  const TEST_MODE = true;
+  const TEST_RADIUS_KM = 1; // 1 kilometer radius for testing
+  
+  const nearbyLandmarks = landmarksWithDistance.filter(landmark => {
+    if (TEST_MODE) {
+      // In test mode, use a fixed radius for all landmarks
+      const isInRange = (landmark.distanceMeters! / 1000) <= TEST_RADIUS_KM;
+      console.log(`Landmark: ${landmark.name}, In Range: ${isInRange}`);
+      return isInRange;
+    } else {
+      // In production, use the landmark's actual radius
+      const isInRange = landmark.distanceMeters! <= landmark.radius;
+      console.log(`Landmark: ${landmark.name}, In Range: ${isInRange}`);
+      return isInRange;
+    }
+  });
+  
+  console.log(`Found ${nearbyLandmarks.length} landmarks in range`);
+  return nearbyLandmarks;
 }
 
 // Build name lookup map for exact matching
@@ -51,6 +85,7 @@ for (const landmark of STANFORD_LANDMARKS) {
   if (landmark.id === "claw-fountain") {
     landmarkNameToId["the claw"] = "claw-fountain";
     landmarkNameToId["white memorial fountain"] = "claw-fountain";
+    landmarkNameToId["the claw (white memorial fountain)"] = "claw-fountain";
   }
   if (landmark.id === "dish-turkey") {
     landmarkNameToId["dish trail turkeys"] = "dish-turkey";
@@ -60,10 +95,17 @@ for (const landmark of STANFORD_LANDMARKS) {
     landmarkNameToId["rodin sculpture garden"] = "rodin-sculptures";
     landmarkNameToId["rodin garden"] = "rodin-sculptures";
   }
-  if (landmark.id === "stone-sphere") {
+  if (landmark.id === "stone-sphere" || landmark.id === "engineering-quad-planets") {
+    // Both IDs map to the same landmark name now
     landmarkNameToId["stone sphere fountain"] = "stone-sphere";
     landmarkNameToId["floating sphere"] = "stone-sphere";
     landmarkNameToId["granite sphere"] = "stone-sphere";
+    landmarkNameToId["engineering quad planets"] = "engineering-quad-planets";
+    landmarkNameToId["stone spheres"] = "stone-sphere"; // Primary name maps to stone-sphere
+  }
+  if (landmark.id === "lake-lag") {
+    landmarkNameToId["lake lagunita"] = "lake-lag";
+    landmarkNameToId["lake lag"] = "lake-lag";
   }
 }
 
@@ -71,7 +113,7 @@ for (const landmark of STANFORD_LANDMARKS) {
  * Identify a Stanford landmark from a photo
  */
 export async function identifyLandmark(base64Data: string, gps?: { lat: number; lng: number } | null): Promise<Tier2Result> {
-  const nearbyLandmarks = getNearbyLandmarks(gps);
+  const nearbyLandmarks = getNearbyLandmarksWithDistance(gps);
   
   if (nearbyLandmarks.length === 0) {
     console.log("No nearby landmarks found");
@@ -82,9 +124,22 @@ export async function identifyLandmark(base64Data: string, gps?: { lat: number; 
     };
   }
   
-  console.log("Stanford landmarks being considered:", nearbyLandmarks.map(l => l.name));
+  // Sort landmarks by distance if GPS is available
+  if (gps) {
+    nearbyLandmarks.sort((a, b) => (a.distanceMeters || 0) - (b.distanceMeters || 0));
+  }
+  
+  console.log("Stanford landmarks being considered:", nearbyLandmarks.map(l => l.name + (l.distanceMeters ? ` (${Math.round(l.distanceMeters)}m away)` : "")));
   
   try {
+    // Prepare landmark list with distance information when available
+    const landmarkListText = nearbyLandmarks.map(l => {
+      if (l.distanceMeters !== undefined) {
+        return `"${l.name}" (approximately ${Math.round(l.distanceMeters)}m / ${l.distanceMiles!.toFixed(2)} miles from your location)`;
+      }
+      return `"${l.name}"`;
+    }).join(", ");
+    
     // Call OpenAI Vision API to identify the landmark
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -98,8 +153,10 @@ export async function identifyLandmark(base64Data: string, gps?: { lat: number; 
           content: [
             {
               type: "text",
-              text: `Which Stanford landmark is shown in this image? Choose ONLY from this list: ${nearbyLandmarks.map(l => `"${l.name}"`).join(", ")}. 
+              text: `Which Stanford landmark is shown in this image? Choose ONLY from this list: ${landmarkListText}. 
               
+${gps ? "Consider both the visual features AND the distance information provided to make your decision. If two landmarks look similar, the one closer to the user's current location is more likely to be correct." : ""}
+
 Respond with only the exact name of the landmark, nothing else. Do not include any explanations or descriptions.`
             },
             {

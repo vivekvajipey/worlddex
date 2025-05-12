@@ -14,7 +14,7 @@ export const STANFORD_LANDMARKS: StanfordLandmark[] = [
   // Existing landmarks - updated IDs to match images
   {
     id: "claw-fountain",
-    name: "The Claw (White Memorial Fountain)",
+    name: "The Claw Fountain",
     description: "A popular meeting spot and refreshing place to cool off on hot days.",
     coordinates: { lat: 37.425148859146304, lng: -122.16927807280942 },
     radius: 100,
@@ -148,8 +148,8 @@ export const STANFORD_LANDMARKS: StanfordLandmark[] = [
   },
   {
     id: "engineering-quad-planets",
-    name: "Engineering Quad Planets",
-    description: "Scale models of the planets throughout the Engineering Quad.",
+    name: "Stone Spheres",
+    description: "The floating granite sphere water features found in the Engineering Quad.",
     coordinates: { lat: 37.428879, lng: -122.173183 },
     radius: 180,
     silhouette_key: "engineering-planets-silhouette.jpg",
@@ -170,7 +170,7 @@ export const STANFORD_LANDMARKS: StanfordLandmark[] = [
   },
   {
     id: "lake-lag",
-    name: "Lake Lagunita",
+    name: "Lake Lag",
     description: "A seasonal lake on Stanford's campus that's now primarily a recreational area.",
     coordinates: { lat: 37.423882, lng: -122.175302 },
     radius: 300,
@@ -203,8 +203,8 @@ export const STANFORD_LANDMARKS: StanfordLandmark[] = [
   },
   {
     id: "stone-sphere",
-    name: "Stone Sphere Fountain",
-    description: "The floating granite sphere water feature found on campus that can be rotated by hand despite weighing tons.",
+    name: "Stone Spheres",
+    description: "The floating granite sphere water features found in the Engineering Quad.",
     coordinates: { lat: 37.429062, lng: -122.173497 },
     radius: 100,
     silhouette_key: "stone-sphere-silhouette.jpg",
