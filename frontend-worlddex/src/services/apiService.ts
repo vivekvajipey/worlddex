@@ -18,7 +18,7 @@ export const checkServerStatus = async (): Promise<boolean> => {
       // It's good to have a timeout for health checks.
       // AbortSignal.timeout requires Node 17.3.0+ or modern browsers.
       // Consider a manual timeout if compatibility is an issue.
-      // signal: AbortSignal.timeout(5000), // 5 seconds timeout
+      signal: AbortSignal.timeout(5000), // 5 seconds timeout
     });
 
     if (response.ok) {
@@ -37,7 +37,7 @@ export const checkServerStatus = async (): Promise<boolean> => {
   } catch (error) {
     // Log different error types if possible (e.g., network error vs. timeout)
     if (error instanceof Error && error.name === "AbortError") {
-      console.error("Server health check timed out:", error);
+      console.warn("Server health check timed out. This is an expected behavior if the server is unreachable or the connection is too slow.", error.message);
     } else {
       console.error("Error during server health check (e.g., network issue, server down):", error);
     }
