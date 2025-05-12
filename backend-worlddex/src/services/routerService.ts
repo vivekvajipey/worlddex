@@ -38,22 +38,22 @@ export function decideTier2(
 
   // Stanford landmark identification takes priority based on location
   if (gpsInStanford(gps)) {
-    console.log("GPS location is within Stanford, using landmark module");
-    return { run:true, module:"landmark" };
+    console.log("GPS location is within Stanford, using stanford module");
+    return { run:true, module:"stanford" };
   }
 
   // Then check for plant/animal identification based on category
   if (category) {
     // Route plants to the plant identification service
     if (PLANT_CATEGORIES.includes(category.toLowerCase())) {
-      console.log(`Category '${category}' matches plant criteria, using species module`);
-      return { run:true, module:"species" };
+      console.log(`Category '${category}' matches plant criteria, using plants module`);
+      return { run:true, module:"plants" };
     }
     
     // Route animals to the species service
     if (ANIMAL_CATEGORIES.includes(category.toLowerCase())) {
-      console.log(`Category '${category}' matches animal criteria, using species module`);
-      return { run:true, module:"species" };
+      console.log(`Category '${category}' matches animal criteria, using plants module`);
+      return { run:true, module:"plants" };
     }
     
     console.log(`Category ${category} does not match routing rules`);
@@ -61,8 +61,8 @@ export function decideTier2(
   // Fall back to keyword-based routing if category is not available
   else if (tier1Label && LIFE_KEYWORDS.some(w => tier1Label.toLowerCase().includes(w))) {
     const matchedWord = LIFE_KEYWORDS.find(w => tier1Label.toLowerCase().includes(w));
-    console.log(`No category, but keyword match with '${matchedWord}' in label, using species module`);
-    return { run:true, module:"species" };
+    console.log(`No category, but keyword match with '${matchedWord}' in label, using plants module`);
+    return { run:true, module:"plants" };
   }
 
   // Special case for bottles (for testing purposes)

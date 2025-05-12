@@ -27,7 +27,7 @@ const worker = new Worker<Tier2JobData, Tier2Result, string>(
       let result: Tier2Result;
       
       // Use plantService instead of speciesService for plant identification
-      if (module === "species") {
+      if (module === "plants") {
         console.log("[Worker] Identifying plant...");
         await job.updateProgress(30);
         
@@ -40,14 +40,14 @@ const worker = new Worker<Tier2JobData, Tier2Result, string>(
           provider: "plant.id", 
           confidence: plantResult.confidence
         };
-      } else if (module === "landmark") {
-        console.log("[Worker] Identifying landmark...");
+      } else if (module === "stanford") {
+        console.log("[Worker] Identifying Stanford landmark...");
         await job.updateProgress(30);
         
         const landmarkResult = await identifyLandmark(base64Data, gps);
         await job.updateProgress(80);
         
-        console.log(`[Worker] Landmark identification complete: ${landmarkResult.label}`);
+        console.log(`[Worker] Stanford landmark identification complete: ${landmarkResult.label}`);
         result = landmarkResult;
       } else {
         throw new Error(`Unknown module: ${module}`);

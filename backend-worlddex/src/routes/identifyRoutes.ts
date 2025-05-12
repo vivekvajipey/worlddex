@@ -53,7 +53,7 @@ const identifyHandler:RequestHandler = async (req,res) => {
   
   const job = await tier2Queue.add("work", {
     base64Data: body.base64Data,
-    module: routing.module as "species" | "landmark",
+    module: routing.module as "plants" | "stanford",
     gps: body.gps
   }, { removeOnComplete: 1000 });
   
