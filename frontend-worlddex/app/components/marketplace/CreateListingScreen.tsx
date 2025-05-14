@@ -324,7 +324,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
                   selectedValue={duration}
                   onValueChange={setDuration}
                   style={{ height: 120, width: "100%" }}
-                  itemStyle={{ fontFamily: "Lexend-Regular", textAlign: "center", height: 120 }}
+                  itemStyle={{ fontFamily: "Lexend-Regular", textAlign: "center", height: 120, color: "#1F2937" }}
                 >
                   {durationOptions.map(opt => (
                     <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
