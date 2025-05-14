@@ -29,6 +29,16 @@ export default function HomeScreen() {
     setCapturesModalVisible(true);
   }, []);
 
+  // Function to manually retry the connection
+  const handleRetryConnection = useCallback(async () => {
+    if (session && !authLoading) {
+      setIsCheckingServer(true);
+      const status = await checkServerStatus();
+      setIsServerConnected(status);
+      setIsCheckingServer(false);
+    }
+  }, [session, authLoading]);
+
   // Effect to check server status on mount or when session changes
   useEffect(() => {
     const performHealthCheck = async () => {
@@ -65,6 +75,7 @@ export default function HomeScreen() {
         capturesButtonClicked={capturesButtonClicked} 
         isServerConnected={isServerConnected}
         isCheckingServer={isCheckingServer}
+        onRetryConnection={handleRetryConnection}
       />
       <Profile onOpenFeedback={() => setFeedbackVisible(true)} />
       <FeedbackForm

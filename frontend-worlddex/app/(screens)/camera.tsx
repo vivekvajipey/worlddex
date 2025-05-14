@@ -35,12 +35,14 @@ interface CameraScreenProps {
   capturesButtonClicked?: boolean;
   isServerConnected?: boolean;
   isCheckingServer?: boolean;
+  onRetryConnection?: () => Promise<void>;
 }
 
 export default function CameraScreen({ 
   capturesButtonClicked = false, 
   isServerConnected = true,
   isCheckingServer = false,
+  onRetryConnection,
 }: CameraScreenProps) {
   const { processImageForVLM } = useImageProcessor();
   const insets = useSafeAreaInsets();
@@ -213,14 +215,30 @@ export default function CameraScreen({
   ) => {
     if (!cameraRef.current || points.length < 3) return;
 
+    // Check connection status before proceeding with capture
+    if (onRetryConnection) {
+      await onRetryConnection();
+    }
+
     // Prevent capture if offline or checking
     if (isCheckingServer) {
-      Alert.alert("Connecting...", "Please wait while we check the server connection.");
+      Alert.alert(
+        "Connecting...", 
+        "Please wait while we check the server connection.",
+        [{ text: "OK", style: "default" }]
+      );
       cameraCaptureRef.current?.resetLasso();
       return;
     }
     if (!isServerConnected) {
-      Alert.alert("Offline", "Cannot start capture. Please check your internet connection and try again.");
+      Alert.alert(
+        "Offline", 
+        "Cannot start capture. Please check your internet connection and try again.",
+        [
+          { text: "OK", style: "default" },
+          { text: "Retry Connection", style: "cancel", onPress: onRetryConnection }
+        ]
+      );
       cameraCaptureRef.current?.resetLasso();
       return;
     }
@@ -356,19 +374,35 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
     if (!cameraCaptureRef.current) return;
+    
+    // Check connection status before proceeding with capture
+    if (onRetryConnection) {
+      await onRetryConnection();
+    }
 
     // Prevent capture if offline or checking
     if (isCheckingServer) {
-      Alert.alert("Connecting...", "Please wait while we check the server connection.");
+      Alert.alert(
+        "Connecting...", 
+        "Please wait while we check the server connection.",
+        [{ text: "OK", style: "default" }]
+      );
       return;
     }
     if (!isServerConnected) {
-      Alert.alert("Offline", "Cannot start capture. Please check your internet connection and try again.");
+      Alert.alert(
+        "Offline", 
+        "Cannot start capture. Please check your internet connection and try again.",
+        [
+          { text: "OK", style: "default" },
+          { text: "Retry Connection", style: "cancel", onPress: onRetryConnection }
+        ]
+      );
       return;
     }
 
@@ -456,7 +490,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -674,12 +708,13 @@ export default function CameraScreen({
           </View>
         )}
         {!isCheckingServer && !isServerConnected && (
-          <View 
+          <TouchableOpacity 
             className="absolute self-center bg-red-600 px-4 py-2 rounded-lg shadow-md z-50"
             style={{ top: insets.top + 8 }} // Position below status bar with a small margin
+            onPress={onRetryConnection}
           >
-            <Text className="text-white font-lexend-bold text-sm">Offline - Capture unavailable</Text>
-          </View>
+            <Text className="text-white font-lexend-bold text-sm">Offline - Tap to retry</Text>
+          </TouchableOpacity>
         )}
 
         {/* Camera capture component */}
