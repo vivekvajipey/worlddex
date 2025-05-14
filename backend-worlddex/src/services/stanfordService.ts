@@ -146,7 +146,7 @@ export async function identifyLandmark(base64Data: string, gps?: { lat: number; 
       messages: [
         {
           role: "system",
-          content: "You are an expert Stanford University landmark identifier. Given an image, identify which Stanford landmark it shows. Respond with ONLY the exact name of the landmark from the provided list, nothing else."
+          content: "You are an expert Stanford University landmark identifier. Given an image, identify which Stanford landmark it shows, but ONLY if you are confident the image shows a landmark from the provided list. You must be strict in your assessment - only identify Stanford landmarks. If the image shows a common object, person, animal, or any non-Stanford landmark, you must respond with 'NONE' (all caps)."
         },
         {
           role: "user",
@@ -155,9 +155,13 @@ export async function identifyLandmark(base64Data: string, gps?: { lat: number; 
               type: "text",
               text: `Which Stanford landmark is shown in this image? Choose ONLY from this list: ${landmarkListText}. 
               
-${gps ? "Consider both the visual features AND the distance information provided to make your decision. If two landmarks look similar, the one closer to the user's current location is more likely to be correct." : ""}
+${gps ? "Consider both the visual features AND the distance information provided to make your decision." : ""}
 
-Respond with only the exact name of the landmark, nothing else. Do not include any explanations or descriptions.`
+IMPORTANT INSTRUCTIONS:
+1. If the image shows one of the listed Stanford landmarks, respond with ONLY the exact name of the landmark, nothing else.
+2. If the image shows a common object, person, animal, plant, or anything that is NOT one of the Stanford landmarks listed, respond with ONLY the word 'NONE' (all caps).
+3. Being nearby a landmark is NOT enough - the image must clearly show the actual landmark.
+4. Do not provide any explanations or descriptions.`
             },
             {
               type: "image_url",
@@ -171,11 +175,21 @@ Respond with only the exact name of the landmark, nothing else. Do not include a
       max_tokens: 50
     });
     
-    const identifiedName = response.choices[0].message.content?.trim() || "";
-    console.log("Stanford landmark identification response:", identifiedName);
+    const identifiedResponse = response.choices[0].message.content?.trim() || "";
+    console.log("Stanford landmark identification response:", identifiedResponse);
+    
+    // Check if model responded with "NONE" indicating no landmark was identified
+    if (identifiedResponse === "NONE") {
+      console.log("Model determined no Stanford landmark is present in the image");
+      return {
+        label: null,
+        provider: "Stanford GPS+VLM",
+        confidence: 0
+      };
+    }
     
     // Find the landmark by name (case-insensitive)
-    const identifiedNameLower = identifiedName.toLowerCase();
+    const identifiedNameLower = identifiedResponse.toLowerCase();
     let landmarkId: string | undefined = landmarkNameToId[identifiedNameLower];
     
     // If no exact match found, try to find the most similar landmark name
@@ -191,7 +205,7 @@ Respond with only the exact name of the landmark, nothing else. Do not include a
     
     // If still no match, use the best guess from the model
     if (!landmarkId) {
-      console.log("No matching landmark found for:", identifiedName);
+      console.log("No matching landmark found for:", identifiedResponse);
       return {
         label: null,
         provider: "Stanford GPS+VLM",
