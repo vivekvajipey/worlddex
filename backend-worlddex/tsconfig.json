@@ -19,7 +19,7 @@
     }
   },
   "include": ["src/**/*", "../shared/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/test-scripts/**/*", "test-images/**/*"],
   "references": [
     { "path": "./shared" }
   ]

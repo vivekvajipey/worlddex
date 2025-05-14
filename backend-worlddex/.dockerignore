@@ -4,3 +4,5 @@
 .env
 Dockerfile
 fly.toml
+/src/test-scripts
+/test-images

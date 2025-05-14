@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { identifyPlant } from "../services/plantService";
-import { Tier2Result } from "../../../shared/types/identify";
+import { Tier2Result } from "../../shared/types/identify";
 import dotenv from "dotenv";
 
 // Load environment variables from .env file

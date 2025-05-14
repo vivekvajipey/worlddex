@@ -1,5 +1,5 @@
 import { OpenAI } from "openai";
-import { Tier2Result } from "../../../shared/types/identify";
+import { Tier2Result } from "../../shared/types/identify";
 import { calculateDistance } from "../utils/geoUtils";
 import { STANFORD_LANDMARKS, StanfordLandmark } from "../data/stanford-landmarks";
 
