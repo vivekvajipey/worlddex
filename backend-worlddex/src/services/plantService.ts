@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Tier2Result } from "../../../shared/types/identify";
+import { Tier2Result } from "../../shared/types/identify";
 import * as dotenv from "dotenv";
 import path from "path";
 

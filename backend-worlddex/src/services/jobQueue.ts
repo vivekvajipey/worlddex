@@ -3,7 +3,8 @@ import IORedis from "ioredis";
 
 // Configure Redis connection with maxRetriesPerRequest: null as required by BullMQ
 export const connection = new IORedis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null
+  maxRetriesPerRequest: null,
+  family: 6
 });
 
 export interface Tier2JobData {

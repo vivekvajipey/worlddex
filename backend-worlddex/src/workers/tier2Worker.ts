@@ -3,7 +3,7 @@ import { connection, Tier2JobData } from "../services/jobQueue";
 // import { identifySpecies } from "../services/speciesService"; // Deprecated
 import { identifyPlant } from "../services/plantService";
 import { identifyLandmark } from "../services/stanfordService";
-import { Tier2Result } from "../../../shared/types/identify";
+import { Tier2Result } from "../../shared/types/identify";
 
 console.log("Starting Tier2 Worker...");
 

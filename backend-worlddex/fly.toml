@@ -17,6 +17,10 @@ primary_region = 'ord'
   min_machines_running = 0
   processes = ['app']
 
+[processes]
+  app    = "node dist/index.js"
+  worker = "node dist/workers/tier2Worker.js"
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'

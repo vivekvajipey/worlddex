@@ -2,7 +2,7 @@ import { Router, RequestHandler } from "express";
 import { VlmService } from "../services/vlmService";
 import { decideTier2 } from "../services/routerService";
 import { tier2Queue } from "../services/jobQueue";
-import { IdentifyRequest, IdentifyResponse } from "../../../shared/types/identify";
+import { IdentifyRequest, IdentifyResponse } from "../../shared/types/identify";
 
 const router = Router();
 const vlm = new VlmService();

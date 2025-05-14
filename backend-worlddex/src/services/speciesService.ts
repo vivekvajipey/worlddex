@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Tier2Result } from "../../../shared/types/identify";
+import { Tier2Result } from "../../shared/types/identify";
 import FormData from "form-data";
 
 export async function identifySpecies(base64Data:string):Promise<Tier2Result>{
