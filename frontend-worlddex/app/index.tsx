@@ -43,7 +43,7 @@ export default function HomeScreen() {
     performHealthCheck();
 
     // Optional: Set up an interval to periodically check server status
-    const intervalId = setInterval(performHealthCheck, 5000); // Check every 30 seconds
+    const intervalId = setInterval(performHealthCheck, 60000); // Check every minute
     return () => clearInterval(intervalId); // Cleanup interval on unmount
   }, [session, authLoading]);
 
