@@ -7,7 +7,7 @@ import { IdentifyRequest, IdentifyResponse } from "../../shared/types/identify";
 const router = Router();
 const vlm = new VlmService();
 
-// POST /api/identify  →  immediate Tier‑1 + maybe enqueue Tier‑2
+// POST /api/identify  →  immediate Tier‑1 + maybe enqueue Tier‑2
 const identifyHandler:RequestHandler = async (req,res) => {
   // Very early debug log to see if the handler is being called at all
   console.log("=====================================");
@@ -53,8 +53,9 @@ const identifyHandler:RequestHandler = async (req,res) => {
   
   const job = await tier2Queue.add("work", {
     base64Data: body.base64Data,
-    module: routing.module as "plants" | "stanford",
-    gps: body.gps
+    module: routing.module as "plants" | "stanford" | "animals",
+    gps: body.gps,
+    tier1Label: tier1.label || undefined // Convert null to undefined if label is null
   }, { removeOnComplete: 1000 });
   
   console.log(`Created Tier2 job with ID: ${job.id}`);

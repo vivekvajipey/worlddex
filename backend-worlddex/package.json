@@ -8,7 +8,9 @@
     "build": "npm run build:shared && tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
-    "worker": "ts-node-dev src/workers/tier2Worker.ts"
+    "worker": "ts-node-dev src/workers/tier2Worker.ts",
+    "test:animal-identification": "ts-node src/test-scripts/test-animal-identification-updated.ts",
+    "test:tier1-tier2": "ts-node src/test-scripts/test-tier1-tier2-pipeline.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

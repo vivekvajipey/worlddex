@@ -3,6 +3,7 @@ import { connection, Tier2JobData } from "../services/jobQueue";
 // import { identifySpecies } from "../services/speciesService"; // Deprecated
 import { identifyPlant } from "../services/plantService";
 import { identifyLandmark } from "../services/stanfordService";
+import { identifyAnimal } from "../services/animalIdentificationService";
 import { Tier2Result } from "../../shared/types/identify";
 
 console.log("Starting Tier2 Worker...");
@@ -15,10 +16,11 @@ const worker = new Worker<Tier2JobData, Tier2Result, string>(
     console.log(`[Worker] Job data:`, JSON.stringify({
       module: job.data.module,
       hasBase64: !!job.data.base64Data,
-      hasGps: !!job.data.gps
+      hasGps: !!job.data.gps,
+      tier1Label: job.data.tier1Label
     }));
     
-    const { base64Data, module, gps } = job.data;
+    const { base64Data, module, gps, tier1Label } = job.data;
     
     // Add progress updates for better tracking
     await job.updateProgress(10);
@@ -49,6 +51,19 @@ const worker = new Worker<Tier2JobData, Tier2Result, string>(
         
         console.log(`[Worker] Stanford landmark identification complete: ${landmarkResult.label}`);
         result = landmarkResult;
+      } else if (module === "animals") {
+        console.log("[Worker] Identifying specific animal...");
+        await job.updateProgress(30);
+        
+        if (!tier1Label) {
+          throw new Error("Missing tier1Label for animal identification");
+        }
+        
+        const animalResult = await identifyAnimal(base64Data, tier1Label);
+        await job.updateProgress(80);
+        
+        console.log(`[Worker] Animal identification complete: ${animalResult.label}`);
+        result = animalResult;
       } else {
         throw new Error(`Unknown module: ${module}`);
       }

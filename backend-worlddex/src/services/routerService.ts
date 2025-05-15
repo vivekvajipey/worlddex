@@ -1,9 +1,8 @@
 // Categories that should trigger specialized identification
 const PLANT_CATEGORIES = ["plant", "tree", "flower"];
-const ANIMAL_CATEGORIES = ["animal", "bird", "mammal", "insect"];
+const ANIMAL_CATEGORIES = ["bird", "dog", "cat", "animal", "pet", "wildlife", "mammal", "reptile", "amphibian", "fish"];
 
 // Fallback keywords for cases where category isn't available
-const LIFE_KEYWORDS = ["tree", "plant", "flower", "bird", "animal", "mammal", "insect"];
 
 // Helper function to calculate distance between two GPS coordinates in miles using Haversine formula
 function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -42,27 +41,33 @@ export function decideTier2(
     return { run:true, module:"stanford" };
   }
 
-  // Then check for plant/animal identification based on category
+  // Check for animal identification based on category
   if (category) {
+    if (ANIMAL_CATEGORIES.includes(category.toLowerCase())) {
+      console.log(`Category '${category}' matches animal criteria, using animals module`);
+      return { run:true, module:"animals" };
+    }
+    
     // Route plants to the plant identification service
     if (PLANT_CATEGORIES.includes(category.toLowerCase())) {
       console.log(`Category '${category}' matches plant criteria, using plants module`);
       return { run:true, module:"plants" };
     }
     
-    // Route animals to the species service
-    if (ANIMAL_CATEGORIES.includes(category.toLowerCase())) {
-      console.log(`Category '${category}' matches animal criteria, using plants module`);
-      return { run:true, module:"plants" };
-    }
-    
     console.log(`Category ${category} does not match routing rules`);
   } 
   // Fall back to keyword-based routing if category is not available
-  else if (tier1Label && LIFE_KEYWORDS.some(w => tier1Label.toLowerCase().includes(w))) {
-    const matchedWord = LIFE_KEYWORDS.find(w => tier1Label.toLowerCase().includes(w));
-    console.log(`No category, but keyword match with '${matchedWord}' in label, using plants module`);
-    return { run:true, module:"plants" };
+  else if (tier1Label) {
+    if (ANIMAL_CATEGORIES.some(w => tier1Label.toLowerCase().includes(w))) {
+      const matchedWord = ANIMAL_CATEGORIES.find(w => tier1Label.toLowerCase().includes(w));
+      console.log(`No category, but keyword match with '${matchedWord}' in label, using animals module`);
+      return { run:true, module:"animals" };
+    } 
+    else if (PLANT_CATEGORIES.some(w => tier1Label.toLowerCase().includes(w))) {
+      const matchedWord = PLANT_CATEGORIES.find(w => tier1Label.toLowerCase().includes(w));
+      console.log(`No category, but keyword match with '${matchedWord}' in label, using plants module`);
+      return { run:true, module:"plants" };
+    }
   }
 
   // Special case for bottles (for testing purposes)
