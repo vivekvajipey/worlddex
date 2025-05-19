@@ -8,6 +8,7 @@ import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
 import { PostHogProvider } from "posthog-react-native";
+import { Slot } from "expo-router";     // expo-router’s root
 
 
 // Keep the splash screen visible while we fetch resources
@@ -108,12 +109,22 @@ export default function RootLayout() {
   }
 
   return (
-    <PostHogProvider apiKey="phc_EyLCiDrJnGPqXma1f21WFwgAmRf35KANelGXVzmDDz4" options={{
-      host: "https://us.i.posthog.com",
-    }}>
+    <PostHogProvider
+      apiKey="phc_EyLCiDrJnGPqXma1f21WFwgAmRf35KANelGXVzmDDz4"
+      autocapture={{                   // turn on automatic events
+        captureLifecycleEvents: true,
+        captureScreens: true,
+        captureTouches: true,
+      }}
+      options={{
+        host: "https://us.i.posthog.com",
+        flushAt: 1,                    // lower thresholds while testing
+        flushInterval: 3000,
+      }}
+    >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
-          <AppLayoutContent />
+          <Slot />
         </AuthProvider>
       </GestureHandlerRootView>
     </PostHogProvider>
