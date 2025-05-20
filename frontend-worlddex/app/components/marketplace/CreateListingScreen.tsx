@@ -94,7 +94,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
   const { captures, loading: capturesLoading } = useUserCaptures(session?.user?.id || null);
 
   const userId = session?.user?.id || null;
-  
+
   // Fetch all of the user's pending trade offers and their items
   const { tradeOffers: userTradeOffers } = useTradeOffers(null, userId);
   const [pendingTradeCaptureIds, setPendingTradeCaptureIds] = useState<string[]>([]);
@@ -260,6 +260,64 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
               </View>
             </View>
 
+            {/* Capture Selection - Moved to the top */}
+            <View className="mb-4">
+              <Text className="text-lg font-lexend-medium mb-2">
+                <Text className="text-primary">*</Text> Select Captures
+              </Text>
+              {capturesLoading ? (
+                <ActivityIndicator size="large" color="#3B82F6" />
+              ) : (
+                <View className="border border-gray-200 rounded-lg">
+                  <ScrollView style={{ height: 220 }} contentContainerStyle={{ paddingBottom: 8 }} className="w-full">
+                    <View className="flex-row flex-wrap px-1 pt-1">
+                      {captures?.map(capture => {
+                        const url = imageUrlMap[capture.image_key];
+                        const selected = selectedCaptures.includes(capture.id);
+                        const listed = listedCaptureIds.has(capture.id);
+                        return (
+                          <TouchableOpacity
+                            key={capture.id}
+                            onPress={() => !listed && toggleCaptureSelection(capture.id)}
+                            disabled={listed}
+                            className={`w-1/3 aspect-square p-1 ${selected ? "bg-primary/20" : ""}`}
+                          >
+                            <View className={`w-full h-full rounded-lg overflow-hidden border-2 ${listed
+                              ? "border-gray-300 opacity-40"
+                              : selectedCaptures.length === 0
+                                ? "border-primary"
+                                : "border-gray-200"
+                              }`}>
+                              {url ? (
+                                <Image source={{ uri: url }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                              ) : (
+                                <View className="flex-1 bg-gray-100" />
+                              )}
+
+                              {listed && (
+                                <View className="absolute inset-0 bg-white/60 items-center justify-center">
+                                  <Ionicons name="close-circle" size={32} color="#A1A1AA" />
+                                </View>
+                              )}
+
+                              {selected && !listed && (
+                                <>
+                                  <View className="absolute inset-0 bg-black/60" />
+                                  <View className="absolute top-2 right-2 bg-primary rounded-full p-1">
+                                    <Ionicons name="checkmark" size={20} color="#FFF" />
+                                  </View>
+                                </>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
             {/* Basic Info */}
             <View className="mb-4">
               <Text className="text-lg font-lexend-medium mb-2">
@@ -367,60 +425,6 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
                   ))}
                 </Picker>
               </View>
-            </View>
-
-            {/* Capture Selection */}
-            <View className="mb-4">
-              <Text className="text-lg font-lexend-medium mb-2">
-                <Text className="text-primary">*</Text> Select Captures
-              </Text>
-              {capturesLoading ? (
-                <ActivityIndicator size="large" color="#3B82F6" />
-              ) : (
-                <View className="flex-row flex-wrap">
-                  {captures?.map(capture => {
-                    const url = imageUrlMap[capture.image_key];
-                    const selected = selectedCaptures.includes(capture.id);
-                    const listed = listedCaptureIds.has(capture.id);
-                    return (
-                      <TouchableOpacity
-                        key={capture.id}
-                        onPress={() => !listed && toggleCaptureSelection(capture.id)}
-                        disabled={listed}
-                        className={`w-1/3 aspect-square p-1 ${selected ? "bg-primary/20" : ""}`}
-                      >
-                        <View className={`w-full h-full rounded-lg overflow-hidden border-2 ${listed
-                          ? "border-gray-300 opacity-40"
-                          : selectedCaptures.length === 0
-                            ? "border-primary"
-                            : "border-gray-200"
-                          }`}>
-                          {url ? (
-                            <Image source={{ uri: url }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-                          ) : (
-                            <View className="flex-1 bg-gray-100" />
-                          )}
-
-                          {listed && (
-                            <View className="absolute inset-0 bg-white/60 items-center justify-center">
-                              <Ionicons name="close-circle" size={32} color="#A1A1AA" />
-                            </View>
-                          )}
-
-                          {selected && !listed && (
-                            <>
-                              <View className="absolute inset-0 bg-black/60" />
-                              <View className="absolute top-2 right-2 bg-primary rounded-full p-1">
-                                <Ionicons name="checkmark" size={20} color="#FFF" />
-                              </View>
-                            </>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
             </View>
           </ScrollView>
 
