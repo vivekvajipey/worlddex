@@ -212,11 +212,6 @@ export const useBids = (listingId: string, userId?: string | null) => {
     if (!listingId) return null;
 
     try {
-      // Check if this bid is higher than current highest
-      if (highestBid && amount <= highestBid.amount) {
-        throw new Error("Bid must be higher than current highest bid");
-      }
-
       const newBid = await createBid({
         listing_id: listingId,
         bidder_id,
