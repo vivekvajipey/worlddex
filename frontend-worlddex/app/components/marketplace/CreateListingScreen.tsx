@@ -21,6 +21,7 @@ import { useListings } from "../../../database/hooks/useListings";
 import { useBids, fetchBidsByBidderId } from "../../../database/hooks/useBids";
 import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
 import { fetchTradeOfferItemsByTradeOfferId } from "../../../database/hooks/useTradeOfferItems";
+import { usePostHog } from "posthog-react-native";
 
 interface CreateListingScreenProps {
   visible: boolean;
@@ -34,6 +35,7 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
   onListingCreated,
 }) => {
   const { session } = useAuth();
+  const posthog = usePostHog();
 
   // Form state
   const [listingType, setListingType] = useState<"auction" | "buy-now" | "trade">("auction");
@@ -79,6 +81,12 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
       setDuration(durationOptions[5].value);
       setSelectedCaptures([]);
       setIsSubmitting(false);
+
+      if (posthog) {
+        posthog.screen("Create-Listing-Initiated", {
+          listingType: listingType
+        });
+      }
     }
   }, [visible]);
 
@@ -178,11 +186,30 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
           capture_id: captureId,
         }));
         await addMultipleListingItems(items);
+        
+        // Track listing creation
+        if (posthog) {
+          posthog.capture("marketplace_listing_created", {
+            listingId: created.id,
+            listingType: listingType,
+            startingPrice: listingType === "auction" ? reservePrice : null,
+            price: listingType === "buy-now" ? price : null,
+            captureId: selectedCaptures[0]
+          });
+        }
+
         onListingCreated?.();
         onClose();
       }
     } catch (err) {
       console.error("Error creating listing:", err);
+      
+      // Track listing creation failure
+      if (posthog) {
+        posthog.capture("marketplace_listing_failed", {
+          listingType: listingType,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -190,6 +217,15 @@ const CreateListingScreen: React.FC<CreateListingScreenProps> = ({
 
   const isAuction = listingType === "auction";
   const isBuyNow = listingType === "buy-now";
+
+  useEffect(() => {
+    // Track screen view when component becomes visible
+    if (visible && posthog) {
+      posthog.screen("Create-Listing", {
+        captureId: null
+      });
+    }
+  }, [visible, posthog]);
 
   return (
     <Modal visible={visible} animationType="slide" transparent>

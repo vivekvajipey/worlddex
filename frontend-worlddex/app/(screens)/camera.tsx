@@ -6,6 +6,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePostHog } from "posthog-react-native";
+import { usePathname } from "expo-router";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -44,6 +46,8 @@ export default function CameraScreen({
   isCheckingServer = false,
   onRetryConnection,
 }: CameraScreenProps) {
+  const posthog = usePostHog();
+  const pathname = usePathname();
   const { processImageForVLM } = useImageProcessor();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
@@ -213,6 +217,9 @@ export default function CameraScreen({
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
+    if (posthog) {
+      posthog.capture("capture_initiated", { method: "lasso" });
+    }
     if (!cameraRef.current || points.length < 3) return;
 
     // Check connection status before proceeding with capture
@@ -378,6 +385,9 @@ export default function CameraScreen({
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
+    if (posthog) {
+      posthog.capture("capture_initiated", { method: "full_screen" });
+    }
     if (!cameraCaptureRef.current) return;
     
     // Check connection status before proceeding with capture
@@ -659,6 +669,13 @@ export default function CameraScreen({
     // Dependencies for user field updates
     incrementUserField
   ]);
+
+  useEffect(() => {
+    // Track screen view when the camera route is active
+    if (posthog && pathname === "/(screens)/camera") {
+      posthog.screen("Camera");
+    }
+  }, [posthog, pathname]);
 
   if (!permission || !mediaPermission) {
     // Camera or media permissions are still loading

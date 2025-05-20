@@ -26,6 +26,7 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { v4 as uuidv4 } from "uuid";
+import { usePostHog } from "posthog-react-native";
 
 interface AddCollectionItemsScreenProps {
   visible: boolean;
@@ -81,6 +82,17 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
   onClose,
   collection,
 }) => {
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when component mounts
+    if (posthog) {
+      posthog.screen("Add-Collection-Items", {
+        collectionId: collection.id
+      });
+    }
+  }, [posthog, collection.id]);
+
   const [activeTab, setActiveTab] = useState<Tab>("existing");
   const [searchQuery, setSearchQuery] = useState("");
   const [userCaptures, setUserCaptures] = useState<Capture[]>([]);

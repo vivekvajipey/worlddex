@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as MailComposer from 'expo-mail-composer';
 import Colors from "../../../src/utils/colors";
+import { usePostHog } from "posthog-react-native";
 
 interface FeedbackFormProps {
   visible: boolean;
@@ -20,9 +21,17 @@ interface FeedbackFormProps {
 }
 
 export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
+  const posthog = usePostHog();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    // Track screen view only when modal becomes visible
+    if (visible && posthog) {
+      posthog.screen("Feedback-Form");
+    }
+  }, [visible, posthog]);
 
   const handleSendFeedback = async () => {
     if (!message.trim()) {

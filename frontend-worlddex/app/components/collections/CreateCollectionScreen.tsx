@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useAuth } from "../../../src/contexts/AuthContext";
 import { createCollection, updateCollection } from "../../../database/hooks/useCollections";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import AddCollectionItemsScreen from "./AddCollectionItemsScreen";
+import { usePostHog } from "posthog-react-native";
 
 interface CreateCollectionScreenProps {
   visible: boolean;
@@ -39,8 +40,16 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
   const { session } = useAuth();
   const userId = session?.user?.id;
   const { uploadPhoto, isUploading } = usePhotoUpload();
+  const posthog = usePostHog();
 
   const isProcessing = isLoading || isUploading;
+
+  useEffect(() => {
+    // Track screen view only when modal becomes visible
+    if (visible && posthog) {
+      posthog.screen("Create-Collection");
+    }
+  }, [visible, posthog]);
 
   const handleClose = () => {
     // Reset state before closing
@@ -266,4 +275,4 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
   );
 };
 
-export default CreateCollectionScreen; 
+export default CreateCollectionScreen;

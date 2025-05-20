@@ -16,6 +16,7 @@ import { useUser } from "../../../database/hooks/useUsers";
 import { supabase } from "../../../database/supabase-client";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { useBids } from "../../../database/hooks/useBids";
+import { usePostHog } from "posthog-react-native";
 
 interface BidModalProps {
   visible: boolean;
@@ -105,6 +106,17 @@ const BidModal: React.FC<BidModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, listing.id, userId]);
 
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && listing && posthog) {
+      posthog.screen("Bid-Modal", {
+        listingId: listing.id,
+      });
+    }
+  }, [visible, listing, posthog]);
+
   const handlePlaceBid = async () => {
     if (!currentUser) {
       setError("You must be logged in to place a bid");
@@ -141,6 +153,15 @@ const BidModal: React.FC<BidModalProps> = ({
       });
       if (rpcErr) throw rpcErr;
 
+      // Track successful bid placement
+      if (posthog) {
+        posthog.capture("marketplace_bid_placed", {
+          listingId: listing.id,
+          amount: amount,
+          listingType: "auction"
+        });
+      }
+
       // refresh bids & user data
       refresh();
       await refreshUserData();
@@ -148,7 +169,16 @@ const BidModal: React.FC<BidModalProps> = ({
       await onUserBalanceChanged?.();
       onClose();
     } catch (e: any) {
+      console.error("Error placing bid:", e);
       setError(e.message || "Failed to place/update bid");
+      
+      // Track failed bid attempt
+      if (posthog) {
+        posthog.capture("marketplace_bid_failed", {
+          listingId: listing.id,
+          error: e.message || "Unknown error"
+        });
+      }
     } finally {
       setIsProcessing(false);
     }

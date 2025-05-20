@@ -18,6 +18,7 @@ import Animated, {
   runOnJS
 } from "react-native-reanimated"
 import { Ionicons } from "@expo/vector-icons"
+import { usePostHog } from "posthog-react-native";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 const AnimatedLine = Animated.createAnimatedComponent(Line)
@@ -52,6 +53,15 @@ export function CameraOnboarding({
   inDetailsModal = false,
   onRequestReset = () => {}
 }: CameraOnboardingProps) {
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when onboarding becomes visible
+    if (posthog) {
+      posthog.screen("Camera-Onboarding");
+    }
+  }, [posthog]);
+
   // Animation state
   const [phase, setPhase] = useState<Phase>(inDetailsModal ? 'capture-review' : 'circle')
   const progress = useSharedValue(0)

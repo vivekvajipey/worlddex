@@ -7,6 +7,7 @@ import { Capture } from "../../../database/types";
 import { fetchItem } from "../../../database/hooks/useItems";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
+import { usePostHog } from "posthog-react-native";
 
 interface CaptureDetailsModalProps {
   visible: boolean;
@@ -30,6 +31,7 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   const { session } = useAuth();
   const { user: currentUser } = useUser(session?.user?.id || null);
   const { user: previousOwner } = useUser(capture?.last_owner_id || null);
+  const posthog = usePostHog();
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -50,6 +52,15 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
 
     loadItemData();
   }, [capture?.item_id]);
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && capture && posthog) {
+      posthog.screen("Capture-Details", {
+        captureId: capture.id
+      });
+    }
+  }, [visible, capture, posthog]);
 
   // Set isPublic state when capture changes
   useEffect(() => {
@@ -233,4 +244,4 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   );
 };
 
-export default CaptureDetailsModal; 
+export default CaptureDetailsModal;

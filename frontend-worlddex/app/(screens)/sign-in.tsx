@@ -1,16 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import { useRouter, Link } from "expo-router";
+import { useRouter, Link, usePathname } from "expo-router";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { GoogleIcon } from "../../assets/images/GoogleIcon";
+import { usePostHog } from "posthog-react-native";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { signInWithGoogle, signInWithApple } = useAuth();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when route becomes active
+    if (posthog && pathname === "/(screens)/sign-in") {
+      posthog.screen("Sign-in");
+    }
+  }, [pathname, posthog]);
 
   const handleGoogleSignIn = async () => {
     try {

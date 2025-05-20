@@ -18,6 +18,7 @@ import { fetchAllCollections } from "../../database/hooks/useCollections";
 import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
+import { usePostHog } from "posthog-react-native";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
@@ -308,6 +309,15 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
   const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view only when modal becomes visible
+    if (visible && posthog) {
+      posthog.screen("Personal-Captures");
+    }
+  }, [visible, posthog]);
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
@@ -360,6 +370,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             {/* WorldDex Tab */}
             <View style={{ width, height: '100%' }}>
               <WorldDexTab
+                active={activeTab === "WorldDex"}
                 displayCaptures={displayCaptures}
                 loading={capturesLoading || isRefreshing}
                 urlsLoading={imageUrlsLoading}

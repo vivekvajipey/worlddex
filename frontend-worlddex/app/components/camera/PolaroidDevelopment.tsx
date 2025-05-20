@@ -7,6 +7,7 @@ import { backgroundColor } from "../../../src/utils/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
+import { usePostHog } from "posthog-react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -103,6 +104,21 @@ export default function PolaroidDevelopment({
       setIsPublic(user.default_public_captures || false);
     }
   }, [user]);
+
+  const posthog = usePostHog();
+
+  // Track identification result when complete
+  useEffect(() => {
+    if (identificationComplete && posthog) {
+      if (captureSuccess === true) {
+        posthog.capture("object_identified", {
+          objectType: label || "unknown"
+        });
+      } else if (captureSuccess === false) {
+        posthog.capture("identification_failed");
+      }
+    }
+  }, [identificationComplete, captureSuccess, label, posthog]);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -295,6 +311,12 @@ export default function PolaroidDevelopment({
 
   // Function to manually reject the capture
   const handleReject = () => {
+    if (posthog) {
+      posthog.capture("capture_rejected", {
+        objectType: label || "unknown"
+      });
+    }
+    
     if (!isRipping && !isMinimizing && initialAnimationDone) {
       // Set rejection flag first
       if (onReject) {
@@ -393,6 +415,12 @@ export default function PolaroidDevelopment({
 
   // Handle background press
   const handleBackgroundPress = () => {
+    if (posthog) {
+      posthog.capture("capture_accepted", {
+        objectType: label || "unknown",
+        isPublic: isPublic
+      });
+    }
     if (isCompleted && !isMinimizing) {
       runMinimizeAnimation();
     }
@@ -520,6 +548,19 @@ export default function PolaroidDevelopment({
       console.log("Label being rendered:", label);
     }
   }, [captureSuccess, label]);
+
+  // Handle public/private toggle
+  const handlePrivacyToggle = (newIsPublic: boolean) => {
+    if (posthog) {
+      posthog.capture("privacy_toggled", {
+        isPublic: newIsPublic
+      });
+    }
+    setIsPublic(newIsPublic);
+    if (onSetPublic) {
+      onSetPublic(newIsPublic);
+    }
+  };
 
   return (
     <View className="absolute inset-0">
@@ -771,6 +812,19 @@ export default function PolaroidDevelopment({
           </View>
         </View>
       )}
+      {/* Public/private toggle button */}
+      {initialAnimationDone && captureSuccess && !isRipping && !isMinimizing && (
+        <View className="absolute bottom-32 left-0 right-0 items-center">
+          <TouchableOpacity
+            className="bg-background rounded-full px-4 py-2 flex flex-row items-center shadow-lg"
+            onPress={() => handlePrivacyToggle(!isPublic)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={isPublic ? "ios-globe" : "ios-lock-closed"} size={24} color="black" />
+            <Text className="text-lg ml-2">{isPublic ? "Public" : "Private"}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -879,4 +933,4 @@ function getAnimatedStyles(
       },
     ],
   };
-} 
+}

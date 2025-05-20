@@ -2,7 +2,8 @@ import 'react-native-get-random-values';
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Redirect } from 'expo-router';
+import { Redirect, usePathname } from 'expo-router';
+import { usePostHog } from 'posthog-react-native';
 import CameraScreen from './(screens)/camera';
 import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
@@ -14,6 +15,8 @@ import { checkServerStatus } from '../src/services/apiService';
 // This is the home route component at "/"
 export default function HomeScreen() {
   const { session, isLoading: authLoading } = useAuth();
+  const posthog = usePostHog();
+  const pathname = usePathname();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [capturesModalVisible, setCapturesModalVisible] = useState(false);
   const [socialModalVisible, setSocialModalVisible] = useState(false);
@@ -56,6 +59,13 @@ export default function HomeScreen() {
     const intervalId = setInterval(performHealthCheck, 60000); // Check every minute
     return () => clearInterval(intervalId); // Cleanup interval on unmount
   }, [session, authLoading]);
+
+  // Effect to track the home screen view
+  useEffect(() => {
+    if (posthog && !authLoading && pathname === "/") {
+      posthog.screen("Home");
+    }
+  }, [posthog, authLoading, pathname]);
 
   // If auth is loading, show nothing
   // (the splash screen is handled by _layout.tsx)

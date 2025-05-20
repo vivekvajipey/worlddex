@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import retroCoin from "../../assets/images/retro_coin.png";
+import { usePostHog } from "posthog-react-native";
 
 interface CoinRewardModalProps {
   visible: boolean;
@@ -10,12 +11,28 @@ interface CoinRewardModalProps {
   rewards: { amount: number; reason: string }[];
 }
 
-export default function CoinRewardModal({
-  visible,
-  onClose,
-  total,
-  rewards,
-}: CoinRewardModalProps) {
+export default function CoinRewardModal({ visible, onClose, total, rewards = [] }: CoinRewardModalProps) {
+  const posthog = usePostHog();
+  
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && total !== undefined && posthog) {
+      posthog.screen("Coin-Reward-Modal", {
+        totalAmount: total
+      });
+    }
+  }, [visible, total, posthog]);
+  
+  // Track coin reward event when shown
+  useEffect(() => {
+    if (visible && total > 0 && posthog) {
+      posthog.capture("coins_awarded", {
+        amount: total,
+        rewardTypes: rewards.map(r => r.reason)
+      });
+    }
+  }, [visible, total, rewards, posthog]);
+  
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View className="flex-1 justify-center items-center bg-black/60">

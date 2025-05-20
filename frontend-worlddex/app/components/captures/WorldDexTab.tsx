@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { Capture } from "../../../database/types";
 import CaptureThumbnail from "./CaptureThumbnail";
+import { usePostHog } from "posthog-react-native";
 
 interface WorldDexTabProps {
   displayCaptures: Capture[];
@@ -9,6 +10,7 @@ interface WorldDexTabProps {
   urlsLoading?: boolean;
   urlMap?: Record<string, string>;
   onCapturePress: (capture: Capture) => void;
+  active: boolean; // Add active prop to the interface
 }
 
 const WorldDexTab: React.FC<WorldDexTabProps> = ({
@@ -16,8 +18,20 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
   loading,
   urlsLoading = false,
   urlMap = {},
-  onCapturePress
+  onCapturePress,
+  active // Add active prop to the component
 }) => {
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view only when tab becomes active
+    if (active && posthog) {
+      posthog.screen("WorldDex-Tab", {
+        captureCount: displayCaptures?.length || 0
+      });
+    }
+  }, [active, posthog, displayCaptures?.length]);
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center">

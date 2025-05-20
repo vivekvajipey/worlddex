@@ -28,6 +28,7 @@ import { useUser } from "../../database/hooks/useUsers";
 import { Image } from "expo-image";
 import retroCoin from "../../assets/images/retro_coin.png";
 import { supabase } from "../../database/supabase-client";
+import { usePostHog } from "posthog-react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -247,6 +248,15 @@ const MarketplaceTab = () => {
 };
 
 const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && posthog) {
+      posthog.screen("Social");
+    }
+  }, [visible, posthog]);
+
   // Changed initial state to "Social" instead of "Leaderboard"
   const [activeTab, setActiveTab] = useState("Social");
   const scrollX = useRef(new Animated.Value(width)).current; // Initialize to width (Social tab position)
@@ -254,6 +264,11 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   const currentPageRef = useRef(1); // Initialize to 1 (Social tab index)
   // Add a ref to track if we're responding to a tab click
   const isTabClickRef = useRef(false);
+
+  // Track tab changes
+  const handleTabChange = (tabName: string) => {
+    setActiveTab(tabName);
+  };
 
   // Reset to Social tab when modal opens
   useEffect(() => {
@@ -279,14 +294,32 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
       const pageIndex = Math.round(value / width);
 
       if (pageIndex === 0) {
-        setActiveTab("Leaderboard");
+        handleTabChange("Leaderboard");
         currentPageRef.current = 0;
+        if (posthog) {
+          posthog.screen("Leaderboard", {
+            screen: "Social",
+            tab: "Leaderboard"
+          });
+        }
       } else if (pageIndex === 1) {
-        setActiveTab("Social");
+        handleTabChange("Social");
         currentPageRef.current = 1;
+        if (posthog) {
+          posthog.screen("Social", {
+            screen: "Social",
+            tab: "Social"
+          });
+        }
       } else if (pageIndex === 2) {
-        setActiveTab("Marketplace");
+        handleTabChange("Marketplace");
         currentPageRef.current = 2;
+        if (posthog) {
+          posthog.screen("Marketplace", {
+            screen: "Social",
+            tab: "Marketplace"
+          });
+        }
       }
     });
 
@@ -296,6 +329,14 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   }, []);
 
   const handleTabPress = (tab: string) => {
+    // Track tab changes with PostHog
+    if (posthog && tab !== activeTab) {
+      posthog.capture("tab_changed", {
+        screen: "Social",
+        tab: tab
+      });
+    }
+    
     // Set the flag to indicate we're responding to a tab click
     isTabClickRef.current = true;
 

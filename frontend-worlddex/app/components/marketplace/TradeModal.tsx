@@ -22,6 +22,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { useListings } from "../../../database/hooks/useListings";
 import { fetchTradeOfferItemsByTradeOfferId } from "../../../database/hooks/useTradeOfferItems";
+import { usePostHog } from "posthog-react-native";
 
 interface TradeModalProps {
   visible: boolean;
@@ -47,6 +48,16 @@ const TradeModal: React.FC<TradeModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && listing && posthog) {
+      posthog.screen("Trade-Modal", {
+        listingId: listing.id,
+      });
+    }
+  }, [visible, listing, posthog]);
 
   // Get existing trade offers
   const { tradeOffers, loading: offersLoading } = useTradeOffers(listing.id, null);
@@ -234,8 +245,20 @@ const TradeModal: React.FC<TradeModalProps> = ({
       }
       onTradePlaced?.();
       onClose();
+      if (posthog) {
+        posthog.capture("marketplace_trade_offer_created", {
+          listingId: listing.id,
+          itemCount: selectedIds.length
+        });
+      }
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to place offer");
+      if (posthog) {
+        posthog.capture("marketplace_trade_offer_failed", {
+          listingId: listing.id,
+          error: e.message || "Unknown error"
+        });
+      }
     } finally {
       setIsProcessing(false);
     }

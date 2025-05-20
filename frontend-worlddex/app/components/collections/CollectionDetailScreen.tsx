@@ -14,6 +14,7 @@ import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { deleteCollection } from "../../../database/hooks/useCollections";
 import { calculateAndAwardCoins } from "../../../database/hooks/useCoins";
 import CoinRewardModal from "../CoinRewardModal";
+import { usePostHog } from "posthog-react-native";
 
 interface CollectionDetailScreenProps {
   collectionId: string;
@@ -42,6 +43,18 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showCoinReward, setShowCoinReward] = useState(false);
   const [coinReward, setCoinReward] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
+
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when component mounts
+    if (collection && posthog) {
+      posthog.screen("Collection-Detail", {
+        collectionId: collection.id,
+        collectionName: collection.name
+      });
+    }
+  }, [collection, posthog]);
 
   // Get keys for all collection items - use thumb_key with fallback to silhouette_key
   const itemImageKeys = useMemo(() => {
@@ -401,4 +414,4 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   );
 };
 
-export default CollectionDetailScreen; 
+export default CollectionDetailScreen;

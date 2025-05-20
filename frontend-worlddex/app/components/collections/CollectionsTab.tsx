@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AllCollectionsScreen from "./AllCollectionsScreen";
 import CreateCollectionScreen from "./CreateCollectionScreen";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { usePostHog } from "posthog-react-native";
 
 interface CollectionsTabProps {
   displayCollections: Collection[];
@@ -27,7 +28,27 @@ const CollectionsTab: React.FC<CollectionsTabProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [allCollectionsVisible, setAllCollectionsVisible] = useState(false);
   const [createCollectionVisible, setCreateCollectionVisible] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   const isFocused = useIsFocused();
+  const posthog = usePostHog();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsActive(true);
+      return () => {
+        setIsActive(false);
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    // Track screen view only when tab becomes active
+    if (isActive && posthog) {
+      posthog.screen("Collections-Tab", {
+        collectionCount: displayCollections?.length || 0
+      });
+    }
+  }, [isActive, posthog, displayCollections?.length]);
 
   useFocusEffect(
     React.useCallback(() => {

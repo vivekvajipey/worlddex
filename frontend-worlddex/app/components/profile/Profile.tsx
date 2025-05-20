@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch } from "react-native";
 import { Image } from "expo-image";
 import { useAuth } from "../../../src/contexts/AuthContext";
@@ -12,6 +12,7 @@ import Colors from "../../../src/utils/colors";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import retroCoin from "../../../assets/images/retro_coin.png";
+import { usePostHog } from "posthog-react-native";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -23,6 +24,26 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { user, loading, error, updateUser } = useUser(userId);
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
   const { uploadPhoto, isUploading } = usePhotoUpload();
+  const posthog = usePostHog();
+
+  // Add mounted state to prevent tracking on rerenders
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useEffect(() => {
+    // Track screen view only once when component first mounts
+    if (posthog && isMounted && !profileTrackingDone.current) {
+      posthog.screen("Profile");
+      profileTrackingDone.current = true;
+    }
+  }, [posthog, isMounted]);
+
+  // Reference to track if we've already logged this view
+  const profileTrackingDone = useRef(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -463,4 +484,4 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
       </Modal>
     </>
   );
-} 
+}

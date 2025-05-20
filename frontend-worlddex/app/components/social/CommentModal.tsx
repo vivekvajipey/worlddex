@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Capture, CaptureComment, Listing } from "../../../database/types";
 import { useComments, createComment } from "../../../database/hooks/useComments";
 import { useAuth } from "../../../src/contexts/AuthContext";
+import { usePostHog } from "posthog-react-native";
 import Comment from "./Comment";
 
 interface CommentModalProps {
@@ -43,6 +44,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const posthog = usePostHog();
 
   // Use the comments hook
   const {
@@ -88,6 +90,15 @@ const CommentModal: React.FC<CommentModalProps> = ({
       keyboardDidHideListener.remove();
     };
   }, []);
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && capture && posthog) {
+      posthog.screen("Comment-Modal", {
+        captureId: capture.id
+      });
+    }
+  }, [visible, capture, posthog]);
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || (!capture?.id && !listing?.id) || !session?.user?.id || isSubmitting) return;
@@ -254,4 +265,4 @@ const CommentModal: React.FC<CommentModalProps> = ({
   );
 };
 
-export default CommentModal; 
+export default CommentModal;

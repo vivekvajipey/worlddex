@@ -15,6 +15,7 @@ import { Collection } from "../../../database/types";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import CollectionThumbnail from "./CollectionThumbnail";
 import CollectionDetailScreen from "./CollectionDetailScreen";
+import { usePostHog } from "posthog-react-native";
 
 interface AllCollectionsScreenProps {
   visible: boolean;
@@ -36,6 +37,15 @@ const AllCollectionsScreen: React.FC<AllCollectionsScreenProps> = ({
   // States for collection detail view
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [collectionDetailVisible, setCollectionDetailVisible] = useState(false);
+
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view only when component becomes visible
+    if (visible && posthog) {
+      posthog.screen("All-Collections");
+    }
+  }, [visible, posthog]);
 
   // Load all collections when the screen becomes visible
   useEffect(() => {

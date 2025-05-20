@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
 import { supabase } from "../../../database/supabase-client";
 import retroCoin from "../../../assets/images/retro_coin.png";
+import { usePostHog } from "posthog-react-native";
 
 interface BuyNowModalProps {
   visible: boolean;
@@ -34,6 +35,17 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
   const { user: currentUser, updateUser } = useUser(userId);
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when modal becomes visible
+    if (visible && listing && posthog) {
+      posthog.screen("Buy-Now-Modal", {
+        listingId: listing.id,
+        price: listing.price
+      });
+    }
+  }, [visible, listing, posthog]);
 
   // helper to pull in the freshest user record (and update context)
   const refreshUserData = async () => {
@@ -75,13 +87,32 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
       );
       if (rpcErr) throw rpcErr;
 
+      // Track successful purchase
+      if (posthog) {
+        posthog.capture("marketplace_purchase_completed", {
+          listingId: listing.id,
+          price: listing.price,
+          listingType: "buy_now"
+        });
+      }
+
       // Refresh user data and notify parent components
       await refreshUserData();
       if (onUserBalanceChanged) await onUserBalanceChanged();
       if (onPurchaseComplete) onPurchaseComplete();
       onClose();
     } catch (e: any) {
+      console.error("Error making purchase:", e);
       setError(e.message || "Failed to process purchase. Please try again.");
+
+      // Track failed purchase
+      if (posthog) {
+        posthog.capture("marketplace_purchase_failed", {
+          listingId: listing.id,
+          price: listing.price,
+          error: e.message || "Unknown error"
+        });
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ListingPost from "./ListingPost";
 import BuyNowModal from "./BuyNowModal";
 import { Listing, Capture } from "../../../database/types";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { usePostHog } from "posthog-react-native";
 
 interface BuyNowListingProps {
   listing: Listing;
@@ -31,8 +33,29 @@ const BuyNowListing: React.FC<BuyNowListingProps> = ({
   onUserBalanceChanged
 }) => {
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    if (posthog && listing) {
+      posthog.capture("marketplace_listing_impression", {
+        listingId: listing.id,
+        listingType: "buy_now",
+        price: listing.price
+      });
+    }
+  }, [posthog, listing]);
 
   const handleBuyPress = () => {
+    if (posthog) {
+      posthog.capture("marketplace_purchase_initiated", {
+        listingId: listing.id,
+        price: listing.price
+      });
+    }
+    
+    if (onBuyPress) {
+      onBuyPress(listing);
+    }
     setShowBuyModal(true);
   };
 

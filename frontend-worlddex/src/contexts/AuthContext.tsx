@@ -4,6 +4,7 @@ import { supabase } from '../../database/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { usePostHog } from "posthog-react-native";
 
 type AuthContextType = {
   user: User | null;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const posthog = usePostHog();
 
   useEffect(() => {
     // Get initial session
@@ -27,18 +29,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
+      
+      // Identify user with PostHog if logged in
+      if (session?.user?.email && posthog) {
+        posthog.identify(session.user.id, {
+          email: session.user.email,
+          name: session.user.user_metadata?.name || session.user.email
+        });
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Identify user with PostHog when auth state changes
+      if (session?.user?.email && posthog) {
+        posthog.identify(session.user.id, {
+          email: session.user.email,
+          name: session.user.user_metadata?.name || session.user.email
+        });
+      } else if (!session && posthog) {
+        // Reset identity when signed out
+        posthog.reset();
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [posthog]);
 
   const signInWithGoogle = async () => {
     try {
@@ -152,6 +173,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Reset PostHog identity when signing out
+      if (posthog) {
+        posthog.reset();
+      }
     } catch (error) {
       throw error;
     }

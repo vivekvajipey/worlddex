@@ -15,6 +15,7 @@ import AuctionListing from "./AuctionListing";
 import BuyNowListing from "./BuyNowListing";
 import TradeListing from "./TradeListing";
 import { Listing, Capture } from "../../../database/types";
+import { usePostHog } from "posthog-react-native";
 
 // define filter options
 const filterOptions = [
@@ -216,6 +217,15 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
       )}
     </View>
   );
+
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    // Track screen view when component mounts
+    if (posthog) {
+      posthog.screen("Marketplace-Feed");
+    }
+  }, [posthog]);
 
   return (
     <FlatList

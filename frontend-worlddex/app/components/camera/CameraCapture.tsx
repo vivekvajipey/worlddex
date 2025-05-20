@@ -6,6 +6,7 @@ import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import AnimatedReanimated, { useAnimatedProps } from "react-native-reanimated";
 import Svg, { Path, Polygon } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
+import { usePostHog } from "posthog-react-native";
 
 const AnimatedCamera = AnimatedReanimated.createAnimatedComponent(CameraView);
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -26,6 +27,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     const [facing, setFacing] = useState<CameraType>("back");
     const [torchEnabled, setTorchEnabled] = useState(false);
     const cameraRef = useRef<CameraView>(null);
+    const posthog = usePostHog();
 
     // Zoom state
     const [zoom, setZoom] = useState(0);
@@ -112,6 +114,15 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             // Create a local copy of points to avoid race conditions
             const pointsCopy = [...points];
             const closedPoints = [...pointsCopy, pointsCopy[0]];
+            
+            // Track lasso capture event
+            if (posthog) {
+              posthog.capture("capture_lasso", {
+                num_points: pointsCopy.length,
+                camera_facing: facing,
+                torch_enabled: torchEnabled
+              });
+            }
 
             setPathString(updatePathString(closedPoints));
             setPolygonPoints(updatePolygonPoints(closedPoints));
@@ -127,7 +138,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             setPolygonPoints("");
           }
         }),
-      [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing]
+      [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing, posthog, facing, torchEnabled]
     );
 
     // Pinch gesture for zoom
@@ -168,9 +179,17 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     const captureFullScreen = useCallback(() => {
       if (isCapturing || !onFullScreenCapture) return;
 
+      // Track the full screen capture event
+      if (posthog) {
+        posthog.capture("capture_fullscreen", {
+          camera_facing: facing,
+          torch_enabled: torchEnabled
+        });
+      }
+
       // Trigger full screen capture
       onFullScreenCapture();
-    }, [isCapturing, onFullScreenCapture]);
+    }, [isCapturing, onFullScreenCapture, posthog, facing, torchEnabled]);
 
     // Double tap gesture for full screen capture
     const doubleTapGesture = useMemo(
@@ -202,12 +221,28 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
 
     // Toggle camera facing
     function toggleCameraFacing() {
-      setFacing(current => (current === "back" ? "front" : "back"));
+      const newFacing = facing === "back" ? "front" : "back";
+      setFacing(newFacing);
+      
+      // Track camera flip event
+      if (posthog) {
+        posthog.capture("toggle_camera_facing", {
+          new_facing: newFacing
+        });
+      }
     }
 
     // Toggle flashlight/torch
     function toggleTorch() {
-      setTorchEnabled(current => !current);
+      const newTorchState = !torchEnabled;
+      setTorchEnabled(newTorchState);
+      
+      // Track torch toggle event
+      if (posthog) {
+        posthog.capture("toggle_torch", {
+          enabled: newTorchState
+        });
+      }
     }
 
     return (

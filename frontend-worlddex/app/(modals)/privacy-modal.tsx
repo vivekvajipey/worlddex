@@ -1,9 +1,19 @@
-import React from 'react';
-import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useEffect } from "react";
+import { View, Text, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from "react-native";
+import { useRouter, usePathname } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 
 export default function PrivacyModal() {
   const router = useRouter();
+  const pathname = usePathname();
+  const posthog = usePostHog();
+  
+  useEffect(() => {
+    // Track screen view when route becomes active, not on component mount
+    if (posthog && pathname === "/(modals)/privacy-modal") {
+      posthog.screen("Privacy-Modal");
+    }
+  }, [pathname, posthog]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
