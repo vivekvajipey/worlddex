@@ -76,6 +76,8 @@ async function testIdentificationFlow() {
       console.log("\n--- FINAL IDENTIFICATION RESULT ---");
       console.log("Tier 1 Label:", tier1Result.label);
       console.log("Tier 1 Category:", tier1Result.category);
+      console.log("Tier 1 Rarity Score:", tier1Result.rarityScore);
+      console.log("Tier 1 Rarity Tier:", tier1Result.rarityTier);
       console.log("Tier 2 Label:", tier2Result.label);
       console.log("Tier 2 Confidence:", tier2Result.confidence);
       console.log("Tier 2 Provider:", tier2Result.provider);
@@ -83,6 +85,8 @@ async function testIdentificationFlow() {
       console.log("\n--- FINAL IDENTIFICATION RESULT ---");
       console.log("No Tier 2 identification needed.");
       console.log("Final Label:", tier1Result.label);
+      console.log("Rarity Score:", tier1Result.rarityScore);
+      console.log("Rarity Tier:", tier1Result.rarityTier);
     }
     
   } catch (error) {

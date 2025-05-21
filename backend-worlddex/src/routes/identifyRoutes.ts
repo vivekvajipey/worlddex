@@ -39,7 +39,9 @@ const identifyHandler:RequestHandler = async (req,res) => {
   console.log("Tier 1 Result:", { 
     label: tier1.label, 
     category: tier1.category,
-    subcategory: tier1.subcategory 
+    subcategory: tier1.subcategory,
+    rarityScore: tier1.rarityScore,
+    rarityTier: tier1.rarityTier
   });
   console.log("Routing Decision:", routing);
   

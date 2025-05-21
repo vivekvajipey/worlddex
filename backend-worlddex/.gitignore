@@ -34,5 +34,5 @@ logs/
 coverage/ 
 
 # testing
-backend-worlddex/test-images/
+backend-worlddex/test-images/*
 backend-worlddex/src/test-scripts/
