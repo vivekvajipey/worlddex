@@ -4,10 +4,12 @@ import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
+import { rarityColorBg, rarityColorTxt } from "../../../src/utils/rarityColors";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
 import { usePostHog } from "posthog-react-native";
+
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -40,6 +42,7 @@ interface PolaroidDevelopmentProps {
   onReject?: () => void; // Optional function to reject the capture
   onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
   identificationComplete?: boolean; // prop to indicate when all identification is complete
+  rarityTier?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary";
 }
 
 export default function PolaroidDevelopment({
@@ -51,13 +54,16 @@ export default function PolaroidDevelopment({
   label,
   onReject,
   onSetPublic,
-  identificationComplete = false // Default to false for backward compatibility
+  identificationComplete = false, // Default to false for backward compatibility
+  rarityTier = "common" // Default to common if no rarity tier is provided
 }: PolaroidDevelopmentProps) {
   // Add logging for props
   console.log("==== POLAROID DEVELOPMENT PROPS ====");
   console.log("captureSuccess:", captureSuccess);
   console.log("isIdentifying:", isIdentifying);
   console.log("label:", label);
+  console.log("rarityTier:", rarityTier);
+  console.log("identificationComplete:", identificationComplete);
 
   // Get user settings
   const { session } = useAuth();
@@ -112,13 +118,14 @@ export default function PolaroidDevelopment({
     if (identificationComplete && posthog) {
       if (captureSuccess === true) {
         posthog.capture("object_identified", {
-          objectType: label || "unknown"
+          objectType: label || "unknown",
+          rarityTier: rarityTier
         });
       } else if (captureSuccess === false) {
         posthog.capture("identification_failed");
       }
     }
-  }, [identificationComplete, captureSuccess, label, posthog]);
+  }, [identificationComplete, captureSuccess, label, rarityTier, posthog]);
 
   // Calculate final dimensions for the polaroid
   const targetDimensions = calculateTargetDimensions(captureBox.aspectRatio);
@@ -600,7 +607,8 @@ export default function PolaroidDevelopment({
           marginTop: FRAME_EDGE_PADDING,
           marginHorizontal: FRAME_EDGE_PADDING,
           marginBottom: 0,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          position: 'relative' // Added for absolute positioning of the flag
         }}>
           {/* The photo image */}
           <Image
@@ -820,8 +828,8 @@ export default function PolaroidDevelopment({
             onPress={() => handlePrivacyToggle(!isPublic)}
             activeOpacity={0.7}
           >
-            <Ionicons name={isPublic ? "ios-globe" : "ios-lock-closed"} size={24} color="black" />
-            <Text className="text-lg ml-2">{isPublic ? "Public" : "Private"}</Text>
+            <Ionicons name={isPublic ? "globe" : "lock-closed"} size={24} color="black" />
+            {/* <Text className="text-lg ml-2">{isPublic ? "Public" : "Private"}</Text> */}
           </TouchableOpacity>
         </View>
       )}

@@ -8,6 +8,8 @@ export interface Tier1Result {
     label: string | null;
     category?: string | null;
     subcategory?: string | null;
+    rarityScore?: number;
+    rarityTier?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary";
 }
   
 export interface Tier2Result {

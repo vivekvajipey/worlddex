@@ -97,6 +97,9 @@ export default function CameraScreen({
   const [coinModalVisible, setCoinModalVisible] = useState(false);
   const [coinModalData, setCoinModalData] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
 
+  // Add state for rarity tier
+  const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
+
   const handleOnboardingReset = useCallback(() => {
     setResetCounter((n) => n + 1);   // new key → unmount + mount
   }, []);
@@ -164,51 +167,62 @@ export default function CameraScreen({
     }
   }, [isCapturing, capturedUri]);
 
-  // Two–tier ID -----------------------------------------------
+  // Update useEffect that watches for tier1 and tier2 changes
   useEffect(() => {
     console.log("==== TIER RESULTS UPDATED (camera.tsx hook) ====");
-    const currentTier1 = tier1;
-    const currentTier2 = tier2;
-    const currentIdLoading = idLoading;
+    
+    // Reset on each run if we don't have any tiers yet
+    if (!tier1 && !tier2) {
+      setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
+      setIdentificationComplete(false);
+      setRarityTier("common"); // Reset rarity tier
+      return;
+    }
 
-    console.log("Current Tier1:", currentTier1 ? JSON.stringify(currentTier1) : "null");
-    console.log("Current Tier2:", currentTier2 ? JSON.stringify(currentTier2) : "null");
-    console.log("Current idLoading:", currentIdLoading);
-
-    // Tier-2 overrides Tier-1 if it exists
-    const label = currentTier2?.label ?? currentTier1?.label ?? null;
-    console.log("Selected label for display:", label);
-
-    if (label) {
-      setIdentifiedLabel(label);
-      setVlmCaptureSuccess(true);
-      console.log("Updated identifiedLabel state:", label);
-
-      // If we have tier2 result or tier1 result with status "done" (no tier2 needed)
-      // then identification is complete
-      if (currentTier2 || (currentTier1 && !currentIdLoading)) {
-        console.log("Identification is now complete (SUCCESS).");
-        setIdentificationComplete(true);
-      } else if (currentIdLoading) {
-        // Still loading (e.g. tier1 received, waiting for potential tier2)
-        // Keep identificationComplete as is or set to false if it wasn't already processing a multi-tier result
-        console.log("Have a label, but still loading (potentially waiting for Tier2). Identification NOT YET fully complete.");
-        // setIdentificationComplete(false); // Explicitly false if we expect more
-      }
-    } else {
-      // No label found
-      if (!currentIdLoading) {
-        // Identification attempt is finished (not loading anymore) and no label was found
-        console.log("Identification is now complete (FAILURE - no label found).");
-        setIdentifiedLabel(null);    // Ensure it's null
-        setVlmCaptureSuccess(false); // Mark as unsuccessful
-        setIdentificationComplete(true); // Identification process is complete
+    if (tier1 !== null) {
+      // Handle tier1 successful identification
+      if (tier1.label) {
+        console.log("==== SETTING TIER 1 IDENTIFICATION ====");
+        console.log("tier1:", tier1);
+        setVlmCaptureSuccess(true);
+        setIdentifiedLabel(tier1.label);
+        
+        // Set rarity information if available
+        if (tier1.rarityTier) {
+          setRarityTier(tier1.rarityTier);
+          console.log("Setting rarity tier:", tier1.rarityTier);
+        } else {
+          console.log("No rarity tier in tier1 response, using default");
+        }
+        
+        // If tier2 is not expected (status is done), mark as complete
+        if (!idLoading) {
+          console.log("Tier1 only identification is complete.");
+          setIdentificationComplete(true);
+        }
+        // Otherwise, wait for tier2 to finish - will be handled below
       } else {
-        // Still loading, and no label yet. VLM might still be processing.
-        console.log("No label yet, and still loading. Waiting for VLM response.");
-        // Do not change vlmCaptureSuccess from its initial null state yet (should be null).
-        // Do not change identifiedLabel yet.
-        // setIdentificationComplete(false); // Mark as not complete while loading
+        console.log("Tier1 identification failed - no label.");
+        setVlmCaptureSuccess(false);
+        setIdentificationComplete(true);
+      }
+    }
+
+    // When tier2 results come in (or error)
+    if (tier1 && !idLoading) { 
+      // idLoading will be false when tier2 is done or errored
+      console.log("==== IDENTIFICATION COMPLETE ====");
+      console.log("tier1:", tier1);
+      console.log("tier2:", tier2);
+
+      setIdentificationComplete(true);
+      
+      // If we have tier2 results and they have a label, use those labels
+      if (tier2 && tier2.label) {
+        // Make sure we have a successful result
+        setVlmCaptureSuccess(true);
+        setIdentifiedLabel(tier2.label);
       }
     }
   }, [tier1, tier2, idLoading]);
@@ -757,6 +771,7 @@ export default function CameraScreen({
             }}
             onSetPublic={setIsCapturePublic}
             identificationComplete={identificationComplete}
+            rarityTier={rarityTier}
           />
         )}
 
