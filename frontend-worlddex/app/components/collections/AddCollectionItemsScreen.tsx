@@ -26,7 +26,6 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { v4 as uuidv4 } from "uuid";
-import { usePostHog } from "posthog-react-native";
 
 interface AddCollectionItemsScreenProps {
   visible: boolean;
@@ -82,17 +81,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
   onClose,
   collection,
 }) => {
-  const posthog = usePostHog();
-
-  useEffect(() => {
-    // Track screen view when component mounts
-    if (posthog) {
-      posthog.screen("Add-Collection-Items", {
-        collectionId: collection.id
-      });
-    }
-  }, [posthog, collection.id]);
-
   const [activeTab, setActiveTab] = useState<Tab>("existing");
   const [searchQuery, setSearchQuery] = useState("");
   const [userCaptures, setUserCaptures] = useState<Capture[]>([]);
@@ -235,7 +223,8 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       const filename = selectedAsset.uri.split("/").pop() || "silhouette.jpg";
       const type = "image/jpeg";
 
-      setNewItemForm({
+      // First set the image URI for immediate display
+      const updatedForm = {
         ...newItemForm,
         silhouetteImage: selectedAsset.uri,
         silhouetteImageFile: {
@@ -243,7 +232,9 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
           name: filename,
           type,
         }
-      });
+      };
+
+      setNewItemForm(updatedForm);
     }
   };
 
@@ -262,27 +253,21 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       Alert.alert("Missing Information", "Please enter an item name");
       return;
     }
-
-    if (!newItemForm.silhouetteImage || !newItemForm.silhouetteImageFile) {
+    if (!newItemForm.silhouetteImageFile) {
       Alert.alert("Missing Image", "Please select a silhouette image");
       return;
     }
 
     setIsSubmitting(true);
-
     try {
-      // Generate a unique item ID for this collection item
+      // 1) generate a unique itemId
       const itemId = uuidv4();
 
-      // Prepare for upload
-      const fileUri = newItemForm.silhouetteImageFile.uri;
-      const contentType = newItemForm.silhouetteImageFile.type;
-      const fileName = newItemForm.silhouetteImageFile.name;
+      // 2) prepare upload params
+      const { uri: fileUri, name: fileName, type: contentType } = newItemForm.silhouetteImageFile;
+      const folder = `collection_items/${userId || "anonymous"}/${collection.id}`;
 
-      // Create folder path using userId and collection id
-      const folder = `collection_items/${userId || 'anonymous'}/${collection.id}`;
-
-      // Upload the image to S3 using the generic upload function
+      // 3) upload the full-size silhouette image
       const silhouetteKey = await uploadPhoto(
         fileUri,
         contentType,
@@ -290,54 +275,39 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         folder
       );
 
-      // Generate thumbnail
+      // 4) generate a small thumbnail on the device
       const thumbnailResult = await ImageManipulator.manipulateAsync(
         fileUri,
         [{ resize: { width: 200 } }],
         { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
       );
-      
-      // Generate thumb_key similar to captures
-      const thumbKey = `thumbs/${fileName.replace(/\.(png|jpe?g)$/i, '.jpg')}`;
-      
-      // Upload thumbnail
-      let thumbSuccess = false;
-      try {
-        const thumbResult = await uploadPhoto(
-          thumbnailResult.uri,
-          "image/jpeg",
-          fileName.replace(/\.(png|jpe?g)$/i, '.jpg'),
-          "thumbs"
-        );
-        thumbSuccess = !!thumbResult;
-      } catch (thumbErr) {
-        console.error("Thumbnail upload failed:", thumbErr);
-        // Continue with main item creation even if thumbnail fails
-      }
 
-      // Set display_name based on whether the item is secret rare
-      const displayName = newItemForm.isSecretRare ? "???" : newItemForm.name.trim();
-      const itemName = newItemForm.name.trim();
+      // 5) give your thumb a distinct filename
+      const thumbFileName = `${itemId}-thumb.jpg`;
 
-      // Create the collection item with the S3 key
+      // 6) upload the thumbnail into the same folder under /thumbs
+      const thumbKey = await uploadPhoto(
+        thumbnailResult.uri,
+        "image/jpeg",
+        thumbFileName,
+        `${folder}/thumbs`
+      );
+
+      // 7) finally, create the collection item record with both keys
       const newCollectionItem = await createCollectionItem({
         collection_id: collection.id,
         item_id: itemId,
         silhouette_key: silhouetteKey,
+        thumb_key: thumbKey,
         is_secret_rare: newItemForm.isSecretRare,
         collection_rarity: newItemForm.rarity,
-        display_name: displayName,
-        name: itemName,
-        thumb_key: thumbSuccess ? thumbKey : undefined,
+        display_name: newItemForm.isSecretRare ? "???" : newItemForm.name.trim(),
+        name: newItemForm.name.trim(),
       });
 
       if (newCollectionItem) {
-        // Add to the list of added items
         setAddedItems(prev => [...prev, newCollectionItem]);
-
-        // Reset the form for next item
         handleResetNewItemForm();
-
       } else {
         Alert.alert("Error", "Failed to add item to the collection");
       }
@@ -510,8 +480,9 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
           {newItemForm.silhouetteImage ? (
             <Image
               source={{ uri: newItemForm.silhouetteImage }}
-              className="w-full h-full"
-              contentFit="contain"
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={300}
             />
           ) : (
             <View className="flex-1 justify-center items-center">

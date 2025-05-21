@@ -352,14 +352,14 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
             </View>
             <FlatList
               data={displayItems}
-              keyExtractor={(item) => item.id}
+              keyExtractor={i => i.id}
               renderItem={({ item }) => (
                 <CollectionItemThumbnail
                   item={item}
                   onPress={() => { }}
                   isCollected={isItemCollected(item.id)}
-                  downloadUrl={itemUrlMap[item.thumb_key || item.silhouette_key]}
                   loading={itemUrlsLoading}
+                  downloadUrl={itemUrlMap[item.thumb_key || item.silhouette_key] || null}
                 />
               )}
               numColumns={3}
