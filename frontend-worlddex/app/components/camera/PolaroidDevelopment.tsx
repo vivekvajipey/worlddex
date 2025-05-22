@@ -777,6 +777,78 @@ export default function PolaroidDevelopment({
           </View>
         )}
         
+        {/* Display rarity badge at the top when identification is complete */}
+        {isCompleted && identificationComplete && (
+          <View className="absolute top-1 left-0 right-0 flex items-center justify-center z-10">
+            {rarityTier === "legendary" ? (
+              // Special treatment for legendary rarity badge
+              <Animated.View style={{
+                paddingHorizontal: 16,
+                paddingVertical: 5,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                overflow: 'hidden',
+                shadowColor: getGlowColor("legendary", 1),
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: glowAnim,
+                shadowRadius: 6,
+                elevation: 6,
+              }}>
+                <LinearGradient
+                  colors={['#ff7b00', '#f2ff00', '#00ff1d', '#00e4ff', '#0057ff', '#8c00ff', '#ff00c8', '#ff0000']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ 
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0
+                  }}
+                />
+                <Text style={{
+                  color: 'white',
+                  fontSize: 14,
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  textShadowColor: 'rgba(0, 0, 0, 0.7)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 3,
+                }}>
+                  {rarityTier}
+                </Text>
+              </Animated.View>
+            ) : (
+              // Standard rarity badge for non-legendary rarities
+              <Animated.View style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                paddingHorizontal: 12,
+                paddingVertical: 4,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: rarityStyles[rarityTier as RarityTier].borderColor,
+                // Add shadow/glow for higher rarities
+                ...(rarityStyles[rarityTier as RarityTier].hasGlow ? {
+                  shadowColor: getGlowColor(rarityTier as RarityTier, 0.8),
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: glowAnim, // Use the same animation as the border
+                  shadowRadius: 4,
+                  elevation: 5,
+                } : {})
+              }}>
+                <Text style={{
+                  color: rarityTier === "common" ? "white" : rarityStyles[rarityTier as RarityTier].borderColor,
+                  fontSize: 14,
+                  fontWeight: '700',
+                  textTransform: 'capitalize',
+                  textShadowColor: 'rgba(0, 0, 0, 0.5)',
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}>
+                  {rarityTier}
+                </Text>
+              </Animated.View>
+            )}
+          </View>
+        )}
+        
         {/* Photo container */}
         <View style={{
           width: targetDimensions.photoWidth,
@@ -862,15 +934,6 @@ export default function PolaroidDevelopment({
                   style={{ opacity: dot3Opacity }}
                 />
               </View>
-            </View>
-          )}
-          
-          {/* Display rarity badge when identification is complete */}
-          {isCompleted && identificationComplete && (
-            <View className="absolute bottom-1 left-2 bg-gray-800 bg-opacity-60 px-2 py-0.5 rounded-full">
-              <Text className="text-xs font-medium text-white capitalize">
-                {rarityTier}
-              </Text>
             </View>
           )}
         </View>
