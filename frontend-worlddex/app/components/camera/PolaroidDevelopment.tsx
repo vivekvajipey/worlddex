@@ -492,6 +492,7 @@ export default function PolaroidDevelopment({
             })
           }
         ],
+        // Apply opacity to whole component during dismiss animation
         opacity: opacityAnim,
       };
     }
@@ -625,6 +626,7 @@ export default function PolaroidDevelopment({
       return {
         borderWidth: settings.borderWidth,
         borderColor: settings.borderColor,
+        borderStyle: "solid" as const,
         shadowColor: glowColor,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: glowAnim, // Animated value
@@ -637,6 +639,7 @@ export default function PolaroidDevelopment({
     return {
       borderWidth: settings.borderWidth,
       borderColor: settings.borderColor,
+      borderStyle: "solid" as const, // Explicitly set solid border
     };
   };
 
@@ -668,35 +671,6 @@ export default function PolaroidDevelopment({
         },
       ],
     };
-  };
-
-  // Render legendary gradient border (requires special handling)
-  const renderPolaroidFrame = () => {
-    // Ensure rarityTier is valid
-    const tier = (rarityTier || 'common') as RarityTier;
-    const settings = rarityStyles[tier];
-    
-    if (tier === 'legendary' && isCompleted) {
-      // For legendary items, use LinearGradient for the border
-      return (
-        <LinearGradient
-          colors={legendaryGradientColors as any}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            position: 'absolute',
-            top: -settings.borderWidth,
-            left: -settings.borderWidth,
-            right: -settings.borderWidth,
-            bottom: -settings.borderWidth,
-            borderRadius: 12, // Slightly larger than the polaroid's border radius
-            zIndex: -1,
-          }}
-        />
-      );
-    }
-    
-    return null; // For other rarities, use standard border styles
   };
 
   // Render shimmer effect overlay
@@ -759,13 +733,49 @@ export default function PolaroidDevelopment({
             height: targetDimensions.height,
             left: captureBox.x + (captureBox.width / 2) - (targetDimensions.width / 2),
             top: captureBox.y + (captureBox.height / 2) - (targetDimensions.height / 2),
+            overflow: 'visible',
+            zIndex: 2, // Ensure polaroid content is above gradient border
           },
-          getRarityStyles(), // Apply rarity-specific styling
+          rarityTier !== 'legendary' ? getRarityStyles() : {},
           getAnimationStyles(),
         ]}
       >
-        {/* Render legendary gradient border if needed */}
-        {renderPolaroidFrame()}
+        {/* Solid white background for the polaroid - ensures no transparency */}
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: backgroundColor,
+          borderRadius: 8,
+        }} />
+        
+        {/* Legendary gradient border */}
+        {rarityTier === "legendary" && isCompleted && (
+          <View
+            style={{
+              position: 'absolute',
+              top: -6, // Slightly more than the border width
+              left: -6,
+              right: -6,
+              bottom: -6,
+              borderRadius: 12, // Match the border radius
+              overflow: 'hidden', // Ensure gradient stays within bounds
+              zIndex: -1, // Behind the polaroid content but still visible
+            }}
+          >
+            <LinearGradient
+              colors={['#ff7b00', '#f2ff00', '#00ff1d', '#00e4ff', '#0057ff', '#8c00ff', '#ff00c8', '#ff0000']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ 
+                width: '100%', 
+                height: '100%',
+              }}
+            />
+          </View>
+        )}
         
         {/* Photo container */}
         <View style={{
@@ -787,7 +797,7 @@ export default function PolaroidDevelopment({
             contentFit={isCompleted ? "contain" : "cover"}
           />
 
-          {/* White overlay that fades away */}
+          {/* White overlay that fades away - now ONLY inside the photo container */}
           {!isCompleted && !isRipping && (
             <Animated.View
               style={{
@@ -1119,5 +1129,6 @@ function getAnimatedStyles(
         }),
       },
     ],
+    // No opacity animation here to ensure the frame stays opaque
   };
 }
