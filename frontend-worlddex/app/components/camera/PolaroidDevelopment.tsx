@@ -9,7 +9,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
 import { usePostHog } from "posthog-react-native";
-
+import { LinearGradient } from "expo-linear-gradient";
+import { rarityStyles, legendaryGradientColors, getGlowColor, RarityTier } from "../../../src/utils/rarityStyles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -42,7 +43,7 @@ interface PolaroidDevelopmentProps {
   onReject?: () => void; // Optional function to reject the capture
   onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
   identificationComplete?: boolean; // prop to indicate when all identification is complete
-  rarityTier?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary";
+  rarityTier?: RarityTier;
 }
 
 export default function PolaroidDevelopment({
@@ -95,6 +96,10 @@ export default function PolaroidDevelopment({
   const leftRotateAnim = useRef(new Animated.Value(0)).current;
   const rightRotateAnim = useRef(new Animated.Value(0)).current;
 
+  // Rarity effect animations
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.5)).current;
+
   // State tracking
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isRipping, setIsRipping] = useState(false);
@@ -145,6 +150,44 @@ export default function PolaroidDevelopment({
       blurIntensity.removeListener(listener);
     };
   }, []);
+
+  // Start rarity animations when initial animation is done and capture is successful
+  useEffect(() => {
+    if (initialAnimationDone && captureSuccess === true) {
+      // Ensure rarityTier is valid
+      const tier = (rarityTier || 'common') as RarityTier;
+      const settings = rarityStyles[tier];
+      
+      // Start shimmer animation if needed
+      if (settings.hasShimmer) {
+        Animated.loop(
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          })
+        ).start();
+      }
+      
+      // Start glow animation if needed
+      if (settings.hasGlow) {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(glowAnim, {
+              toValue: 1,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(glowAnim, {
+              toValue: 0.3,
+              duration: 1500,
+              useNativeDriver: true,
+            })
+          ])
+        ).start();
+      }
+    }
+  }, [initialAnimationDone, captureSuccess, rarityTier]);
 
   // Loading dots animation
   useEffect(() => {
@@ -569,6 +612,126 @@ export default function PolaroidDevelopment({
     }
   };
 
+  // Get rarity styles for the polaroid frame
+  const getRarityStyles = () => {
+    // Ensure rarityTier is valid
+    const tier = (rarityTier || 'common') as RarityTier;
+    const settings = rarityStyles[tier];
+    
+    // Add glow effect for higher rarities when complete
+    if (isCompleted && settings.hasGlow) {
+      const glowColor = getGlowColor(tier);
+      
+      return {
+        borderWidth: settings.borderWidth,
+        borderColor: settings.borderColor,
+        shadowColor: glowColor,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: glowAnim, // Animated value
+        shadowRadius: 10,
+        elevation: 10,
+      };
+    }
+    
+    // Regular border style
+    return {
+      borderWidth: settings.borderWidth,
+      borderColor: settings.borderColor,
+    };
+  };
+
+  // Get shimmer effect styles
+  const getShimmerStyle = () => {
+    // Ensure rarityTier is valid
+    const tier = (rarityTier || 'common') as RarityTier;
+    const settings = rarityStyles[tier];
+    
+    if (!settings.hasShimmer || !isCompleted) return {};
+    
+    return {
+      opacity: shimmerAnim.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, 0.3, 0],
+      }),
+      transform: [
+        {
+          translateX: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-200, 200],
+          }),
+        },
+        {
+          translateY: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-200, 200],
+          }),
+        },
+      ],
+    };
+  };
+
+  // Render legendary gradient border (requires special handling)
+  const renderPolaroidFrame = () => {
+    // Ensure rarityTier is valid
+    const tier = (rarityTier || 'common') as RarityTier;
+    const settings = rarityStyles[tier];
+    
+    if (tier === 'legendary' && isCompleted) {
+      // For legendary items, use LinearGradient for the border
+      return (
+        <LinearGradient
+          colors={legendaryGradientColors as any}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            position: 'absolute',
+            top: -settings.borderWidth,
+            left: -settings.borderWidth,
+            right: -settings.borderWidth,
+            bottom: -settings.borderWidth,
+            borderRadius: 12, // Slightly larger than the polaroid's border radius
+            zIndex: -1,
+          }}
+        />
+      );
+    }
+    
+    return null; // For other rarities, use standard border styles
+  };
+
+  // Render shimmer effect overlay
+  const renderShimmerEffect = () => {
+    // Ensure rarityTier is valid
+    const tier = (rarityTier || 'common') as RarityTier;
+    const settings = rarityStyles[tier];
+    
+    if (!settings.hasShimmer || !isCompleted) return null;
+    
+    return (
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'transparent',
+            overflow: 'hidden',
+          },
+          getShimmerStyle()
+        ]}
+      >
+        <LinearGradient
+          colors={['transparent', 'rgba(255, 255, 255, 0.3)', 'transparent'] as any}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ width: '200%', height: '200%' }}
+        />
+      </Animated.View>
+    );
+  };
+
   return (
     <View className="absolute inset-0">
       {/* Blurred background - gets touchable in final state */}
@@ -597,9 +760,13 @@ export default function PolaroidDevelopment({
             left: captureBox.x + (captureBox.width / 2) - (targetDimensions.width / 2),
             top: captureBox.y + (captureBox.height / 2) - (targetDimensions.height / 2),
           },
+          getRarityStyles(), // Apply rarity-specific styling
           getAnimationStyles(),
         ]}
       >
+        {/* Render legendary gradient border if needed */}
+        {renderPolaroidFrame()}
+        
         {/* Photo container */}
         <View style={{
           width: targetDimensions.photoWidth,
@@ -608,7 +775,7 @@ export default function PolaroidDevelopment({
           marginHorizontal: FRAME_EDGE_PADDING,
           marginBottom: 0,
           overflow: 'hidden',
-          position: 'relative' // Added for absolute positioning of the flag
+          position: 'relative'
         }}>
           {/* The photo image */}
           <Image
@@ -634,6 +801,9 @@ export default function PolaroidDevelopment({
               }}
             />
           )}
+          
+          {/* Shimmer effect for rare+ items */}
+          {renderShimmerEffect()}
         </View>
 
         {/* Bottom space with label text */}
@@ -682,6 +852,15 @@ export default function PolaroidDevelopment({
                   style={{ opacity: dot3Opacity }}
                 />
               </View>
+            </View>
+          )}
+          
+          {/* Display rarity badge when identification is complete */}
+          {isCompleted && identificationComplete && (
+            <View className="absolute bottom-1 left-2 bg-gray-800 bg-opacity-60 px-2 py-0.5 rounded-full">
+              <Text className="text-xs font-medium text-white capitalize">
+                {rarityTier}
+              </Text>
             </View>
           )}
         </View>
