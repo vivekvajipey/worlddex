@@ -552,7 +552,8 @@ export default function CameraScreen({
             image_key: "", // This will be set by uploadCapturePhoto
             is_public: isCapturePublic,
             like_count: 0,
-            daily_upvotes: 0
+            daily_upvotes: 0,
+            rarity_tier: rarityTier
           };
 
           const captureRecord = await uploadCapturePhoto(

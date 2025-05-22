@@ -1072,19 +1072,6 @@ export default function PolaroidDevelopment({
           </View>
         </View>
       )}
-      {/* Public/private toggle button */}
-      {initialAnimationDone && captureSuccess && !isRipping && !isMinimizing && (
-        <View className="absolute bottom-32 left-0 right-0 items-center">
-          <TouchableOpacity
-            className="bg-background rounded-full px-4 py-2 flex flex-row items-center shadow-lg"
-            onPress={() => handlePrivacyToggle(!isPublic)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name={isPublic ? "globe" : "lock-closed"} size={24} color="black" />
-            {/* <Text className="text-lg ml-2">{isPublic ? "Public" : "Private"}</Text> */}
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }

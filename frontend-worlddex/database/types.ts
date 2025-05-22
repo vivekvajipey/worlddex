@@ -63,6 +63,7 @@ export type Capture = {
   thumb_key?: string;
   last_owner_id?: string;
   transaction_type?: "buy-now" | "auction" | "trade";
+  rarity_tier?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary";
 };
 
 export type UserCollectionItem = {
