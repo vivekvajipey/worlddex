@@ -33,9 +33,20 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
   const { session } = useAuth();
   const userId = session?.user?.id || null;
   const { user: currentUser, updateUser } = useUser(userId);
+  
+  // Add local balance state to ensure we always have the latest balance
+  const [localBalance, setLocalBalance] = useState(currentUser?.balance ?? 0);
+  
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const posthog = usePostHog();
+
+  // Update local balance when user data changes
+  useEffect(() => {
+    if (currentUser?.balance !== undefined) {
+      setLocalBalance(currentUser.balance);
+    }
+  }, [currentUser?.balance]);
 
   useEffect(() => {
     // Track screen view when modal becomes visible
@@ -46,6 +57,24 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
       });
     }
   }, [visible, listing, posthog]);
+
+  // Direct database query for the latest balance
+  const refreshUserBalance = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("balance")
+        .eq("id", currentUser.id)
+        .single();
+      
+      if (!error && data) {
+        setLocalBalance(data.balance);
+      }
+    } catch (err) {
+      console.error("Error refreshing user balance:", err);
+    }
+  };
 
   // helper to pull in the freshest user record (and update context)
   const refreshUserData = async () => {
@@ -59,16 +88,26 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
       if (error) throw error;
       if (data) {
         await updateUser(data);
+        // Also update local balance
+        setLocalBalance(data.balance);
       }
     } catch (err) {
       console.error("Error refreshing user data:", err);
     }
   };
 
+  // Refresh balance when modal opens
+  useEffect(() => {
+    if (visible) {
+      refreshUserBalance();
+    }
+  }, [visible]);
+
   const handleBuy = async () => {
     if (!currentUser || !listing.price) return;
 
-    if ((currentUser.balance ?? 0) < listing.price) {
+    // Use localBalance instead of currentUser.balance for validation
+    if (localBalance < listing.price) {
       setError("Insufficient balance to complete this purchase.");
       return;
     }
@@ -97,7 +136,7 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
       }
 
       // Refresh user data and notify parent components
-      await refreshUserData();
+      await refreshUserBalance();
       if (onUserBalanceChanged) await onUserBalanceChanged();
       if (onPurchaseComplete) onPurchaseComplete();
       onClose();
@@ -140,7 +179,7 @@ const BuyNowModal: React.FC<BuyNowModalProps> = ({
             <View>
               <Text className="text-sm font-lexend-regular text-gray-600">Your Balance</Text>
               <Text className="text-lg font-lexend-bold text-primary">
-                {currentUser?.balance ?? 0} coins
+                {localBalance} coins
               </Text>
             </View>
           </View>

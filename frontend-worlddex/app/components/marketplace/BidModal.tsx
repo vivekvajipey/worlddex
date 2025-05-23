@@ -37,6 +37,9 @@ const BidModal: React.FC<BidModalProps> = ({
   const userId = session?.user?.id || null;
   const { user: currentUser, updateUser } = useUser(userId);
 
+  // Add local balance state to ensure we always have the latest balance
+  const [localBalance, setLocalBalance] = useState(currentUser?.balance ?? 0);
+
   // only fetch global bids & highestBid
   const { highestBid, loading: bidsLoading, refresh } =
     useBids(listing.id);
@@ -45,6 +48,31 @@ const BidModal: React.FC<BidModalProps> = ({
   const [bidAmount, setBidAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+
+  // Update local balance when user data changes
+  useEffect(() => {
+    if (currentUser?.balance !== undefined) {
+      setLocalBalance(currentUser.balance);
+    }
+  }, [currentUser?.balance]);
+
+  // Direct database query for the latest balance
+  const refreshUserBalance = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("balance")
+        .eq("id", currentUser.id)
+        .single();
+      
+      if (!error && data) {
+        setLocalBalance(data.balance);
+      }
+    } catch (err) {
+      console.error("Error refreshing user balance:", err);
+    }
+  };
 
   // helper to pull in the freshest user record (and update context)
   const refreshUserData = async () => {
@@ -58,6 +86,8 @@ const BidModal: React.FC<BidModalProps> = ({
       if (error) throw error;
       if (data) {
         await updateUser(data);
+        // Also update local balance
+        setLocalBalance(data.balance);
       }
     } catch (err) {
       console.error("Error refreshing user data:", err);
@@ -74,8 +104,8 @@ const BidModal: React.FC<BidModalProps> = ({
     // 1) global bids
     refresh();
 
-    // 2) user balance & profile
-    refreshUserData();
+    // 2) user balance & profile - fetch latest balance directly (avoid potential data corruption)
+    refreshUserBalance();
 
     // 3) fetch this user's active bid
     if (userId) {
@@ -129,15 +159,15 @@ const BidModal: React.FC<BidModalProps> = ({
       return;
     }
 
-    const balance = currentUser.balance || 0;
-    if (!hasActiveBid && amount > balance) {
+    // Use localBalance instead of currentUser.balance for validation
+    if (!hasActiveBid && amount > localBalance) {
       setError("Insufficient balance to place this bid");
       return;
     }
     if (hasActiveBid) {
       const old = parseFloat(bidAmount) || 0;
       const extra = amount - old;
-      if (extra > balance) {
+      if (extra > localBalance) {
         setError(`You need ${extra.toFixed(2)} more coins to increase`);
         return;
       }
@@ -164,7 +194,7 @@ const BidModal: React.FC<BidModalProps> = ({
 
       // refresh bids & user data
       refresh();
-      await refreshUserData();
+      await refreshUserBalance();
       onBidPlaced?.();
       await onUserBalanceChanged?.();
       onClose();
@@ -204,7 +234,7 @@ const BidModal: React.FC<BidModalProps> = ({
               if (rpcErr) throw rpcErr;
 
               refresh();
-              await refreshUserData();
+              await refreshUserBalance();
               onBidPlaced?.();
               await onUserBalanceChanged?.();
               onClose();
@@ -259,7 +289,7 @@ const BidModal: React.FC<BidModalProps> = ({
                     Your Balance
                   </Text>
                   <Text className="text-lg font-lexend-bold text-primary">
-                    {currentUser?.balance ?? 0} coins
+                    {localBalance} coins
                   </Text>
                 </View>
               </View>
@@ -271,8 +301,8 @@ const BidModal: React.FC<BidModalProps> = ({
                 </Text>
                 <Text className="text-gray-600 font-lexend-regular">
                   • The highest bidder wins but pays the second-highest bid{"\n"}
-                  • Your bid is private—other bidders can’t see it{"\n"}
-                  • Bid your true max value—you’ll never overpay
+                  • Your bid is private—other bidders can't see it{"\n"}
+                  • Bid your true max value—you'll never overpay
                 </Text>
               </View>
 
