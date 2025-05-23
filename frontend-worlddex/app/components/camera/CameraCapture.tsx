@@ -39,6 +39,10 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     const [pathString, setPathString] = useState("");
     const [polygonPoints, setPolygonPoints] = useState("");
 
+    // Square capture state for visual feedback
+    const [showSquareCapture, setShowSquareCapture] = useState(false);
+    const [squareCapturePoints, setSquareCapturePoints] = useState("");
+
     const cameraAnimatedProps = useAnimatedProps(() => {
       return { zoom };
     });
@@ -191,7 +195,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       onFullScreenCapture();
     }, [isCapturing, onFullScreenCapture, posthog, facing, torchEnabled]);
 
-    // Double tap gesture for full screen capture
+    
     const doubleTapGesture = useMemo(
       () => Gesture.Tap()
         .runOnJS(true)
@@ -207,9 +211,43 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             setPolygonPoints("");
           }
 
-          captureFullScreen();
+          // Create a full-width square capture area centered vertically
+          const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+          const squareSize = screenWidth; // Full width
+          const centerY = screenHeight / 2;
+          const topY = centerY - (squareSize / 2);
+          const bottomY = centerY + (squareSize / 2);
+
+          // Create square coordinates (clockwise from top-left)
+          const squarePoints = [
+            { x: 0, y: topY },                    // Top-left
+            { x: screenWidth, y: topY },          // Top-right  
+            { x: screenWidth, y: bottomY },       // Bottom-right
+            { x: 0, y: bottomY }                  // Bottom-left
+          ];
+
+          // Show visual feedback first
+          const squarePointsString = squarePoints.map(pt => `${pt.x},${pt.y}`).join(" ");
+          setSquareCapturePoints(squarePointsString);
+          setShowSquareCapture(true);
+
+          // Track the square capture event
+          if (posthog) {
+            posthog.capture("capture_square", {
+              camera_facing: facing,
+              torch_enabled: torchEnabled,
+              square_size: squareSize
+            });
+          }
+
+          // Brief delay to show the square, then capture
+          setTimeout(() => {
+            setShowSquareCapture(false);
+            // Use the regular capture function with square coordinates
+            onCapture(squarePoints, cameraRef);
+          }, 200); // 200ms to show the square preview
         }),
-      [isCapturing, isDrawing, points.length, captureFullScreen]
+      [isCapturing, isDrawing, points.length, onCapture, cameraRef, posthog, facing, torchEnabled]
     );
 
     // Let the gestures compete to handle the touch
@@ -280,6 +318,16 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                 strokeWidth={3}
                 strokeDasharray="6,4"
                 fill="none"
+              />
+
+              {/* Square capture preview */}
+              <Polygon
+                key="square-capture"
+                points={showSquareCapture ? squareCapturePoints : "0,0"}
+                fill={showSquareCapture ? `${backgroundColor}33` : "transparent"}
+                stroke={showSquareCapture ? backgroundColor : "transparent"}
+                strokeWidth={3}
+                strokeDasharray="6,4"
               />
             </Svg>
           </AnimatedCamera>
