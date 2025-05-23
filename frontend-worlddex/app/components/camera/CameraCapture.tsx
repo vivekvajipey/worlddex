@@ -33,6 +33,10 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     const [zoom, setZoom] = useState(0);
     const [lastZoom, setLastZoom] = useState(0);
 
+    // Multi-camera lens support (iOS only)
+    const [availableLenses, setAvailableLenses] = useState<string[]>([]);
+    const [selectedLens, setSelectedLens] = useState<string>("builtInWideAngleCamera");
+
     // Lasso state
     const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -83,6 +87,45 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       resetLasso,
       getCameraRef
     }));
+
+    // Handle available lenses for multi-camera support (iOS only)
+    const handleAvailableLensesChanged = useCallback((event: { lenses: string[] }) => {
+      console.log("Available camera lenses:", event.lenses);
+      setAvailableLenses(event.lenses);
+    }, []);
+
+    // Auto-select optimal lens based on zoom level (like native Camera app)
+    const getOptimalLens = useCallback((zoomLevel: number) => {
+      if (!availableLenses || availableLenses.length === 0) {
+        return "builtInWideAngleCamera"; // Default fallback
+      }
+
+      // iPhone lens mapping based on typical zoom ranges
+      // These are the standard lens types from Apple's AVFoundation
+      if (zoomLevel < 0.5 && availableLenses.includes("builtInUltraWideCamera")) {
+        return "builtInUltraWideCamera"; // 0.5x zoom
+      } else if (zoomLevel >= 0.5 && zoomLevel < 2.0 && availableLenses.includes("builtInWideAngleCamera")) {
+        return "builtInWideAngleCamera"; // 1x zoom (default)
+      } else if (zoomLevel >= 2.0 && availableLenses.includes("builtInTelephotoCamera")) {
+        return "builtInTelephotoCamera"; // 2x-3x zoom
+      } else if (zoomLevel >= 3.0 && availableLenses.includes("builtInTetraPrismTelephotoCamera")) {
+        return "builtInTetraPrismTelephotoCamera"; // 5x zoom (iPhone 15 Pro Max)
+      }
+
+      // Fallback to wide angle camera
+      return "builtInWideAngleCamera";
+    }, [availableLenses]);
+
+    // Update selected lens when zoom changes
+    useEffect(() => {
+      if (Platform.OS === 'ios' && availableLenses.length > 0) {
+        const optimalLens = getOptimalLens(zoom);
+        if (optimalLens !== selectedLens) {
+          console.log(`Switching from ${selectedLens} to ${optimalLens} for zoom ${zoom}`);
+          setSelectedLens(optimalLens);
+        }
+      }
+    }, [zoom, availableLenses, selectedLens, getOptimalLens]);
 
     // Pan gesture for lasso drawing
     const panGesture = useMemo(
@@ -268,6 +311,10 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           new_facing: newFacing
         });
       }
+
+      // Reset lens selection when switching cameras
+      setSelectedLens("builtInWideAngleCamera");
+      setAvailableLenses([]);
     }
 
     // Toggle flashlight/torch
@@ -283,16 +330,37 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       }
     }
 
+    // Handle when camera is ready - fetch available lenses
+    const handleCameraReady = useCallback(async () => {
+      console.log("Camera is ready!");
+      
+      // Try to get available lenses on iOS
+      if (Platform.OS === 'ios' && cameraRef.current) {
+        try {
+          const lenses = await (cameraRef.current as any).getAvailableLensesAsync();
+          console.log("Available lenses from getAvailableLensesAsync:", lenses);
+          setAvailableLenses(lenses);
+        } catch (error) {
+          console.log("Could not get available lenses:", error);
+        }
+      }
+    }, []);
+
     return (
       <View className="flex-1">
         <GestureDetector gesture={gestures}>
-          <AnimatedCamera
+          <CameraView
             ref={cameraRef}
             className="flex-1"
             facing={facing}
-            animatedProps={cameraAnimatedProps}
+            zoom={zoom}
             animateShutter={true}
             enableTorch={torchEnabled}
+            onCameraReady={handleCameraReady}
+            {...(Platform.OS === 'ios' ? { 
+              selectedLens, 
+              onAvailableLensesChanged: handleAvailableLensesChanged 
+            } as any : {})}
           >
             {/* Avoiding any conditional rendering that could cause view hierarchy changes */}
             {/* Instead using empty/transparent SVG elements that are always present */}
@@ -330,7 +398,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                 strokeDasharray="6,4"
               />
             </Svg>
-          </AnimatedCamera>
+          </CameraView>
         </GestureDetector>
 
         {/* Camera controls - only show when not capturing */}
