@@ -9,7 +9,16 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
 import { PostHogProvider } from "posthog-react-native";
 import { Slot } from "expo-router";     // expo-router’s root
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -124,7 +133,9 @@ export default function RootLayout() {
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
-          <Slot />
+          <QueryClientProvider client={queryClient}>
+            <Slot />
+          </QueryClientProvider>
         </AuthProvider>
       </GestureHandlerRootView>
     </PostHogProvider>

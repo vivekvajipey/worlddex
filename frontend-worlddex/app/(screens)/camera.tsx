@@ -28,6 +28,7 @@ import {
 } from "../../database/hooks/useUserCollectionItems";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { useImageProcessor } from "../../src/hooks/useImageProcessor";
+import { IdentifyRequest } from "../../../shared/types/identify";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
@@ -54,6 +55,7 @@ export default function CameraScreen({
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
+  const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
 
   // Photo capture state
   const [isCapturing, setIsCapturing] = useState(false);
@@ -99,10 +101,59 @@ export default function CameraScreen({
 
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
+  
+  const polaroidError = vlmCaptureSuccess === true ? null : idError;
+  
+  const handleRetryIdentification = useCallback(async () => {
+    if (!lastIdentifyPayloadRef.current) return;
 
-  const handleOnboardingReset = useCallback(() => {
-    setResetCounter((n) => n + 1);   // new key → unmount + mount
-  }, []);
+    await new Promise(res => {
+      reset();
+      requestAnimationFrame(res);   // wait exactly one frame
+    });
+  
+    /** 1️⃣  Check / restore connectivity first */
+    if (onRetryConnection) {
+      await onRetryConnection();                 // ping your API again
+    }
+    if (isCheckingServer) {
+      Alert.alert(
+        "Connecting…",
+        "Please wait while we check the server connection."
+      );
+      return;
+    }
+    if (!isServerConnected) {
+      Alert.alert(
+        "Offline",
+        "Still no internet connection. Try again once you’re back online."
+      );
+      return;
+    }
+  
+    /** 2  Clear local UI state */
+    reset();
+    setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
+    setIdentificationComplete(false);
+    isRejectedRef.current = false;
+  
+    /** 3  Fire the request again */
+    try {
+      await identify(lastIdentifyPayloadRef.current);
+    } catch (err) {
+      console.error("Retry identify failed:", err);
+      setVlmCaptureSuccess(false);
+      setIdentificationComplete(true);
+    }
+  }, [
+    identify,
+    reset,
+    lastIdentifyPayloadRef,
+    onRetryConnection,
+    isCheckingServer,
+    isServerConnected,
+  ]);
 
   // Request location permission after camera permission
   useEffect(() => {
@@ -143,6 +194,13 @@ export default function CameraScreen({
       setShowOnboarding(true);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (idError) {
+      setVlmCaptureSuccess(false);   // tells the polaroid it’s a failure
+      setIdentificationComplete(true);
+    }
+  }, [idError]);
 
   // Handle onboarding completion
   const handleOnboardingComplete = useCallback(async () => {
@@ -377,7 +435,11 @@ export default function CameraScreen({
           lng: location.longitude
         } : null;
         console.log("Sending location with capture:", gpsData);
-
+        lastIdentifyPayloadRef.current = {
+          base64Data: vlmImage.base64,
+          contentType: "image/jpeg",
+          gps: gpsData,
+        };
         await identify({
           base64Data: vlmImage.base64,
           contentType: "image/jpeg",
@@ -395,7 +457,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -497,7 +559,11 @@ export default function CameraScreen({
           lng: location.longitude
         } : null;
         console.log("Sending location with full screen capture:", gpsData);
-
+        lastIdentifyPayloadRef.current = {
+          base64Data: vlmImage.base64,
+          contentType: "image/jpeg",
+          gps: gpsData,
+        };
         await identify({
           base64Data: vlmImage.base64,
           contentType: "image/jpeg",
@@ -514,7 +580,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -773,6 +839,8 @@ export default function CameraScreen({
             onSetPublic={setIsCapturePublic}
             identificationComplete={identificationComplete}
             rarityTier={rarityTier}
+            error={polaroidError}
+            onRetry={handleRetryIdentification}
           />
         )}
 

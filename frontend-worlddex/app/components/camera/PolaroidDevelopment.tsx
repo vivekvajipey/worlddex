@@ -44,6 +44,8 @@ interface PolaroidDevelopmentProps {
   onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
   identificationComplete?: boolean; // prop to indicate when all identification is complete
   rarityTier?: RarityTier;
+  error?: Error | null;
+  onRetry?: () => void;
 }
 
 export default function PolaroidDevelopment({
@@ -56,7 +58,9 @@ export default function PolaroidDevelopment({
   onReject,
   onSetPublic,
   identificationComplete = false, // Default to false for backward compatibility
-  rarityTier = "common" // Default to common if no rarity tier is provided
+  rarityTier = "common", // Default to common if no rarity tier is provided
+  error = null,
+  onRetry
 }: PolaroidDevelopmentProps) {
   // Add logging for props
   console.log("==== POLAROID DEVELOPMENT PROPS ====");
@@ -65,6 +69,7 @@ export default function PolaroidDevelopment({
   console.log("label:", label);
   console.log("rarityTier:", rarityTier);
   console.log("identificationComplete:", identificationComplete);
+  console.log("error:", error?.message);
 
   // Get user settings
   const { session } = useAuth();
@@ -890,6 +895,31 @@ export default function PolaroidDevelopment({
 
         {/* Bottom space with label text */}
         <View className="flex items-center justify-center" style={{ height: FRAME_BOTTOM_PADDING }}>
+          {error && (
+            <View className="px-4 pt-3 pb-4 items-center">
+              <View className="flex-row items-center justify-between w-full mb-3">
+                <View className="w-6" /> {/* Spacer for visual balance */}
+                <Text className="text-red-500 font-lexend-semibold text-lg text-center">
+                  Identification Failed
+                </Text>
+                <TouchableOpacity 
+                  onPress={onDismiss}
+                  className="p-1"
+                >
+                  <Ionicons name="close" size={20} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity 
+                className="bg-primary rounded-full px-5 py-2 flex-row items-center"
+                onPress={onRetry}
+              >
+                <Ionicons name="refresh" size={16} color="white" />
+                <Text className="text-white font-lexend-medium text-sm ml-2">
+                  Retry
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {captureSuccess === true && label && (
             <View className="flex-row items-center justify-center">
               <Text className="font-shadows text-black text-center text-3xl">
@@ -934,6 +964,13 @@ export default function PolaroidDevelopment({
                   style={{ opacity: dot3Opacity }}
                 />
               </View>
+            </View>
+          )}
+          {!error && !(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && (
+            <View className="px-4 items-center justify-center">
+              <Text className="font-shadows text-black text-center text-2xl">
+                {captureSuccess === false ? "Identification Failed" : "..."}
+              </Text>
             </View>
           )}
         </View>
