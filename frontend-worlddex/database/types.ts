@@ -38,7 +38,6 @@ export type CollectionItem = {
   item_id: string;
   silhouette_key: string;
   is_secret_rare: boolean;
-  collection_rarity?: string;
   created_at?: string;
   location?: any; // Geography point type
   display_name: string;

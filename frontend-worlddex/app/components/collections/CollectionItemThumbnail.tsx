@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { CollectionItem } from "../../../database/types";
+import { rarityColorBg, rarityColorTxt } from "../../../src/utils/rarityColors";
 
 interface CollectionItemThumbnailProps {
   item: CollectionItem;
@@ -10,6 +11,7 @@ interface CollectionItemThumbnailProps {
   isCollected?: boolean;
   downloadUrl?: string | null;
   loading?: boolean;
+  captureRarity?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary" | null;
 }
 
 const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
@@ -18,20 +20,23 @@ const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
   isCollected = true,
   downloadUrl = null,
   loading = false,
+  captureRarity = null,
 }) => {
-  // Badge color logic
-  const getBadgeColor = () => {
-    if (item.is_secret_rare) return "bg-rose-500";
-    switch (item.collection_rarity?.toLowerCase()) {
-      case "common": return "bg-gray-400";
-      case "uncommon": return "bg-green-500";
-      case "rare": return "bg-blue-500";
-      case "epic": return "bg-purple-500";
-      case "legendary": return "bg-amber-500";
-      default: return "bg-gray-500";
-    }
+  // Badge color logic using the new rarity system
+  const getBadgeClasses = () => {
+    if (item.is_secret_rare) return { bg: "bg-rose-500", text: "text-white" };
+    
+    if (!captureRarity) return { bg: "bg-gray-500", text: "text-white" };
+    
+    // Use the new rarity color scheme
+    const bgClass = rarityColorBg[captureRarity] || "bg-gray-500";
+    const textClass = rarityColorTxt[captureRarity] || "text-white";
+    
+    return { bg: bgClass, text: textClass };
   };
-  const badgeText = item.is_secret_rare ? "Secret Rare" : (item.collection_rarity || "Common");
+
+  const badgeClasses = getBadgeClasses();
+  const badgeText = item.is_secret_rare ? "Secret Rare" : (captureRarity ? captureRarity.charAt(0).toUpperCase() + captureRarity.slice(1) : null);
 
   return (
     <TouchableOpacity
@@ -69,14 +74,16 @@ const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
           </View>
         )}
 
-        {/* Rarity badge */}
-        <View
-          className={`${getBadgeColor()} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}
-        >
-          <Text className="text-white text-[10px] font-lexend-medium">
-            {badgeText}
-          </Text>
-        </View>
+        {/* Rarity badge - only show for collected items with rarity */}
+        {isCollected && badgeText && (
+          <View
+            className={`${badgeClasses.bg} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}
+          >
+            <Text className={`${badgeClasses.text} text-[10px] font-lexend-medium`}>
+              {badgeText}
+            </Text>
+          </View>
+        )}
 
         {/* Item name bar, wrapping text, bottom-left only */}
         <View className="absolute bottom-1 left-1 px-2 py-1 bg-black/50 rounded-md max-w-[90%]">

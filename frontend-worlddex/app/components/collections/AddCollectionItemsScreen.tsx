@@ -21,6 +21,7 @@ import { fetchAllItems, fetchItem } from "../../../database/hooks/useItems";
 import { createCollectionItem } from "../../../database/hooks/useCollectionItems";
 import { fetchUserCaptures } from "../../../database/hooks/useCaptures";
 import { addCollectionToUser } from "../../../database/hooks/useUserCollections";
+import { createUserCollectionItem } from "../../../database/hooks/useUserCollectionItems";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
@@ -39,7 +40,6 @@ type NewItemFormData = {
   name: string;
   silhouetteImage: string | null;
   silhouetteImageFile: any;
-  rarity: string;
   isSecretRare: boolean;
 };
 
@@ -99,7 +99,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
     name: "",
     silhouetteImage: null,
     silhouetteImageFile: null,
-    rarity: "common",
     isSecretRare: false,
   });
 
@@ -155,6 +154,11 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       return;
     }
 
+    if (!userId) {
+      Alert.alert("Error", "You must be logged in to add captures");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -165,16 +169,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         const capture = userCaptures.find(cap => cap.id === captureId);
         if (!capture) continue;
 
-        // Get the item details to fetch global_rarity
-        const globalItem = await fetchItem(capture.item_id);
-
         // Create collection item using the capture's image_key as silhouette_key
         const newItem = await createCollectionItem({
           collection_id: collection.id,
           item_id: capture.item_id,
           silhouette_key: capture.image_key, // Use the capture's image as the silhouette
           is_secret_rare: false,
-          collection_rarity: globalItem?.global_rarity || "common", // Use global_rarity or default to "common"
           display_name: capture.item_name, // Use item_name as display_name
           name: capture.item_name, // Store the original item name
           thumb_key: capture.thumb_key, // Use the capture's thumb_key if available
@@ -182,6 +182,20 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
         if (newItem) {
           newCollectionItems.push(newItem);
+          
+          // Automatically mark this item as collected by the user since they're using their own capture
+          try {
+            await createUserCollectionItem({
+              user_id: userId,
+              collection_item_id: newItem.id,
+              capture_id: captureId,
+              collection_id: collection.id,
+            });
+            console.log(`Automatically marked item ${newItem.id} as collected for user ${userId}`);
+          } catch (collectionErr) {
+            console.error("Error marking item as collected:", collectionErr);
+            // Don't fail the whole operation if this fails
+          }
         }
       }
 
@@ -191,7 +205,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       // Clear selection
       setSelectedCaptures([]);
 
-      Alert.alert("Success", `Added ${newCollectionItems.length} items to the collection`);
+      Alert.alert("Success", `Added ${newCollectionItems.length} items to the collection and marked them as collected`);
     } catch (error) {
       console.error("Error adding captures to collection:", error);
       Alert.alert("Error", "Failed to add captures to the collection");
@@ -243,7 +257,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       name: "",
       silhouetteImage: null,
       silhouetteImageFile: null,
-      rarity: "common",
       isSecretRare: false,
     });
   };
@@ -300,7 +313,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         silhouette_key: silhouetteKey,
         thumb_key: thumbKey,
         is_secret_rare: newItemForm.isSecretRare,
-        collection_rarity: newItemForm.rarity,
         display_name: newItemForm.isSecretRare ? "???" : newItemForm.name.trim(),
         name: newItemForm.name.trim(),
       });
@@ -429,29 +441,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         )}
       </View>
 
-      <View className="mb-4">
-        <Text className="text-text-primary font-lexend-semibold text-lg mb-1">
-          Rarity
-        </Text>
-        <View className="flex-row flex-wrap">
-          {["common", "uncommon", "rare", "epic", "legendary"].map((rarity) => (
-            <TouchableOpacity
-              key={rarity}
-              className={`mr-2 mb-2 px-4 py-2 rounded-full ${newItemForm.rarity === rarity ? "bg-primary" : "bg-gray-800"
-                }`}
-              onPress={() => setNewItemForm({ ...newItemForm, rarity })}
-            >
-              <Text
-                className={`font-lexend-medium ${newItemForm.rarity === rarity ? "text-white" : "text-gray-400"
-                  }`}
-              >
-                {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
       <View className="mb-4 flex-row items-center">
         <TouchableOpacity
           className="flex-row items-center"
@@ -534,8 +523,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
                   item.display_name}
               </Text>
               <Text className="text-gray-400 text-sm">
-                Rarity: {item.collection_rarity || "Common"}
-                {item.is_secret_rare ? " (Secret Rare)" : ""}
+                {item.is_secret_rare ? "Secret Rare" : "Collection Item"}
               </Text>
             </View>
           ))}

@@ -4,9 +4,9 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { useCollection } from "../../../database/hooks/useCollections";
-import { checkUserHasCollectionItem } from "../../../database/hooks/useUserCollectionItems";
+import { checkUserHasCollectionItem, fetchUserCollectionItemsByCollection } from "../../../database/hooks/useUserCollectionItems";
 import { useUserCollection, addCollectionToUser, removeCollectionFromUser, fetchUserCollection } from "../../../database/hooks/useUserCollections";
-import { CollectionItem } from "../../../database/types";
+import { CollectionItem, Capture } from "../../../database/types";
 import CollectionItemThumbnail from "./CollectionItemThumbnail";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
@@ -33,6 +33,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const { collection, loading: collectionLoading, error: collectionError } = useCollection(collectionId);
   const [refreshedItems, setRefreshedItems] = useState<CollectionItem[]>([]);
   const [collectedItemIds, setCollectedItemIds] = useState<Set<string>>(new Set());
+  const [userCollectionData, setUserCollectionData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [collectionProgress, setCollectionProgress] = useState({ collected: 0, total: 0 });
@@ -124,29 +125,22 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
     }
   }, [collectionItems, refreshedItems, loading]);
 
-  // Check which items the user has collected
+  // Fetch user's collection data with captures for rarity information
   useEffect(() => {
-    const checkUserItems = async () => {
-      if (!userId || refreshedItems.length === 0) return;
+    const fetchUserCollectionData = async () => {
+      if (!userId || !collectionId) return;
 
       try {
-        const collectedIds = new Set<string>();
-        let collectedCount = 0;
-
-        // Check each item one by one
-        for (const item of refreshedItems) {
-          const hasItem = await checkUserHasCollectionItem(userId, item.id);
-          if (hasItem) {
-            collectedIds.add(item.id);
-            collectedCount++;
-          }
-        }
-
+        const userCollectionItems = await fetchUserCollectionItemsByCollection(userId, collectionId);
+        setUserCollectionData(userCollectionItems);
+        
+        // Set collected item IDs
+        const collectedIds = new Set(userCollectionItems.map((item: any) => item.collection_item_id));
         setCollectedItemIds(collectedIds);
-        setCollectionProgress({ collected: collectedCount, total: refreshedItems.length });
+        setCollectionProgress(prev => ({ ...prev, collected: collectedIds.size }));
 
         // Check if user has completed the collection and award coins if applicable
-        if (collectedCount === refreshedItems.length && refreshedItems.length >= 2) {
+        if (collectedIds.size === refreshedItems.length && refreshedItems.length >= 2) {
           const reward = await calculateAndAwardCoins(userId, collectionId);
           if (reward.total > 0) {
             setCoinReward(reward);
@@ -154,12 +148,25 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
           }
         }
       } catch (err) {
-        console.error("Error checking user collection items:", err);
+        console.error("Error fetching user collection data:", err);
       }
     };
 
-    checkUserItems();
-  }, [userId, refreshedItems, collectionId]);
+    fetchUserCollectionData();
+  }, [userId, collectionId, refreshedItems.length]);
+
+  // Create a mapping from collection item ID to capture rarity
+  const itemRarityMap = useMemo(() => {
+    const rarityMap = new Map<string, string>();
+    
+    userCollectionData.forEach((userItem: any) => {
+      if (userItem.captures && userItem.captures.rarity_tier) {
+        rarityMap.set(userItem.collection_item_id, userItem.captures.rarity_tier);
+      }
+    });
+    
+    return rarityMap;
+  }, [userCollectionData]);
 
   const toggleCollection = async () => {
     if (!userId || !collectionId) return;
@@ -360,6 +367,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
                   isCollected={isItemCollected(item.id)}
                   loading={itemUrlsLoading}
                   downloadUrl={itemUrlMap[item.thumb_key || item.silhouette_key] || null}
+                  captureRarity={itemRarityMap.get(item.id) as "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary" || null}
                 />
               )}
               numColumns={3}
