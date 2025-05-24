@@ -98,6 +98,23 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
     });
   };
 
+  // Get rarity badge color
+  const getBadgeColor = () => {
+    switch (capture?.rarity_tier?.toLowerCase()) {
+      case "common": return "bg-gray-400";
+      case "uncommon": return "bg-green-500";
+      case "rare": return "bg-blue-500";
+      case "epic": return "bg-purple-500";
+      case "mythic": return "bg-rose-500";
+      case "legendary": return "bg-amber-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const badgeText = capture?.rarity_tier
+    ? capture.rarity_tier.charAt(0).toUpperCase() + capture.rarity_tier.slice(1)
+    : "";
+
   return (
     <Modal
       visible={visible}
@@ -137,6 +154,17 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
             <Text className="text-text-primary text-2xl font-lexend-bold mb-2 text-center">
               {capture.item_name}
             </Text>
+
+            {/* Rarity badge */}
+            {capture.rarity_tier && (
+              <View className="flex-row justify-center mb-3">
+                <View className={`${getBadgeColor()} px-4 py-1.5 rounded-full`}>
+                  <Text className="text-white font-lexend-medium">
+                    {badgeText}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Capture number / total captures */}
             <View className="flex-row justify-center mb-3">

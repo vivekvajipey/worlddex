@@ -2,7 +2,6 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Capture } from "../../../database/types";
-import { rarityColorBg, rarityColorTxt } from "../../../src/utils/rarityColors";
 
 interface CaptureThumbnailProps {
   capture: Capture;
@@ -11,24 +10,28 @@ interface CaptureThumbnailProps {
   loading?: boolean;
 }
 
-const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({ 
-  capture, 
-  onPress, 
-  downloadUrl = null, 
-  loading = false 
+const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({
+  capture,
+  onPress,
+  downloadUrl = null,
+  loading = false
 }) => {
   // Get rarity badge info
-  const getRarityBadge = () => {
-    if (!capture.rarity_tier) return null;
-    
-    const bgClass = rarityColorBg[capture.rarity_tier] || "bg-gray-500";
-    const textClass = rarityColorTxt[capture.rarity_tier] || "text-white";
-    const badgeText = capture.rarity_tier.charAt(0).toUpperCase() + capture.rarity_tier.slice(1);
-    
-    return { bgClass, textClass, badgeText };
+  const getBadgeColor = () => {
+    switch (capture.rarity_tier?.toLowerCase()) {
+      case "common": return "bg-gray-400";
+      case "uncommon": return "bg-green-500";
+      case "rare": return "bg-blue-500";
+      case "epic": return "bg-purple-500";
+      case "mythic": return "bg-rose-500";
+      case "legendary": return "bg-amber-500";
+      default: return "bg-gray-500";
+    }
   };
 
-  const rarityBadge = getRarityBadge();
+  const badgeText = capture.rarity_tier
+    ? capture.rarity_tier.charAt(0).toUpperCase() + capture.rarity_tier.slice(1)
+    : "";
 
   return (
     <TouchableOpacity
@@ -41,27 +44,27 @@ const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({
         </View>
       ) : (
         <View className="w-full h-full relative">
-          <Image 
-            source={{ uri: downloadUrl || undefined }} 
+          <Image
+            source={{ uri: downloadUrl || undefined }}
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
             transition={250}
           />
-          
+
           {/* Semi-transparent overlay for contrast */}
           <View className="absolute inset-0 bg-black/15" />
-          
+
           {/* Rarity badge - top right */}
-          {rarityBadge && (
+          {capture.rarity_tier && (
             <View
-              className={`${rarityBadge.bgClass} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}
+              className={`${getBadgeColor()} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}
             >
-              <Text className={`${rarityBadge.textClass} text-[10px] font-lexend-medium`}>
-                {rarityBadge.badgeText}
+              <Text className="text-white text-[10px] font-lexend-medium">
+                {badgeText}
               </Text>
             </View>
           )}
-          
+
           {/* Capture number - bottom left */}
           <View className="absolute bottom-1 left-1 bg-black/50 px-2 py-1 rounded-md">
             <Text className="text-white text-xs font-lexend-medium">#{capture.capture_number}</Text>
