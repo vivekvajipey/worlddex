@@ -266,47 +266,49 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       Alert.alert("Missing Information", "Please enter an item name");
       return;
     }
-    if (!newItemForm.silhouetteImageFile) {
-      Alert.alert("Missing Image", "Please select a silhouette image");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       // 1) generate a unique itemId
       const itemId = uuidv4();
 
-      // 2) prepare upload params
-      const { uri: fileUri, name: fileName, type: contentType } = newItemForm.silhouetteImageFile;
-      const folder = `collection_items/${userId || "anonymous"}/${collection.id}`;
+      let silhouetteKey = "placeholder_silhouette"; // Default placeholder value
+      let thumbKey: string | undefined = undefined;
 
-      // 3) upload the full-size silhouette image
-      const silhouetteKey = await uploadPhoto(
-        fileUri,
-        contentType,
-        fileName,
-        folder
-      );
+      // Only upload images if a silhouette was provided
+      if (newItemForm.silhouetteImageFile) {
+        // 2) prepare upload params
+        const { uri: fileUri, name: fileName, type: contentType } = newItemForm.silhouetteImageFile;
+        const folder = `collection_items/${userId || "anonymous"}/${collection.id}`;
 
-      // 4) generate a small thumbnail on the device
-      const thumbnailResult = await ImageManipulator.manipulateAsync(
-        fileUri,
-        [{ resize: { width: 200 } }],
-        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
-      );
+        // 3) upload the full-size silhouette image
+        silhouetteKey = await uploadPhoto(
+          fileUri,
+          contentType,
+          fileName,
+          folder
+        );
 
-      // 5) give your thumb a distinct filename
-      const thumbFileName = `${itemId}-thumb.jpg`;
+        // 4) generate a small thumbnail on the device
+        const thumbnailResult = await ImageManipulator.manipulateAsync(
+          fileUri,
+          [{ resize: { width: 200 } }],
+          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+        );
 
-      // 6) upload the thumbnail into the same folder under /thumbs
-      const thumbKey = await uploadPhoto(
-        thumbnailResult.uri,
-        "image/jpeg",
-        thumbFileName,
-        `${folder}/thumbs`
-      );
+        // 5) give your thumb a distinct filename
+        const thumbFileName = `${itemId}-thumb.jpg`;
 
-      // 7) finally, create the collection item record with both keys
+        // 6) upload the thumbnail into the same folder under /thumbs
+        thumbKey = await uploadPhoto(
+          thumbnailResult.uri,
+          "image/jpeg",
+          thumbFileName,
+          `${folder}/thumbs`
+        );
+      }
+
+      // 7) create the collection item record (with actual image or placeholder)
       const newCollectionItem = await createCollectionItem({
         collection_id: collection.id,
         item_id: itemId,
@@ -458,30 +460,48 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
       <View className="mb-6">
         <Text className="text-text-primary font-lexend-semibold text-lg mb-2">
-          Silhouette Image *
+          Silhouette Image (Optional)
         </Text>
 
         <TouchableOpacity
           onPress={handlePickSilhouette}
-          className="border-2 border-dashed border-gray-600 rounded-lg overflow-hidden"
+          className="border-2 border-dashed border-gray-600 rounded-lg overflow-hidden relative"
           style={{ height: 180 }}
         >
           {newItemForm.silhouetteImage ? (
-            <Image
-              source={{ uri: newItemForm.silhouetteImage }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={300}
-            />
+            <>
+              <Image
+                source={{ uri: newItemForm.silhouetteImage }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={300}
+              />
+              {/* Clear button */}
+              <TouchableOpacity
+                className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full justify-center items-center"
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setNewItemForm({ ...newItemForm, silhouetteImage: null, silhouetteImageFile: null });
+                }}
+              >
+                <Ionicons name="close" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </>
           ) : (
             <View className="flex-1 justify-center items-center">
               <Ionicons name="image-outline" size={40} color="#888" />
-              <Text className="text-gray-400 mt-2 font-lexend">
-                Tap to select silhouette image
+              <Text className="text-gray-400 mt-2 font-lexend text-center">
+                Tap to select silhouette image{'\n'}(or leave empty for placeholder)
               </Text>
             </View>
           )}
         </TouchableOpacity>
+        
+        {!newItemForm.silhouetteImage && (
+          <Text className="text-gray-500 text-sm mt-2 italic">
+            Items without silhouettes will show a generic placeholder
+          </Text>
+        )}
       </View>
 
       <View className="flex-row">

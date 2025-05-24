@@ -49,7 +49,7 @@ const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
           <View className="w-full h-full bg-black/30 justify-center items-center">
             <ActivityIndicator size="small" color="#FFF" />
           </View>
-        ) : downloadUrl ? (
+        ) : downloadUrl && item.silhouette_key !== "placeholder_silhouette" ? (
           <Image
             source={{ uri: downloadUrl }}
             style={{ width: "100%", height: "100%" }}
@@ -57,9 +57,7 @@ const CollectionItemThumbnail: React.FC<CollectionItemThumbnailProps> = ({
             transition={300}
           />
         ) : (
-          <View className="w-full h-full bg-gray-700 justify-center items-center">
-            <Ionicons name="image-outline" size={32} color="#888" />
-          </View>
+          <View className="w-full h-full bg-gray-700" />
         )}
 
         {/* Semi-transparent overlay for contrast */}
