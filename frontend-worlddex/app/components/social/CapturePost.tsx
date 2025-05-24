@@ -33,6 +33,23 @@ const CapturePost: React.FC<CapturePostProps> = ({
   const { session } = useAuth();
   const { user, loading: userLoading } = useUser(capture.user_id);
 
+  // Get rarity badge color
+  const getBadgeColor = () => {
+    switch (capture.rarity_tier?.toLowerCase()) {
+      case "common": return "bg-gray-400";
+      case "uncommon": return "bg-green-500";
+      case "rare": return "bg-blue-500";
+      case "epic": return "bg-purple-500";
+      case "mythic": return "bg-rose-500";
+      case "legendary": return "bg-amber-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const badgeText = capture.rarity_tier
+    ? capture.rarity_tier.charAt(0).toUpperCase() + capture.rarity_tier.slice(1)
+    : "";
+
   // Only use useDownloadUrl for profile picture if not provided as prop
   const {
     downloadUrl: fallbackProfileUrl,
@@ -147,11 +164,20 @@ const CapturePost: React.FC<CapturePostProps> = ({
           )}
         </View>
 
-        {/* Caption */}
+        {/* Caption and Rarity */}
         <View className="p-3">
-          <Text className="font-lexend-bold text-text-primary text-lg mb-1">
-            {capture.item_name}
-          </Text>
+          <View className="flex-row items-center justify-between mb-1">
+            <Text className="font-lexend-bold text-text-primary text-lg">
+              {capture.item_name}
+            </Text>
+            {capture.rarity_tier && (
+              <View className={`${getBadgeColor()} px-3 py-1 rounded-full`}>
+                <Text className="text-white font-lexend-medium">
+                  {badgeText}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Action buttons */}

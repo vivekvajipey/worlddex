@@ -247,6 +247,25 @@ const ListingPost: React.FC<ListingPostProps> = ({
     onTradePress?.(listing);
   };
 
+  // Get rarity badge color
+  const getBadgeColor = (rarityTier?: string) => {
+    switch (rarityTier?.toLowerCase()) {
+      case "common": return "bg-gray-400";
+      case "uncommon": return "bg-green-500";
+      case "rare": return "bg-blue-500";
+      case "epic": return "bg-purple-500";
+      case "mythic": return "bg-rose-500";
+      case "legendary": return "bg-amber-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const getBadgeText = (rarityTier?: string) => {
+    return rarityTier
+      ? rarityTier.charAt(0).toUpperCase() + rarityTier.slice(1)
+      : "";
+  };
+
   const renderActionButton = () => {
     if (isSeller) {
       return (
@@ -398,6 +417,15 @@ const ListingPost: React.FC<ListingPostProps> = ({
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
                 />
+                {/* Rarity badge - top right */}
+                {item.rarity_tier && (
+                  <View className={`${getBadgeColor(item.rarity_tier)} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}>
+                    <Text className="text-white text-[10px] font-lexend-medium">
+                      {getBadgeText(item.rarity_tier)}
+                    </Text>
+                  </View>
+                )}
+                {/* Item name overlay - bottom */}
                 <View className="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
                   <Text
                     className="text-white text-sm font-lexend-medium"
