@@ -330,21 +330,21 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
       }
     }
 
-    // Handle when camera is ready - fetch available lenses
-    const handleCameraReady = useCallback(async () => {
-      console.log("Camera is ready!");
+    // // Handle when camera is ready - fetch available lenses
+    // const handleCameraReady = useCallback(async () => {
+    //   console.log("Camera is ready!");
       
-      // Try to get available lenses on iOS
-      if (Platform.OS === 'ios' && cameraRef.current) {
-        try {
-          const lenses = await (cameraRef.current as any).getAvailableLensesAsync();
-          console.log("Available lenses from getAvailableLensesAsync:", lenses);
-          setAvailableLenses(lenses);
-        } catch (error) {
-          console.log("Could not get available lenses:", error);
-        }
-      }
-    }, []);
+    //   // Try to get available lenses on iOS
+    //   if (Platform.OS === 'ios' && cameraRef.current) {
+    //     try {
+    //       const lenses = await (cameraRef.current as any).getAvailableLensesAsync();
+    //       console.log("Available lenses from getAvailableLensesAsync:", lenses);
+    //       setAvailableLenses(lenses);
+    //     } catch (error) {
+    //       console.log("Could not get available lenses:", error);
+    //     }
+    //   }
+    // }, []);
 
     return (
       <View className="flex-1">
@@ -356,7 +356,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             zoom={zoom}
             animateShutter={true}
             enableTorch={torchEnabled}
-            onCameraReady={handleCameraReady}
+            // onCameraReady={handleCameraReady}
             {...(Platform.OS === 'ios' ? { 
               selectedLens, 
               onAvailableLensesChanged: handleAvailableLensesChanged 

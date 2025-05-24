@@ -100,17 +100,57 @@ export const updateCollection = async (
 export const deleteCollection = async (
   collectionId: string
 ): Promise<boolean> => {
-  const { error } = await supabase
-    .from(Tables.COLLECTIONS)
-    .delete()
-    .eq("id", collectionId);
+  try {
+    // Step 1: Delete all user_collection_items for this collection
+    const { error: userItemsError } = await supabase
+      .from(Tables.USER_COLLECTION_ITEMS)
+      .delete()
+      .eq("collection_id", collectionId);
 
-  if (error) {
-    console.error("Error deleting collection:", error);
+    if (userItemsError) {
+      console.error("Error deleting user collection items:", userItemsError);
+      return false;
+    }
+
+    // Step 2: Delete all user_collections for this collection  
+    const { error: userCollectionsError } = await supabase
+      .from(Tables.USER_COLLECTIONS)
+      .delete()
+      .eq("collection_id", collectionId);
+
+    if (userCollectionsError) {
+      console.error("Error deleting user collections:", userCollectionsError);
+      return false;
+    }
+
+    // Step 3: Delete all collection_items for this collection
+    const { error: collectionItemsError } = await supabase
+      .from(Tables.COLLECTION_ITEMS)
+      .delete()
+      .eq("collection_id", collectionId);
+
+    if (collectionItemsError) {
+      console.error("Error deleting collection items:", collectionItemsError);
+      return false;
+    }
+
+    // Step 4: Finally delete the collection itself
+    const { error: collectionError } = await supabase
+      .from(Tables.COLLECTIONS)
+      .delete()
+      .eq("id", collectionId);
+
+    if (collectionError) {
+      console.error("Error deleting collection:", collectionError);
+      return false;
+    }
+
+    console.log(`Successfully deleted collection ${collectionId} and all related records`);
+    return true;
+  } catch (error) {
+    console.error("Unexpected error during collection deletion:", error);
     return false;
   }
-
-  return true;
 };
 
 // React hooks
