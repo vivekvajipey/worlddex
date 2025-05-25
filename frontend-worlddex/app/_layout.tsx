@@ -8,8 +8,9 @@ import "../global.css";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../src/contexts/AuthContext";
 import { PostHogProvider } from "posthog-react-native";
-import { Slot } from "expo-router";     // expo-router’s root
+import { Slot } from "expo-router";     // expo-router's root
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NotificationService } from "../src/services/NotificationService";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +31,7 @@ function SplashScreenComponent() {
         source={require("../assets/images/splash.png")}
         style={{ width: '100%', height: '100%', position: 'absolute' }}
         contentFit="cover"
-      />  
+      />
     </View>
   );
 }
@@ -109,6 +110,16 @@ export default function RootLayout() {
     if (fontsLoaded) {
       // Hide splash screen once fonts are loaded
       SplashScreen.hideAsync();
+
+      // Setup notifications
+      const setupNotifications = async () => {
+        const hasPermission = await NotificationService.requestPermissions();
+        if (hasPermission) {
+          await NotificationService.scheduleDailyNotification();
+        }
+      };
+
+      setupNotifications();
     }
   }, [fontsLoaded]);
 

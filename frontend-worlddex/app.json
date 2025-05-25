@@ -37,6 +37,14 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
+      ],
       "expo-localization"
     ],
     "ios": {
@@ -45,7 +53,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "WorldDex needs access to your camera to take pictures",
         "NSPhotoLibraryUsageDescription": "WorldDex needs access to your photo library to save pictures",
-        "NSPhotoLibraryAddUsageDescription": "WorldDex needs permission to save photos to your library"
+        "NSPhotoLibraryAddUsageDescription": "WorldDex needs permission to save photos to your library",
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -60,7 +69,9 @@
         "WRITE_EXTERNAL_STORAGE",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
       ]
     },
     "web": {

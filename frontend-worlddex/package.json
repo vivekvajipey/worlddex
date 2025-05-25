@@ -45,6 +45,7 @@
     "expo-location": "~18.0.10",
     "expo-mail-composer": "~14.0.2",
     "expo-media-library": "~17.0.6",
+    "expo-notifications": "~0.29.14",
     "expo-router": "~3.5.4",
     "expo-splash-screen": "~0.29.3",
     "expo-status-bar": "~2.0.1",
