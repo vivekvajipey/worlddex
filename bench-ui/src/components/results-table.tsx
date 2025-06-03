@@ -132,19 +132,35 @@ export function ResultsTable({ data, groundTruth }: ResultsTableProps) {
     },
     {
       accessorKey: "latency",
-      header: "Latency (ms)",
+      header: () => <div className="text-right">Latency (ms)</div>,
       cell: ({ row }) => {
         const latency = parseFloat(row.getValue("latency"));
-        return <div className="text-right">{latency.toFixed(0)}</div>;
+        return <div className="text-right font-mono text-xs">{latency.toFixed(0)}</div>;
       },
     },
     {
-      id: "groundTruthMatch",
-      header: "GT Match",
+      accessorKey: "cost",
+      header: () => <div className="text-right">Cost ($)</div>,
+      cell: ({ row }) => {
+        const cost = row.original.cost;
+        return (
+          <div className="text-right font-mono text-xs">
+            {typeof cost === "number" ? (
+              cost.toFixed(5)
+            ) : (
+              <span className="text-muted-foreground">N/A</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "groundTruthMatch",
+      header: () => <div className="text-center">GT Match</div>,
       cell: ({ row }) => {
         if (!groundTruth) return null;
         const truth = groundTruth[row.original.file];
-        if (!truth) return <span className="text-muted-foreground text-xs">No GT</span>;
+        if (!truth) return <div className="flex justify-center items-center text-xs text-muted-foreground">No GT</div>;
 
         const t1Label = row.original.tier1?.label?.toLowerCase();
         const t2Label = row.original.tier2?.label?.toLowerCase();
@@ -152,10 +168,14 @@ export function ResultsTable({ data, groundTruth }: ResultsTableProps) {
 
         const isMatch = (t2Label && t2Label === truthLabel) || (!t2Label && t1Label === truthLabel);
 
-        return isMatch ? (
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
-        ) : (
-          <XCircle className="h-5 w-5 text-red-500" />
+        return (
+          <div className="flex justify-center items-center">
+            {isMatch ? (
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-500" />
+            )}
+          </div>
         );
       },
     },

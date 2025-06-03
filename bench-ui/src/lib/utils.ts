@@ -85,6 +85,8 @@ export function calculateBenchmarkMetrics(results: BenchmarkResult[], groundTrut
     p99Latency: 0,
     resultsWithGroundTruth: 0,
     tier2ResultsCount: 0,
+    totalCost: 0,
+    avgCostPerImage: 0,
   };
 
   if (totalImages === 0) {
@@ -100,6 +102,7 @@ export function calculateBenchmarkMetrics(results: BenchmarkResult[], groundTrut
   let resultsWithGroundTruth = 0;
   let tier2ResultsCount = 0;
   const latencies: number[] = [];
+  let currentTotalCost = 0;
 
   results.forEach(result => {
     if (result.error || !result.tier1?.label) {
@@ -108,6 +111,7 @@ export function calculateBenchmarkMetrics(results: BenchmarkResult[], groundTrut
     }
     successfulRequests++;
     latencies.push(result.latency);
+    currentTotalCost += result.cost || 0;
 
     if (result.tier2?.label) {
       tier2ResultsCount++;
@@ -153,5 +157,7 @@ export function calculateBenchmarkMetrics(results: BenchmarkResult[], groundTrut
     p99Latency: calculatePercentile(latencies, 99),
     resultsWithGroundTruth,
     tier2ResultsCount,
+    totalCost: currentTotalCost,
+    avgCostPerImage: successfulRequests > 0 ? currentTotalCost / successfulRequests : 0,
   };
 }

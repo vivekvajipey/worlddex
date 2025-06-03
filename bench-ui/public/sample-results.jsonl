@@ -1,6 +1,6 @@
-{"file":"cat_001.jpg","latency":350,"tier1":{"label":"Cat","category":"animal","subcategory":"mammal","rarityScore":30,"rarityTier":"common"},"tier2":null}
-{"file":"dog_005.jpg","latency":1240,"tier1":{"label":"Dog","category":"animal","subcategory":"mammal","rarityScore":55,"rarityTier":"uncommon"},"tier2":{"label":"Golden Retriever","provider":"openai","confidence":0.83}}
-{"file":"bird_012.jpg","latency":800,"tier1":{"label":"Bird","category":"animal","subcategory":"bird","rarityScore":87,"rarityTier":"epic"},"tier2":{"label":"Steller's Jay","provider":"fireworks","confidence":0.91}}
-{"file":"plant_003.jpg","latency":650,"tier1":{"label":"Plant","category":"plant","subcategory":"flower","rarityScore":72,"rarityTier":"rare"},"tier2":{"label":"Rose","provider":"openai","confidence":0.75}}
-{"file":"car_007.jpg","latency":450,"tier1":{"label":"Car","category":"object","subcategory":"vehicle","rarityScore":15,"rarityTier":"common"},"tier2":null}
-{"file":"error_image.jpg","latency":100,"tier1":{"label":"Error"},"tier2":null,"error":"Simulated processing error"}
+{"file":"cat_001.jpg","latency":350,"tier1":{"label":"Cat","category":"animal","subcategory":"mammal","rarityScore":30},"tier2":null,"cost":0.00075}
+{"file":"dog_005.jpg","latency":1240,"tier1":{"label":"Dog","category":"animal","subcategory":"mammal","rarityScore":55},"tier2":{"label":"Golden Retriever","provider":"openai","confidence":0.83},"cost":0.00075}
+{"file":"bird_012.jpg","latency":800,"tier1":{"label":"Bird","category":"animal","subcategory":"bird","rarityScore":87},"tier2":{"label":"Steller's Jay","provider":"fireworks","confidence":0.91},"cost":0.00075}
+{"file":"plant_003.jpg","latency":650,"tier1":{"label":"Plant","category":"plant","subcategory":"flower","rarityScore":72},"tier2":{"label":"Rose","provider":"openai","confidence":0.75},"cost":0.00075}
+{"file":"car_007.jpg","latency":450,"tier1":{"label":"Car","category":"object","subcategory":"vehicle","rarityScore":15},"tier2":null,"cost":0.00075}
+{"file":"error_image.jpg","latency":100,"tier1":{"label":"Error"},"tier2":null,"error":"Simulated processing error","cost":0}

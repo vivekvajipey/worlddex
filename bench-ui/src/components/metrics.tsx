@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BenchmarkMetrics } from "@/lib/types";
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown, HelpCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, TrendingDown, HelpCircle, DollarSign } from "lucide-react";
 
 interface MetricsProps {
   metrics: BenchmarkMetrics | null;
@@ -40,8 +40,8 @@ const MetricItem: React.FC<{
 export function Metrics({ metrics }: MetricsProps) {
   if (!metrics) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
             <Card key={i}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">Loading...</CardTitle>
@@ -61,7 +61,7 @@ export function Metrics({ metrics }: MetricsProps) {
   const formatLatency = (value: number) => value.toFixed(0);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
       <MetricItem
         title="Overall Accuracy"
         value={formatPercent(metrics.overallAccuracy)}
@@ -90,6 +90,20 @@ export function Metrics({ metrics }: MetricsProps) {
         value={metrics.successfulRequests}
         icon={TrendingUp}
         description={`${((metrics.successfulRequests / metrics.totalImages) * 100 || 0).toFixed(0)}% of ${metrics.totalImages} total`}
+      />
+      <MetricItem
+        title="Total Cost"
+        value={metrics.totalCost.toFixed(4)}
+        unit=" USD"
+        icon={DollarSign}
+        description={`For ${metrics.successfulRequests} successful requests`}
+      />
+      <MetricItem
+        title="Avg. Cost / Image"
+        value={metrics.avgCostPerImage.toFixed(5)}
+        unit=" USD"
+        icon={DollarSign}
+        description={`Per successful image`}
       />
       {/* Optional: Add more cards for Tier2 Acc or Failed Requests if needed */}
       {/* <MetricItem

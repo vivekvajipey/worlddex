@@ -24,6 +24,7 @@ export interface BenchmarkResultJson {
   latency: number;
   tier1: Tier1ResultJson; // Uses Tier1ResultJson without rarityTier
   tier2: Tier2Result | null;
+  cost?: number; // Added cost
   error?: string;
 }
 
@@ -33,6 +34,7 @@ export interface BenchmarkResult {
   latency: number;
   tier1: Tier1Result; // Uses Tier1Result with rarityTier
   tier2: Tier2Result | null;
+  cost?: number; // Added cost
   error?: string; // To capture any processing errors from run-eval.ts
 }
 
@@ -61,5 +63,7 @@ export interface BenchmarkMetrics {
   p99Latency: number; // Added
   resultsWithGroundTruth: number; // Added - count of results that had a GT entry
   tier2ResultsCount: number; // Added - count of results that had a Tier2 identification
+  totalCost: number; // Added
+  avgCostPerImage: number; // Added
   // costEstimate: number; // Placeholder for future cost tracking
 }
