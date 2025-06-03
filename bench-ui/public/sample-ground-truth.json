@@ -1,0 +1,27 @@
+{
+  "cat_001.jpg": {
+    "label": "Cat",
+    "category": "animal",
+    "subcategory": "mammal"
+  },
+  "dog_005.jpg": {
+    "label": "Golden Retriever",
+    "category": "animal",
+    "subcategory": "mammal"
+  },
+  "bird_012.jpg": {
+    "label": "Steller's Jay",
+    "category": "animal",
+    "subcategory": "bird"
+  },
+  "plant_003.jpg": {
+    "label": "Rose",
+    "category": "plant",
+    "subcategory": "flower"
+  },
+  "car_007.jpg": {
+    "label": "Car",
+    "category": "object",
+    "subcategory": "vehicle"
+  }
+}
