@@ -136,9 +136,9 @@ export const deleteCollection = async (
 
     // Step 4: Finally delete the collection itself
     const { error: collectionError } = await supabase
-      .from(Tables.COLLECTIONS)
-      .delete()
-      .eq("id", collectionId);
+    .from(Tables.COLLECTIONS)
+    .delete()
+    .eq("id", collectionId);
 
     if (collectionError) {
       console.error("Error deleting collection:", collectionError);

@@ -102,6 +102,9 @@ export default function CameraScreen({
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
   
+  // Add state for rarity score
+  const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
+  
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
   
   const handleRetryIdentification = useCallback(async () => {
@@ -126,7 +129,7 @@ export default function CameraScreen({
     if (!isServerConnected) {
       Alert.alert(
         "Offline",
-        "Still no internet connection. Try again once you’re back online."
+        "Still no internet connection. Try again once you're back online."
       );
       return;
     }
@@ -197,7 +200,7 @@ export default function CameraScreen({
 
   useEffect(() => {
     if (idError) {
-      setVlmCaptureSuccess(false);   // tells the polaroid it’s a failure
+      setVlmCaptureSuccess(false);   // tells the polaroid it's a failure
       setIdentificationComplete(true);
     }
   }, [idError]);
@@ -215,6 +218,11 @@ export default function CameraScreen({
       }
     }
   }, [session, updateUser]);
+
+  // Handle onboarding reset
+  const handleOnboardingReset = useCallback(() => {
+    setResetCounter(prev => prev + 1);
+  }, []);
 
   // Track when a capture review is shown or dismissed
   useEffect(() => {
@@ -235,6 +243,7 @@ export default function CameraScreen({
       setIdentifiedLabel(null);
       setIdentificationComplete(false);
       setRarityTier("common"); // Reset rarity tier
+      setRarityScore(undefined); // Reset rarity score
       return;
     }
 
@@ -252,6 +261,14 @@ export default function CameraScreen({
           console.log("Setting rarity tier:", tier1.rarityTier);
         } else {
           console.log("No rarity tier in tier1 response, using default");
+        }
+        
+        // Set rarity score if available
+        if (tier1.rarityScore !== undefined) {
+          setRarityScore(tier1.rarityScore);
+          console.log("Setting rarity score:", tier1.rarityScore);
+        } else {
+          console.log("No rarity score in tier1 response");
         }
         
         // If tier2 is not expected (status is done), mark as complete
@@ -619,7 +636,8 @@ export default function CameraScreen({
             is_public: isCapturePublic,
             like_count: 0,
             daily_upvotes: 0,
-            rarity_tier: rarityTier
+            rarity_tier: rarityTier,
+            rarity_score: rarityScore
           };
 
           const captureRecord = await uploadCapturePhoto(
@@ -740,6 +758,8 @@ export default function CameraScreen({
     isCapturePublic, // Add to dependency array
     identificationComplete, // Add to dependency array
     vlmCaptureSuccess, // Add to dependency array
+    rarityTier, // Add rarity tier to dependencies
+    rarityScore, // Add rarity score to dependencies
     // Dependencies for collection logic
     fetchUserCollectionsByUser,
     fetchCollectionItems,

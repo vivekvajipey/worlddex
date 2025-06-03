@@ -277,35 +277,35 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
       // Only upload images if a silhouette was provided
       if (newItemForm.silhouetteImageFile) {
-        // 2) prepare upload params
-        const { uri: fileUri, name: fileName, type: contentType } = newItemForm.silhouetteImageFile;
-        const folder = `collection_items/${userId || "anonymous"}/${collection.id}`;
+      // 2) prepare upload params
+      const { uri: fileUri, name: fileName, type: contentType } = newItemForm.silhouetteImageFile;
+      const folder = `collection_items/${userId || "anonymous"}/${collection.id}`;
 
-        // 3) upload the full-size silhouette image
+      // 3) upload the full-size silhouette image
         silhouetteKey = await uploadPhoto(
-          fileUri,
-          contentType,
-          fileName,
-          folder
-        );
+        fileUri,
+        contentType,
+        fileName,
+        folder
+      );
 
-        // 4) generate a small thumbnail on the device
-        const thumbnailResult = await ImageManipulator.manipulateAsync(
-          fileUri,
-          [{ resize: { width: 200 } }],
-          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
-        );
+      // 4) generate a small thumbnail on the device
+      const thumbnailResult = await ImageManipulator.manipulateAsync(
+        fileUri,
+        [{ resize: { width: 200 } }],
+        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
-        // 5) give your thumb a distinct filename
-        const thumbFileName = `${itemId}-thumb.jpg`;
+      // 5) give your thumb a distinct filename
+      const thumbFileName = `${itemId}-thumb.jpg`;
 
-        // 6) upload the thumbnail into the same folder under /thumbs
+      // 6) upload the thumbnail into the same folder under /thumbs
         thumbKey = await uploadPhoto(
-          thumbnailResult.uri,
-          "image/jpeg",
-          thumbFileName,
-          `${folder}/thumbs`
-        );
+        thumbnailResult.uri,
+        "image/jpeg",
+        thumbFileName,
+        `${folder}/thumbs`
+      );
       }
 
       // 7) create the collection item record (with actual image or placeholder)
@@ -470,12 +470,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         >
           {newItemForm.silhouetteImage ? (
             <>
-              <Image
-                source={{ uri: newItemForm.silhouetteImage }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={300}
-              />
+            <Image
+              source={{ uri: newItemForm.silhouetteImage }}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              transition={300}
+            />
               {/* Clear button */}
               <TouchableOpacity
                 className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full justify-center items-center"
