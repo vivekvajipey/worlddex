@@ -1,7 +1,8 @@
 import { OpenAI } from "openai";
 import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../shared/types/vlm";
 import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
-import { sampleRarityTier } from "../utils/rarity";
+// import { sampleRarityTier } from "../utils/rarity";
+import { assignRarityTier } from "../utils/rarity";
 
 const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond
 
@@ -137,7 +138,7 @@ export class VlmService {
             }
 
             // Calculate rarity tier if we have a rarity score
-            const rarityTier = rarityScore !== undefined ? sampleRarityTier(rarityScore) : undefined;
+            const rarityTier = rarityScore !== undefined ? assignRarityTier(rarityScore) : undefined;
 
             return { 
                 label: identifiedLabel,
