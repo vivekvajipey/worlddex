@@ -49,7 +49,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.worlddex.app",
+      "bundleIdentifier": "com.worlddex-jsv.app",
       "infoPlist": {
         "NSCameraUsageDescription": "WorldDex needs access to your camera to take pictures",
         "NSPhotoLibraryUsageDescription": "WorldDex needs access to your photo library to save pictures",
