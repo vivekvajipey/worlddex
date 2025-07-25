@@ -56,9 +56,6 @@ export default function CameraScreen({
   const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
-  
-  // Track if permissions have been resolved (not null/undefined)
-  const [permissionsResolved, setPermissionsResolved] = useState(false);
 
   // Photo capture state
   const [isCapturing, setIsCapturing] = useState(false);
@@ -89,14 +86,11 @@ export default function CameraScreen({
   const [resetCounter, setResetCounter] = useState(0);
   // Add state to track whether identification is fully complete (both tiers if applicable)
   const [identificationComplete, setIdentificationComplete] = useState(false);
-
-  // Track when permissions are resolved
-  useEffect(() => {
-    if (permission && permission.status !== null && permission.status !== undefined &&
-        mediaPermission && mediaPermission.status !== null && mediaPermission.status !== undefined) {
-      setPermissionsResolved(true);
-    }
-  }, [permission, mediaPermission]);
+  
+  // Derive permission resolution status - no useState needed
+  const permissionsResolved = 
+    permission?.status != null && 
+    mediaPermission?.status != null;
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
