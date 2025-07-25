@@ -284,22 +284,22 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   return (
     <>
       <TouchableOpacity
-        className="absolute bottom-8 right-8 w-16 h-16 rounded-full flex justify-center items-center"
+        className="absolute bottom-8 right-8 w-20 h-20 rounded-full flex justify-center items-center"
         onPress={handleOpenModal}
       >
         {loadingProfilePic || isInitialLoading ? (
-          <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
+          <View className="w-20 h-20 rounded-full bg-primary flex justify-center items-center">
             <ActivityIndicator color={Colors.background.surface} />
           </View>
         ) : displayProfilePic ? (
           <Image
             source={{ uri: displayProfilePic }}
-            style={{ width: 64, height: 64, borderRadius: 32 }}
+            style={{ width: 80, height: 80, borderRadius: 40 }}
             contentFit="cover"
             transition={200}
           />
         ) : (
-          <View className="w-16 h-16 rounded-full bg-primary flex justify-center items-center">
+          <View className="w-20 h-20 rounded-full bg-primary flex justify-center items-center">
             <Text className="text-surface font-lexend-bold text-2xl">{userInitial}</Text>
           </View>
         )}
