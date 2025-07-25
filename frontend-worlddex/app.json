@@ -62,7 +62,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.worlddex.app",
+      "package": "com.worlddex-jsv.app",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

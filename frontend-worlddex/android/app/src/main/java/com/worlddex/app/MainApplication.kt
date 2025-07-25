@@ -1,4 +1,4 @@
-package com.worlddex.app
+package com.worlddex-jsv.app
 
 import android.app.Application
 import android.content.res.Configuration

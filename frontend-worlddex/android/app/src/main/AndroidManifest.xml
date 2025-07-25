@@ -30,7 +30,7 @@
         <data android:scheme="myapp"/>
         <data android:scheme="com.antqin.worlddexfrontend"/>
         <data android:scheme="worlddex"/>
-        <data android:scheme="com.worlddex.app"/>
+        <data android:scheme="com.worlddex-jsv.app"/>
       </intent-filter>
     </activity>
   </application>

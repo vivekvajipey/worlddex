@@ -1,4 +1,4 @@
-package com.worlddex.app
+package com.worlddex-jsv.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

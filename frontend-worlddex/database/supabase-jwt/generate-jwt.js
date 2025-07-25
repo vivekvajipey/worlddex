@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 // Your information from Apple Developer account
 const privateKey = fs.readFileSync('AuthKey_575MHYHU4W.p8').toString();
 const teamId = '69G7HE4MM9'; // Your Apple Developer Team ID
-const clientId = 'com.worlddex.app'; // Your Services ID (same as Client ID)
+const clientId = 'com.worlddex-jsv.app'; // Your Services ID (same as Client ID)
 const keyId = '575MHYHU4W'; // The Key ID of your private key
 
 // Create the JWT with maximum allowed expiration

@@ -30,7 +30,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>worlddex</string>
-				<string>com.worlddex.app</string>
+				<string>com.worlddex-jsv.app</string>
 			</array>
 		</dict>
 	</array>
