@@ -21,4 +21,7 @@ export interface VlmIdentificationResponse {
 
   /** bucketed category sampled from rarityScore */
   rarityTier?: RarityTier;
+
+  /** XP value calculated from rarity tier */
+  xpValue?: number;
 }

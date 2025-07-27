@@ -13,6 +13,7 @@ import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { usePostHog } from "posthog-react-native";
+import { calculateLevelProgress, getXPRequiredForLevel, formatXP } from "../../../database/hooks/useXP";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -405,6 +406,29 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                         <Ionicons name="checkmark" size={20} color={Colors.background.surface} />
                       </TouchableOpacity>
                     )}
+                  </View>
+
+                  {/* Level and XP Progress */}
+                  <View className="mb-4">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View className="flex-row items-center">
+                        <Text className="text-text-primary font-lexend-bold text-lg">Level {refreshedUser?.level || 1}</Text>
+                        <Text className="text-text-secondary font-lexend-medium text-sm ml-2">
+                          {formatXP(refreshedUser?.xp || 0)} XP
+                        </Text>
+                      </View>
+                      <Text className="text-text-secondary font-lexend-medium text-sm">
+                        {formatXP(getXPRequiredForLevel((refreshedUser?.level || 1) + 1) - (refreshedUser?.xp || 0))} to next
+                      </Text>
+                    </View>
+                    <View className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <View 
+                        className="bg-primary h-full rounded-full"
+                        style={{ 
+                          width: `${calculateLevelProgress(refreshedUser?.xp || 0, refreshedUser?.level || 1)}%` 
+                        }}
+                      />
+                    </View>
                   </View>
 
                   <View className="flex-row justify-between mb-6 px-2">

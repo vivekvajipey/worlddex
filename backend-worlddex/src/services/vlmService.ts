@@ -3,6 +3,7 @@ import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../share
 import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 // import { sampleRarityTier } from "../utils/rarity";
 import { assignRarityTier } from "../utils/rarity";
+import { XpService } from "./xpService";
 
 const UNIDENTIFIED_RESPONSE = "Unidentified"; // failure keyword for VLM to respond
 
@@ -139,13 +140,17 @@ export class VlmService {
 
             // Calculate rarity tier if we have a rarity score
             const rarityTier = rarityScore !== undefined ? assignRarityTier(rarityScore) : undefined;
+            
+            // Calculate XP based on rarity tier
+            const xpValue = rarityTier ? XpService.calculateCaptureXP(rarityTier) : 0;
 
             return { 
                 label: identifiedLabel,
                 category: category,
                 subcategory: subcategory,
                 rarityScore: rarityScore,
-                rarityTier: rarityTier
+                rarityTier: rarityTier,
+                xpValue: xpValue
             };
 
         } catch (error: unknown) {

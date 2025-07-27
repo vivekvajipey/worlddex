@@ -95,3 +95,44 @@ Follow these steps to set up and run the React Native frontend application on an
       ```bash
       npx expo run:ios
       ```
+
+
+Exp System:
+
+Level Structure
+
+  Level 1:     0 XP
+  Level 2:    50 XP
+  Level 3:   150 XP
+  Level 4:   300 XP
+  Level 5:   500 XP
+  ...
+  Level N: Previous + (N * 50)
+
+  XP Sources
+
+  1. Capture XP (based on rarity):
+    - Common: 5 XP
+    - Uncommon: 10 XP
+    - Rare: 25 XP
+    - Epic: 50 XP
+    - Mythic: 100 XP
+    - Legendary: 200 XP
+  2. Bonus XP:
+    - First capture of an item: 2x multiplier
+    - Daily first capture: +10 XP
+    - Social engagement: +1 XP per like received (daily cap: 50)
+  3. Collection XP:
+    - Adding item to collection: +5 XP
+    - Completing collection: +100 XP
+
+  Level Rewards
+
+  - Every 5 levels: Unlock new camera effects/filters
+  - Every 10 levels: Increase daily capture limit
+  - Milestone levels (25, 50, 100): Special badges/titles
+  - Level-based leaderboards for competitive players
+
+  This system is simple to implement, leverages existing rarity
+  calculations, and adds meaningful progression without disrupting
+  current mechanics.

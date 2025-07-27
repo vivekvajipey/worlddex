@@ -20,6 +20,7 @@ import { incrementUserField, updateUserField } from "../../database/hooks/useUse
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture, CollectionItem } from "../../database/types";
 import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
+import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
 import CoinRewardModal from "../components/CoinRewardModal";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import {
@@ -707,10 +708,34 @@ export default function CameraScreen({
           // Increment daily_captures_used for the user
           await incrementUserField(session.user.id, "daily_captures_used", 1);
 
+          // Calculate and award XP
+          let xpData = null;
+          if (captureRecord && item && rarityTier) {
+            const xpResult = await calculateAndAwardCaptureXP(
+              session.user.id,
+              captureRecord.id,
+              item.id,
+              rarityTier,
+              tier1?.xpValue // Use XP value from backend if available
+            );
+            if (xpResult.total > 0) {
+              xpData = xpResult;
+            }
+          }
+
           // Calculate and award coins
           const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
-          if (coinsAwarded > 0) {
-            setCoinModalData({ total: coinsAwarded, rewards });
+          
+          // Show combined rewards modal if either coins or XP were awarded
+          if (coinsAwarded > 0 || xpData) {
+            setCoinModalData({ 
+              total: coinsAwarded, 
+              rewards,
+              xpTotal: xpData?.total || 0,
+              xpRewards: xpData?.rewards || [],
+              levelUp: xpData?.levelUp,
+              newLevel: xpData?.newLevel
+            });
             setCoinModalVisible(true);
           }
         }

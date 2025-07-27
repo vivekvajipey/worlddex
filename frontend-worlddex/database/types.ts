@@ -11,6 +11,8 @@ export type User = {
   is_onboarded?: boolean;
   default_public_captures?: boolean;
   balance: number;
+  xp: number;
+  level: number;
 };
 
 export type Collection = {
@@ -154,5 +156,24 @@ export type Transaction = {
   transaction_type: "buy-now" | "auction" | "trade";
   coins_amount: number;
   trade_offer_id?: string;
+  created_at?: string;
+};
+
+export type XPTransaction = {
+  id: string;
+  user_id: string;
+  amount: number;
+  reason: string;
+  capture_id?: string;
+  collection_id?: string;
+  created_at?: string;
+};
+
+export type LevelReward = {
+  id: string;
+  level: number;
+  reward_type: "badge" | "filter" | "capture_limit" | "title";
+  reward_value: string;
+  description?: string;
   created_at?: string;
 };
