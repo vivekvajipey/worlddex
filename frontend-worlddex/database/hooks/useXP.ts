@@ -33,23 +33,25 @@ async function isFirstCaptureOfDayForXP(userId: string): Promise<XPReward> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Check if user has made any captures today (more reliable than checking XP transactions)
   const { data, error } = await supabase
-    .from("xp_transactions")
+    .from("captures")
     .select("id")
     .eq("user_id", userId)
-    .eq("reason", "Daily first capture bonus")
-    .gte("created_at", today.toISOString())
-    .limit(1);
+    .gte("captured_at", today.toISOString())
+    .order("captured_at", { ascending: true })
+    .limit(2); // Get first 2 to check if this is the first
 
   if (error) {
-    console.error("Error checking daily XP bonus:", error);
+    console.error("Error checking daily captures for XP bonus:", error);
     return { amount: 0, reason: "" };
   }
 
-  // If no XP bonus given today, award it
+  // If there's only 1 capture today, it's the first one (the current one being processed)
+  // If there are 2 or more, this is not the first
   return {
-    amount: data.length === 0 ? XP_BONUSES.DAILY_FIRST_CAPTURE : 0,
-    reason: data.length === 0 ? "Daily first capture bonus" : "",
+    amount: data && data.length === 1 ? XP_BONUSES.DAILY_FIRST_CAPTURE : 0,
+    reason: data && data.length === 1 ? "Daily first capture bonus" : "",
   };
 }
 

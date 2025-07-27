@@ -103,7 +103,14 @@ export default function CameraScreen({
 
   // Add state for coin reward modal
   const [coinModalVisible, setCoinModalVisible] = useState(false);
-  const [coinModalData, setCoinModalData] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
+  const [coinModalData, setCoinModalData] = useState<{ 
+    total: number; 
+    rewards: { amount: number; reason: string }[];
+    xpTotal?: number;
+    xpRewards?: { amount: number; reason: string }[];
+    levelUp?: boolean;
+    newLevel?: number;
+  }>({ total: 0, rewards: [] });
 
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
@@ -912,6 +919,10 @@ export default function CameraScreen({
           onClose={() => setCoinModalVisible(false)}
           total={coinModalData.total}
           rewards={coinModalData.rewards}
+          xpTotal={coinModalData.xpTotal}
+          xpRewards={coinModalData.xpRewards}
+          levelUp={coinModalData.levelUp}
+          newLevel={coinModalData.newLevel}
         />
 
       </View>
