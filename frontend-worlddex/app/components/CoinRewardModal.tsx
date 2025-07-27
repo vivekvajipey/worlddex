@@ -111,19 +111,25 @@ export default function CoinRewardModal({
                   +{xpTotal} XP!
                 </Text>
               </View>
-              <View className="w-full mb-3">
-                {xpRewards.map((r, i) => (
-                  <View key={`xp-${i}`} className="flex-row items-start mb-1">
-                    <Ionicons name="star" size={16} color={Colors.primary.DEFAULT} style={{ marginRight: 6, marginTop: 2 }} />
-                    <Text className="text-primary font-lexend-medium text-sm">
-                      +{r.amount}
-                    </Text>
-                    <Text className="text-text-secondary text-sm ml-2 flex-1" numberOfLines={2}>
-                      {r.reason}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              {/* Only show breakdown if there are multiple XP rewards */}
+              {xpRewards.length > 1 && (
+                <View className="w-full mb-3">
+                  {xpRewards.map((r, i) => (
+                    <View key={`xp-${i}`} className="flex-row items-start mb-1">
+                      <Ionicons name="star-outline" size={14} color={Colors.text.secondary} style={{ marginRight: 6, marginTop: 3 }} />
+                      <Text className="text-text-secondary text-xs flex-1" numberOfLines={2}>
+                        {r.reason} (+{r.amount})
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {/* For single reward, show the reason as subtitle */}
+              {xpRewards.length === 1 && (
+                <Text className="text-text-secondary text-sm mb-3">
+                  {xpRewards[0].reason}
+                </Text>
+              )}
             </>
           )}
 
