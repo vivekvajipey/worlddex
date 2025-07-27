@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { View, Alert, Modal, ActivityIndicator, Text } from "react-native";
+import { View, Alert, Modal, ActivityIndicator, Text, TouchableOpacity } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useIdentify } from "../../../src/hooks/useIdentify";
 import { useImageProcessor } from "../../../src/hooks/useImageProcessor";
@@ -197,7 +197,12 @@ export default function PendingCaptureIdentifier({
   }, [identify, reset]);
 
   const handleDismissPreview = useCallback(async () => {
+    console.log("=== handleDismissPreview called ===");
+    console.log("pendingCapture exists:", !!pendingCapture);
+    console.log("session exists:", !!session);
+    
     if (!pendingCapture || !session) {
+      console.log("No pendingCapture or session, closing immediately");
       onClose();
       return;
     }
@@ -301,8 +306,8 @@ export default function PendingCaptureIdentifier({
           onLevelUp(xpData.newLevel);
         }
         
-        // Handle coin/XP rewards
-        if ((coinsAwarded > 0 || xpData) && onCoinReward) {
+        // Handle coin/XP rewards - only show modal if coins were actually awarded
+        if (coinsAwarded > 0 && onCoinReward) {
           onCoinReward({ 
             total: coinsAwarded, 
             rewards,
@@ -325,7 +330,14 @@ export default function PendingCaptureIdentifier({
           });
         }
         
+        // Call onSuccess first
+        console.log("=== SUCCESS - Calling onSuccess and onClose ===");
         onSuccess();
+        
+        // Always close the modal after success
+        reset();
+        onClose();
+        return;
       } catch (err) {
         console.error("Error during capture processing:", err);
         Alert.alert("Error", "Failed to save capture. Please try again.");
@@ -341,7 +353,8 @@ export default function PendingCaptureIdentifier({
       }
     }
     
-    // Reset states and close
+    // Reset states and close (for error/rejection cases)
+    console.log("=== ERROR/REJECTION - Calling reset and onClose ===");
     reset();
     onClose();
   }, [
@@ -364,18 +377,37 @@ export default function PendingCaptureIdentifier({
     tier1
   ]);
 
-  if (!pendingCapture) return null;
-
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
+
+  if (!pendingCapture) return null;
 
   return (
     <Modal
-      visible={!!pendingCapture}
+      visible={true}
       transparent
       animationType="fade"
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black">
+        {/* Debug close button */}
+        <TouchableOpacity 
+          onPress={() => {
+            console.log("=== Force close button pressed ===");
+            onClose();
+          }}
+          style={{
+            position: 'absolute',
+            top: 50,
+            right: 20,
+            zIndex: 1000,
+            backgroundColor: 'red',
+            padding: 10,
+            borderRadius: 5
+          }}
+        >
+          <Text style={{ color: 'white' }}>FORCE CLOSE</Text>
+        </TouchableOpacity>
+        
         {isProcessing && !idLoading && !identificationComplete ? (
           <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" color="#FFF" />
