@@ -23,4 +23,5 @@ export interface CombinedCapture extends Partial<Capture> {
   thumb_key?: string;
   rarity_tier?: string;
   rarity_score?: number;
+  _pendingData?: PendingCapture; // Store original pending capture data
 }

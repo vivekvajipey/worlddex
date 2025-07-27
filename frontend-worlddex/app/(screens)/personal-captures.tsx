@@ -27,6 +27,9 @@ import WorldDexTab from "../components/captures/WorldDexTab";
 import CollectionsTab from "../components/collections/CollectionsTab";
 import CaptureDetailsModal from "../components/captures/CaptureDetailsModal";
 import CollectionDetailScreen from "../components/collections/CollectionDetailScreen";
+import PendingCaptureIdentifier from "../components/captures/PendingCaptureIdentifier";
+import CoinRewardModal from "../components/CoinRewardModal";
+import LevelUpModal from "../components/LevelUpModal";
 
 const { width } = Dimensions.get("window");
 
@@ -45,6 +48,20 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [userCollectionsData, setUserCollectionsData] = useState<Collection[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingCaptures, setPendingCaptures] = useState<CombinedCapture[]>([]);
+  const [selectedPendingCapture, setSelectedPendingCapture] = useState<any>(null);
+  
+  // Coin/Level reward states
+  const [coinModalVisible, setCoinModalVisible] = useState(false);
+  const [coinModalData, setCoinModalData] = useState<{ 
+    total: number; 
+    rewards: { amount: number; reason: string }[];
+    xpTotal?: number;
+    xpRewards?: { amount: number; reason: string }[];
+    levelUp?: boolean;
+    newLevel?: number;
+  }>({ total: 0, rewards: [] });
+  const [levelUpModalVisible, setLevelUpModalVisible] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{ newLevel: number }>({ newLevel: 1 });
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -57,26 +74,32 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
   // Fetch pending captures on mount and when modal becomes visible
+  const fetchPendingCaptures = useCallback(async () => {
+    try {
+      const pending = await OfflineCaptureService.getAllPendingCaptures();
+      const combined: CombinedCapture[] = pending.map(p => ({
+        id: p.id,
+        image_key: '', // Will use imageUri instead
+        imageUri: p.imageUri,
+        captured_at: p.capturedAt,
+        capturedAt: p.capturedAt,
+        isPending: true,
+        pendingStatus: p.status,
+        pendingError: p.error,
+        location: p.location,
+        _pendingData: p // Store original pending capture data
+      }));
+      setPendingCaptures(combined);
+    } catch (error) {
+      console.error("Failed to fetch pending captures:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (visible) {
-      OfflineCaptureService.getAllPendingCaptures()
-        .then(pending => {
-          const combined: CombinedCapture[] = pending.map(p => ({
-            id: p.id,
-            image_key: '', // Will use imageUri instead
-            imageUri: p.imageUri,
-            captured_at: p.capturedAt,
-            capturedAt: p.capturedAt,
-            isPending: true,
-            pendingStatus: p.status,
-            pendingError: p.error,
-            location: p.location
-          }));
-          setPendingCaptures(combined);
-        })
-        .catch(console.error);
+      fetchPendingCaptures();
     }
-  }, [visible]);
+  }, [visible, fetchPendingCaptures]);
 
   // Merge server captures with pending captures
   const combinedCaptures = useMemo(() => {
@@ -167,6 +190,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       // Update state with the fresh data
       setRefreshedCaptures(freshCaptures);
       setUserCollectionsData(userAddedCollections);
+      
+      // Also refresh pending captures
+      await fetchPendingCaptures();
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
@@ -174,7 +200,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         setIsRefreshing(false);
       }
     }
-  }, [userId]);
+  }, [userId, fetchPendingCaptures]);
 
   // Reset to WorldDex tab and refresh data when modal opens
   useEffect(() => {
@@ -231,12 +257,11 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const handleCapturePress = (capture: CombinedCapture) => {
     // Check if this is a pending capture that needs identification
     if (capture.isPending) {
-      // TODO: Implement identification flow for pending captures
-      Alert.alert(
-        "Pending Capture",
-        "This capture needs to be identified. This feature will be implemented next.",
-        [{ text: "OK" }]
-      );
+      // Get the original pending capture data
+      const pendingData = (capture as any)._pendingData;
+      if (pendingData) {
+        setSelectedPendingCapture(pendingData);
+      }
       return;
     }
     
@@ -474,6 +499,50 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             visible={collectionDetailVisible}
           />
         )}
+        
+        {/* Pending Capture Identifier */}
+        <PendingCaptureIdentifier
+          pendingCapture={selectedPendingCapture}
+          onClose={() => {
+            setSelectedPendingCapture(null);
+            refreshData(); // Refresh to update the list
+          }}
+          onSuccess={() => {
+            setSelectedPendingCapture(null);
+            refreshData(); // Refresh to show the new capture
+          }}
+          onCoinReward={(data) => {
+            setCoinModalData(data);
+            if (!data.levelUp) {
+              setCoinModalVisible(true);
+            } else {
+              // Show coin modal after level up modal closes
+              setTimeout(() => setCoinModalVisible(true), 500);
+            }
+          }}
+          onLevelUp={(newLevel) => {
+            setLevelUpData({ newLevel });
+            setLevelUpModalVisible(true);
+          }}
+        />
+        
+        {/* Reward Modals */}
+        <CoinRewardModal
+          visible={coinModalVisible}
+          onClose={() => setCoinModalVisible(false)}
+          total={coinModalData.total}
+          rewards={coinModalData.rewards}
+          xpTotal={coinModalData.xpTotal}
+          xpRewards={coinModalData.xpRewards}
+          levelUp={coinModalData.levelUp}
+          newLevel={coinModalData.newLevel}
+        />
+        
+        <LevelUpModal
+          visible={levelUpModalVisible}
+          onClose={() => setLevelUpModalVisible(false)}
+          newLevel={levelUpData.newLevel}
+        />
       </SafeAreaView>
     </Modal>
   );
