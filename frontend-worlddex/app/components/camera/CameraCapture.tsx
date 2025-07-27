@@ -370,6 +370,63 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
               className="absolute inset-0"
               key="lasso-svg-container"
             >
+              {/* Double-tap capture area corner indicators */}
+              {!isCapturing && !isDrawing && (
+                <>
+                  {/* Calculate square dimensions */}
+                  {(() => {
+                    const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+                    const squareSize = screenWidth;
+                    const centerY = screenHeight / 2;
+                    const topY = centerY - (squareSize / 2);
+                    const bottomY = centerY + (squareSize / 2);
+                    const cornerLength = 20; // Length of corner indicator lines
+                    const cornerOpacity = 0.3; // Subtle opacity
+                    const inset = 4; // Inset from screen edges to prevent cutoff
+                    
+                    return (
+                      <>
+                        {/* Top-left corner */}
+                        <Path
+                          d={`M ${inset} ${topY + cornerLength} L ${inset} ${topY} L ${inset + cornerLength} ${topY}`}
+                          stroke={backgroundColor}
+                          strokeWidth={2}
+                          strokeOpacity={cornerOpacity}
+                          fill="none"
+                        />
+                        
+                        {/* Top-right corner */}
+                        <Path
+                          d={`M ${screenWidth - inset - cornerLength} ${topY} L ${screenWidth - inset} ${topY} L ${screenWidth - inset} ${topY + cornerLength}`}
+                          stroke={backgroundColor}
+                          strokeWidth={2}
+                          strokeOpacity={cornerOpacity}
+                          fill="none"
+                        />
+                        
+                        {/* Bottom-left corner */}
+                        <Path
+                          d={`M ${inset} ${bottomY - cornerLength} L ${inset} ${bottomY} L ${inset + cornerLength} ${bottomY}`}
+                          stroke={backgroundColor}
+                          strokeWidth={2}
+                          strokeOpacity={cornerOpacity}
+                          fill="none"
+                        />
+                        
+                        {/* Bottom-right corner */}
+                        <Path
+                          d={`M ${screenWidth - inset - cornerLength} ${bottomY} L ${screenWidth - inset} ${bottomY} L ${screenWidth - inset} ${bottomY - cornerLength}`}
+                          stroke={backgroundColor}
+                          strokeWidth={2}
+                          strokeOpacity={cornerOpacity}
+                          fill="none"
+                        />
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+
               {/* Always render the polygon but with empty or real points */}
               <Polygon
                 key="lasso-polygon"
