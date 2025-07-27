@@ -55,7 +55,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const [refreshedUser, setRefreshedUser] = useState(user);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [defaultPublicCaptures, setDefaultPublicCaptures] = useState(false);
-  const [lassoCapture, setLassoCapture] = useState(true);
 
   // Download profile picture URL if available
   const { downloadUrl, loading: loadingProfilePic } = useDownloadUrl(
@@ -70,8 +69,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
       setRefreshedUser(user);
       // Set default privacy setting from user preferences
       setDefaultPublicCaptures(user.default_public_captures || false);
-      // Set lasso capture preference
-      setLassoCapture(user.lasso_capture_enabled ?? true);
     }
   }, [user]);
 
@@ -98,8 +95,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
         }
         // Set default privacy setting from user preferences
         setDefaultPublicCaptures(freshUserData.default_public_captures || false);
-        // Set lasso capture preference
-        setLassoCapture(freshUserData.lasso_capture_enabled ?? true);
       }
     } catch (error) {
       console.error("Error refreshing user data:", error);
@@ -276,28 +271,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
     }
   };
 
-  // Toggle lasso capture setting
-  const toggleLassoCapture = async (value: boolean) => {
-    try {
-      // Update state immediately for a smooth UI experience
-      setLassoCapture(value);
-
-      // Update the user data in the database but don't refresh the entire component
-      await updateUser({ lasso_capture_enabled: value });
-
-      // Update the refreshedUser state locally without triggering a full refresh
-      if (refreshedUser) {
-        setRefreshedUser({
-          ...refreshedUser,
-          lasso_capture_enabled: value
-        });
-      }
-    } catch (error) {
-      // Revert the switch if there was an error
-      setLassoCapture(!value);
-      console.error("Error updating lasso capture setting:", error);
-    }
-  };
 
   const userInitial = refreshedUser?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
   const userEmail = session?.user?.email || "User";
@@ -502,24 +475,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                     />
                   </View>
 
-                  {/* Lasso capture toggle */}
-                  <View className="flex-row items-center justify-between py-4 border-t border-gray-100">
-                    <View className="flex-row items-center">
-                      <Ionicons name="hand-left-outline" size={24} color={Colors.text.secondary} style={{ marginRight: 12 }} />
-                      <View>
-                        <Text className="text-text-primary font-lexend-medium">Lasso Capture</Text>
-                        <Text className="text-text-secondary text-xs font-lexend-regular">
-                          {lassoCapture ? "Draw around objects to capture" : "Double-tap only"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Switch
-                      trackColor={{ false: "#CBD5E1", true: "#93C5FD" }}
-                      thumbColor={lassoCapture ? Colors.primary.DEFAULT : "#f4f3f4"}
-                      onValueChange={toggleLassoCapture}
-                      value={lassoCapture}
-                    />
-                  </View>
 
                   <TouchableOpacity
                     className="flex-row items-center py-4 border-t border-gray-100"

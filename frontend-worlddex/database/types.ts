@@ -13,7 +13,6 @@ export type User = {
   balance: number;
   xp: number;
   level: number;
-  lasso_capture_enabled?: boolean;
 };
 
 export type Collection = {

@@ -896,7 +896,6 @@ export default function CameraScreen({
           onCapture={handleCapture}
           isCapturing={isCapturing}
           onFullScreenCapture={handleFullScreenCapture}
-          lassoEnabled={user?.lasso_capture_enabled ?? true}
         />
 
         {/* Polaroid development and animation overlay */}

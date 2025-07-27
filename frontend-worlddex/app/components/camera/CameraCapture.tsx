@@ -20,11 +20,10 @@ interface CameraCaptureProps {
   onCapture: (points: { x: number; y: number }[], cameraRef: React.RefObject<CameraView>) => void;
   isCapturing: boolean;
   onFullScreenCapture?: () => void;
-  lassoEnabled?: boolean;
 }
 
 const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
-  ({ onCapture, isCapturing, onFullScreenCapture, lassoEnabled = true }, ref) => {
+  ({ onCapture, isCapturing, onFullScreenCapture }, ref) => {
     const [facing, setFacing] = useState<CameraType>("back");
     const [torchEnabled, setTorchEnabled] = useState(false);
     const cameraRef = useRef<CameraView>(null);
@@ -135,7 +134,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
         .minPointers(1)
         .maxPointers(1)  // Ensure only single finger triggers this
         .onStart((event) => {
-          if (isCapturing || !lassoEnabled) return;
+          if (isCapturing) return;
 
           setIsDrawing(true);
           const newPoint = { x: event.x, y: event.y };
@@ -143,7 +142,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           setPathString(`M ${newPoint.x} ${newPoint.y}`);
         })
         .onUpdate((event) => {
-          if (!isDrawing || isCapturing || !lassoEnabled) return;
+          if (!isDrawing || isCapturing) return;
 
           const newPoint = { x: event.x, y: event.y };
           // Update points first
@@ -153,7 +152,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           setPathString(updatePathString(updated));
         })
         .onEnd(() => {
-          if (isCapturing || !lassoEnabled) return;
+          if (isCapturing) return;
 
           // Stop drawing immediately to prevent further updates
           setIsDrawing(false);
@@ -186,7 +185,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
             setPolygonPoints("");
           }
         }),
-      [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing, posthog, facing, torchEnabled, lassoEnabled]
+      [isDrawing, points, updatePathString, updatePolygonPoints, onCapture, isCapturing, posthog, facing, torchEnabled]
     );
 
     // Pinch gesture for zoom
@@ -295,16 +294,11 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
     );
 
     // Let the gestures compete to handle the touch
-    const gestures = lassoEnabled 
-      ? Gesture.Race(
-          panGesture,
-          pinchGesture,
-          doubleTapGesture
-        )
-      : Gesture.Race(
-          pinchGesture,
-          doubleTapGesture
-        );
+    const gestures = Gesture.Race(
+      panGesture,
+      pinchGesture,
+      doubleTapGesture
+    );
 
     // Toggle camera facing
     function toggleCameraFacing() {
