@@ -631,7 +631,7 @@ export default function CameraScreen({
       try {
         const label = identifiedLabel; // Already checked it's not null
 
-        const item = await incrementOrCreateItem(label);
+        const { item, isGlobalFirst } = await incrementOrCreateItem(label);
         if (!item) {
           console.warn(`Failed to create or increment item for label: ${label}`);
           // Don't throw here, allow cleanup to happen, but log it as a more critical error.
@@ -723,7 +723,8 @@ export default function CameraScreen({
               captureRecord.id,
               item.id,
               rarityTier,
-              tier1?.xpValue // Use XP value from backend if available
+              tier1?.xpValue, // Use XP value from backend if available
+              isGlobalFirst // Pass global first flag
             );
             if (xpResult.total > 0) {
               xpData = xpResult;

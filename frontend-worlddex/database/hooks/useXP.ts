@@ -14,7 +14,7 @@ export const XP_VALUES = {
 // Bonus XP amounts
 export const XP_BONUSES = {
   DAILY_FIRST_CAPTURE: 10,
-  FIRST_CAPTURE_MULTIPLIER: 2,
+  GLOBAL_FIRST_CAPTURE_MULTIPLIER: 2, // 2x multiplier for world's first!
   COLLECTION_ADD: 5,
   COLLECTION_COMPLETE: 100,
   SOCIAL_ENGAGEMENT_PER_LIKE: 1,
@@ -55,23 +55,6 @@ async function isFirstCaptureOfDayForXP(userId: string): Promise<XPReward> {
   };
 }
 
-// Function to check if this is the first capture of a specific item
-async function isFirstCaptureOfItem(userId: string, itemId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("captures")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("item_id", itemId)
-    .limit(2); // We need to check if there's more than 1
-
-  if (error) {
-    console.error("Error checking first capture:", error);
-    return false;
-  }
-
-  // If only one capture exists, it's the first one
-  return data.length === 1;
-}
 
 // Function to award XP using the database function
 async function awardXP(
@@ -108,7 +91,8 @@ export async function calculateAndAwardCaptureXP(
   captureId: string,
   itemId: string,
   rarityTier: string,
-  baseXP?: number
+  baseXP?: number,
+  isGlobalFirst?: boolean
 ): Promise<{ total: number; rewards: XPReward[]; levelUp?: boolean; newLevel?: number }> {
   if (!userId || !captureId || !rarityTier) {
     return { total: 0, rewards: [] };
@@ -121,15 +105,17 @@ export async function calculateAndAwardCaptureXP(
     // Calculate base XP from rarity (or use provided baseXP from backend)
     const rarityXP = baseXP || XP_VALUES[rarityTier as keyof typeof XP_VALUES] || XP_VALUES.common;
     
-    // Check if this is the first capture of this item
-    const isFirstCapture = await isFirstCaptureOfItem(userId, itemId);
-    const captureXP = isFirstCapture ? rarityXP * XP_BONUSES.FIRST_CAPTURE_MULTIPLIER : rarityXP;
+    // Apply multipliers
+    let captureXP = rarityXP;
+    let captureReason = `Capture reward (${rarityTier})`;
+    
+    if (isGlobalFirst) {
+      // Global first gets 2x multiplier!
+      captureXP = rarityXP * XP_BONUSES.GLOBAL_FIRST_CAPTURE_MULTIPLIER;
+      captureReason = `🌟 WORLD'S FIRST capture! (${rarityTier})`;
+    }
     
     // Award capture XP
-    const captureReason = isFirstCapture 
-      ? `First capture of item (${rarityTier})` 
-      : `Capture reward (${rarityTier})`;
-    
     const captureResult = await awardXP(userId, captureXP, captureReason, captureId);
     if (captureResult) {
       totalXP += captureXP;

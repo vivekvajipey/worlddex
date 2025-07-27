@@ -105,24 +105,25 @@ export const incrementCaptures = async (
 
 export const incrementOrCreateItem = async (
   name: string
-): Promise<AllItem | null> => {
+): Promise<{ item: AllItem | null; isGlobalFirst: boolean }> => {
   const existing = await fetchItemByName(name);
   if (existing) {
     // Increment total_captures via update
     const updated = await updateItem(existing.id, { total_captures: existing.total_captures + 1 });
     if (!updated) {
       console.error("Error updating capture count for item:", name);
-      return null;
+      return { item: null, isGlobalFirst: false };
     }
-    return updated;
+    return { item: updated, isGlobalFirst: false };
   }
-  // Create new item with initial capture count
+  // Create new item with initial capture count - this is a global first!
   const newItem = await createItem({ name, total_captures: 1 });
   if (!newItem) {
     console.error("Failed to create item for name:", name);
-    return null;
+    return { item: null, isGlobalFirst: false };
   }
-  return newItem;
+  console.log(`🌟 Global first capture! Item "${name}" has never been captured before!`);
+  return { item: newItem, isGlobalFirst: true };
 };
 
 // React hooks
