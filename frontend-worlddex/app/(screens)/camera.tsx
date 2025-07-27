@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePostHog } from "posthog-react-native";
 import { usePathname } from "expo-router";
+import { useStyledAlert } from "../../src/hooks/useStyledAlert";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -125,6 +126,9 @@ export default function CameraScreen({
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
   
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
+  
+  // Use styled alerts
+  const { showAlert, AlertComponent } = useStyledAlert();
   
   const handleRetryIdentification = useCallback(async () => {
     if (!lastIdentifyPayloadRef.current) return;
@@ -342,22 +346,24 @@ export default function CameraScreen({
 
     // Check if user has reached their daily capture limit (only count accepted captures)
     if (user && user.daily_captures_used >= 10) {
-      Alert.alert(
-        "Daily Limit Reached",
-        "You have used all 10 daily captures! They will reset at midnight PST.",
-        [{ text: "OK", style: "default" }]
-      );
+      showAlert({
+        title: "Daily Limit Reached",
+        message: "You have used all 10 daily captures! They will reset at midnight PST.",
+        icon: "timer-outline",
+        iconColor: "#EF4444"
+      });
       cameraCaptureRef.current?.resetLasso();
       return;
     }
 
     // Prevent capture if checking connection
     if (isCheckingServer) {
-      Alert.alert(
-        "Connecting...", 
-        "Please wait while we check the server connection.",
-        [{ text: "OK", style: "default" }]
-      );
+      showAlert({
+        title: "Connecting...",
+        message: "Please wait while we check the server connection.",
+        icon: "wifi-outline",
+        iconColor: "#3B82F6"
+      });
       cameraCaptureRef.current?.resetLasso();
       return;
     }
@@ -470,11 +476,12 @@ export default function CameraScreen({
           setCapturedUri(null);
           cameraCaptureRef.current?.resetLasso();
 
-          Alert.alert(
-            "Capture Saved Offline", 
-            "Your capture has been saved! You can identify it later when you're back online.",
-            [{ text: "OK", style: "default" }]
-          );
+          showAlert({
+            title: "Capture Saved Offline",
+            message: "Your capture has been saved! You can identify it later when you're back online.",
+            icon: "cloud-offline-outline",
+            iconColor: "#F59E0B"
+          });
 
           // Track offline capture
           if (posthog) {
@@ -485,7 +492,12 @@ export default function CameraScreen({
           return;
         } catch (error) {
           console.error("Failed to save offline capture:", error);
-          Alert.alert("Error", "Failed to save capture offline. Please try again.");
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture offline. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
           setIsCapturing(false);
           setCapturedUri(null);
           cameraCaptureRef.current?.resetLasso();
@@ -551,21 +563,23 @@ export default function CameraScreen({
 
     // Check if user has reached their daily capture limit (only count accepted captures)
     if (user && user.daily_captures_used >= 10) {
-      Alert.alert(
-        "Daily Limit Reached",
-        "You have used all 10 daily captures! They will reset at midnight PST.",
-        [{ text: "OK", style: "default" }]
-      );
+      showAlert({
+        title: "Daily Limit Reached",
+        message: "You have used all 10 daily captures! They will reset at midnight PST.",
+        icon: "timer-outline",
+        iconColor: "#EF4444"
+      });
       return;
     }
 
     // Prevent capture if checking connection
     if (isCheckingServer) {
-      Alert.alert(
-        "Connecting...", 
-        "Please wait while we check the server connection.",
-        [{ text: "OK", style: "default" }]
-      );
+      showAlert({
+        title: "Connecting...",
+        message: "Please wait while we check the server connection.",
+        icon: "wifi-outline",
+        iconColor: "#3B82F6"
+      });
       return;
     }
 
@@ -628,11 +642,12 @@ export default function CameraScreen({
           setIsCapturing(false);
           setCapturedUri(null);
 
-          Alert.alert(
-            "Capture Saved Offline", 
-            "Your capture has been saved! You can identify it later when you're back online.",
-            [{ text: "OK", style: "default" }]
-          );
+          showAlert({
+            title: "Capture Saved Offline",
+            message: "Your capture has been saved! You can identify it later when you're back online.",
+            icon: "cloud-offline-outline",
+            iconColor: "#F59E0B"
+          });
 
           // Track offline capture
           if (posthog) {
@@ -643,7 +658,12 @@ export default function CameraScreen({
           return;
         } catch (error) {
           console.error("Failed to save offline capture:", error);
-          Alert.alert("Error", "Failed to save capture offline. Please try again.");
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture offline. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
           setIsCapturing(false);
           setCapturedUri(null);
           return;
@@ -1023,6 +1043,9 @@ export default function CameraScreen({
           onClose={() => setLevelUpModalVisible(false)}
           newLevel={levelUpData.newLevel}
         />
+        
+        {/* Styled Alert Component */}
+        <AlertComponent />
 
       </View>
     </GestureHandlerRootView>
