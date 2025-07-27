@@ -1,20 +1,22 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import { Capture } from "../../../database/types";
+import { CombinedCapture } from "../../../src/types/combinedCapture";
 
 interface CaptureThumbnailProps {
-  capture: Capture;
+  capture: CombinedCapture;
   onPress: () => void;
   downloadUrl?: string | null;
   loading?: boolean;
+  isPending?: boolean;
 }
 
 const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({
   capture,
   onPress,
   downloadUrl = null,
-  loading = false
+  loading = false,
+  isPending = false
 }) => {
   // Get rarity badge info
   const getBadgeColor = () => {
@@ -54,8 +56,14 @@ const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({
           {/* Semi-transparent overlay for contrast */}
           <View className="absolute inset-0 bg-black/15" />
 
-          {/* Rarity badge - top right */}
-          {capture.rarity_tier && (
+          {/* Badge - top right: Pending for unidentified, Rarity for identified */}
+          {isPending ? (
+            <View className="bg-orange-500 absolute top-1 right-1 px-1.5 py-0.5 rounded-sm">
+              <Text className="text-white text-[10px] font-lexend-medium">
+                Pending
+              </Text>
+            </View>
+          ) : capture.rarity_tier ? (
             <View
               className={`${getBadgeColor()} absolute top-1 right-1 px-1.5 py-0.5 rounded-sm`}
             >
@@ -63,12 +71,14 @@ const CaptureThumbnail: React.FC<CaptureThumbnailProps> = ({
                 {badgeText}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          {/* Capture number - bottom left */}
-          <View className="absolute bottom-1 left-1 bg-black/50 px-2 py-1 rounded-md">
-            <Text className="text-white text-xs font-lexend-medium">#{capture.capture_number}</Text>
-          </View>
+          {/* Capture number - bottom left (only for identified captures) */}
+          {!isPending && capture.capture_number && (
+            <View className="absolute bottom-1 left-1 bg-black/50 px-2 py-1 rounded-md">
+              <Text className="text-white text-xs font-lexend-medium">#{capture.capture_number}</Text>
+            </View>
+          )}
         </View>
       )}
     </TouchableOpacity>

@@ -31,6 +31,7 @@ import {
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 import { IdentifyRequest } from "../../../shared/types/identify";
+import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
@@ -175,6 +176,11 @@ export default function CameraScreen({
     isCheckingServer,
     isServerConnected,
   ]);
+
+  // Initialize offline capture service
+  useEffect(() => {
+    OfflineCaptureService.initialize().catch(console.error);
+  }, []);
 
   // Request location permission after camera permission
   useEffect(() => {
@@ -334,37 +340,24 @@ export default function CameraScreen({
       await onRetryConnection();
     }
 
-    // Prevent capture if offline or checking
+    // Check if user has reached their daily capture limit (only count accepted captures)
+    if (user && user.daily_captures_used >= 10) {
+      Alert.alert(
+        "Daily Limit Reached",
+        "You have used all 10 daily captures! They will reset at midnight PST.",
+        [{ text: "OK", style: "default" }]
+      );
+      cameraCaptureRef.current?.resetLasso();
+      return;
+    }
+
+    // Prevent capture if checking connection
     if (isCheckingServer) {
       Alert.alert(
         "Connecting...", 
         "Please wait while we check the server connection.",
         [{ text: "OK", style: "default" }]
       );
-      cameraCaptureRef.current?.resetLasso();
-      return;
-    }
-    if (!isServerConnected) {
-      Alert.alert(
-        "Offline", 
-        "Cannot start capture. Please check your internet connection and try again.",
-        [
-          { text: "OK", style: "default" },
-          { text: "Retry Connection", style: "cancel", onPress: onRetryConnection }
-        ]
-      );
-      cameraCaptureRef.current?.resetLasso();
-      return;
-    }
-
-    // Check if user has reached their daily capture limit
-    if (user && user.daily_captures_used >= 10) {
-      Alert.alert(
-        "Daily Limit Reached",
-        "You have used up all of your daily captures! They will reset at midnight PST.",
-        [{ text: "OK", style: "default" }]
-      );
-      // Make sure to reset the lasso before returning
       cameraCaptureRef.current?.resetLasso();
       return;
     }
@@ -451,6 +444,56 @@ export default function CameraScreen({
       // Store the captured URI for the animation (use the cropped one)
       setCapturedUri(cropResult.uri);
 
+      // Check if we're offline
+      if (!isServerConnected) {
+        // Save capture locally for later identification
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: {
+              x: minX / scaleX,
+              y: minY / scaleY,
+              width: cropWidth / scaleX,
+              height: cropHeight / scaleY,
+              aspectRatio
+            }
+          });
+
+          // Reset states
+          setIsCapturing(false);
+          setCapturedUri(null);
+          cameraCaptureRef.current?.resetLasso();
+
+          Alert.alert(
+            "Capture Saved Offline", 
+            "Your capture has been saved! You can identify it later when you're back online.",
+            [{ text: "OK", style: "default" }]
+          );
+
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "lasso"
+            });
+          }
+          return;
+        } catch (error) {
+          console.error("Failed to save offline capture:", error);
+          Alert.alert("Error", "Failed to save capture offline. Please try again.");
+          setIsCapturing(false);
+          setCapturedUri(null);
+          cameraCaptureRef.current?.resetLasso();
+          return;
+        }
+      }
+
+      // Online flow - proceed with identification
       // Resize and compress the CROPPED image for VLM
       const vlmImage = await processImageForVLM(cropResult.uri, cropResult.width, cropResult.height);
 
@@ -506,32 +549,21 @@ export default function CameraScreen({
       await onRetryConnection();
     }
 
-    // Prevent capture if offline or checking
-    if (isCheckingServer) {
+    // Check if user has reached their daily capture limit (only count accepted captures)
+    if (user && user.daily_captures_used >= 10) {
       Alert.alert(
-        "Connecting...", 
-        "Please wait while we check the server connection.",
+        "Daily Limit Reached",
+        "You have used all 10 daily captures! They will reset at midnight PST.",
         [{ text: "OK", style: "default" }]
       );
       return;
     }
-    if (!isServerConnected) {
-      Alert.alert(
-        "Offline", 
-        "Cannot start capture. Please check your internet connection and try again.",
-        [
-          { text: "OK", style: "default" },
-          { text: "Retry Connection", style: "cancel", onPress: onRetryConnection }
-        ]
-      );
-      return;
-    }
 
-    // Check if user has reached their daily capture limit
-    if (user && user.daily_captures_used >= 10) {
+    // Prevent capture if checking connection
+    if (isCheckingServer) {
       Alert.alert(
-        "Daily Limit Reached",
-        "You have used up all of your daily captures! They will reset at midnight PST.",
+        "Connecting...", 
+        "Please wait while we check the server connection.",
         [{ text: "OK", style: "default" }]
       );
       return;
@@ -568,14 +600,57 @@ export default function CameraScreen({
       setCapturedUri(photo.uri);
 
       // Set full screen capture box dimensions for polaroid animation
-      setCaptureBox({
+      const captureBoxDimensions = {
         x: SCREEN_WIDTH * 0.1,
         y: SCREEN_HEIGHT * 0.2,
         width: SCREEN_WIDTH * 0.8,
         height: SCREEN_WIDTH * 0.8,
         aspectRatio: 1
-      });
+      };
+      setCaptureBox(captureBoxDimensions);
 
+      // Check if we're offline
+      if (!isServerConnected) {
+        // Save capture locally for later identification
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: captureBoxDimensions
+          });
+
+          // Reset states
+          setIsCapturing(false);
+          setCapturedUri(null);
+
+          Alert.alert(
+            "Capture Saved Offline", 
+            "Your capture has been saved! You can identify it later when you're back online.",
+            [{ text: "OK", style: "default" }]
+          );
+
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "full_screen"
+            });
+          }
+          return;
+        } catch (error) {
+          console.error("Failed to save offline capture:", error);
+          Alert.alert("Error", "Failed to save capture offline. Please try again.");
+          setIsCapturing(false);
+          setCapturedUri(null);
+          return;
+        }
+      }
+
+      // Online flow - proceed with identification
       // Resize and compress the FULL image for VLM
       const vlmImage = await processImageForVLM(photo.uri, photo.width, photo.height);
 

@@ -19,6 +19,8 @@ import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../databa
 import { Capture, Collection } from "../../database/types";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 import { usePostHog } from "posthog-react-native";
+import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
+import { CombinedCapture } from "../../src/types/combinedCapture";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
@@ -35,13 +37,14 @@ interface CapturesModalProps {
 
 const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [activeTab, setActiveTab] = useState("WorldDex");
-  const [selectedCapture, setSelectedCapture] = useState<Capture | null>(null);
+  const [selectedCapture, setSelectedCapture] = useState<CombinedCapture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [collectionDetailVisible, setCollectionDetailVisible] = useState(false);
   const [refreshedCaptures, setRefreshedCaptures] = useState<Capture[]>([]);
   const [userCollectionsData, setUserCollectionsData] = useState<Collection[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingCaptures, setPendingCaptures] = useState<CombinedCapture[]>([]);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -53,7 +56,37 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
+  // Fetch pending captures on mount and when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      OfflineCaptureService.getAllPendingCaptures()
+        .then(pending => {
+          const combined: CombinedCapture[] = pending.map(p => ({
+            id: p.id,
+            image_key: '', // Will use imageUri instead
+            imageUri: p.imageUri,
+            captured_at: p.capturedAt,
+            capturedAt: p.capturedAt,
+            isPending: true,
+            pendingStatus: p.status,
+            pendingError: p.error,
+            location: p.location
+          }));
+          setPendingCaptures(combined);
+        })
+        .catch(console.error);
+    }
+  }, [visible]);
+
+  // Merge server captures with pending captures
+  const combinedCaptures = useMemo(() => {
+    const serverCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
+    // Pending captures should appear first (most recent)
+    return [...pendingCaptures, ...serverCaptures];
+  }, [refreshedCaptures, captures, pendingCaptures]);
+
   // Collect all image keys for batch loading - use thumb_key with fallback to image_key
+  // Skip pending captures as they use local URIs
   const captureImageKeys = useMemo(() => {
     const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
     return displayCaptures.map(capture => capture.thumb_key || capture.image_key).filter(Boolean) as string[];
@@ -63,9 +96,19 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(captureImageKeys);
 
   // Create a map from image keys to download URLs
+  // Also include local URIs for pending captures
   const imageUrlMap = useMemo(() => {
-    return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
-  }, [imageUrlItems]);
+    const urlMap = Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
+    
+    // Add pending capture URIs to the map
+    pendingCaptures.forEach(capture => {
+      if (capture.imageUri) {
+        urlMap[capture.id] = capture.imageUri; // Use capture ID as key for pending
+      }
+    });
+    
+    return urlMap;
+  }, [imageUrlItems, pendingCaptures]);
 
   // Similarly for collections, collect cover photo keys
   const collectionCoverKeys = useMemo(() => {
@@ -185,7 +228,18 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     };
   }, []);
 
-  const handleCapturePress = (capture: Capture) => {
+  const handleCapturePress = (capture: CombinedCapture) => {
+    // Check if this is a pending capture that needs identification
+    if (capture.isPending) {
+      // TODO: Implement identification flow for pending captures
+      Alert.alert(
+        "Pending Capture",
+        "This capture needs to be identified. This feature will be implemented next.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
     setSelectedCapture(capture);
     setCaptureModalVisible(true);
   };
@@ -306,7 +360,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   ).current;
 
   // Determine which captures and collections to display
-  const displayCaptures = refreshedCaptures.length > 0 ? refreshedCaptures : captures;
+  const displayCaptures = combinedCaptures;
   const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
   const posthog = usePostHog();

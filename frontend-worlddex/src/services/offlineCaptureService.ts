@@ -1,0 +1,229 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import uuid from 'react-native-uuid';
+
+// Constants
+const STORAGE_KEY = '@worlddex_pending_captures';
+const IMAGE_DIR = `${FileSystem.documentDirectory}pending_captures/`;
+const MAX_PENDING_CAPTURES = 50;
+const MAX_AGE_DAYS = 30;
+
+// Types
+export interface PendingCapture {
+  id: string;
+  imageUri: string;
+  capturedAt: string;
+  location?: { latitude: number; longitude: number };
+  captureBox?: { x: number; y: number; width: number; height: number; aspectRatio: number };
+  status: 'pending' | 'identifying' | 'failed';
+  error?: string;
+  dailyCaptureDate: string; // YYYY-MM-DD in PST
+}
+
+export class OfflineCaptureService {
+  // Initialize the service and ensure directory exists
+  static async initialize(): Promise<void> {
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIR);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+      }
+    } catch (error) {
+      console.error('Failed to initialize offline capture directory:', error);
+      throw error;
+    }
+  }
+
+  // Get today's date in PST timezone (YYYY-MM-DD format)
+  static getTodayPST(): string {
+    const now = new Date();
+    const pstDate = toZonedTime(now, 'America/Los_Angeles');
+    return format(pstDate, 'yyyy-MM-dd');
+  }
+
+  // Save an image locally and return the new URI
+  static async saveImageLocally(sourceUri: string): Promise<string> {
+    try {
+      const filename = `${uuid.v4()}.jpg`;
+      const destUri = `${IMAGE_DIR}${filename}`;
+      
+      await FileSystem.copyAsync({
+        from: sourceUri,
+        to: destUri
+      });
+      
+      return destUri;
+    } catch (error) {
+      console.error('Failed to save image locally:', error);
+      throw error;
+    }
+  }
+
+  // Save a pending capture
+  static async savePendingCapture(capture: Omit<PendingCapture, 'id' | 'dailyCaptureDate' | 'status'>): Promise<PendingCapture> {
+    try {
+      // Create the full pending capture object
+      const pendingCapture: PendingCapture = {
+        ...capture,
+        id: uuid.v4() as string,
+        dailyCaptureDate: this.getTodayPST(),
+        status: 'pending'
+      };
+
+      // Get existing captures
+      const existing = await this.getAllPendingCaptures();
+      
+      // Check if we've hit the limit
+      if (existing.length >= MAX_PENDING_CAPTURES) {
+        throw new Error(`Maximum pending captures (${MAX_PENDING_CAPTURES}) reached. Please identify some captures before taking more.`);
+      }
+
+      // Add new capture
+      existing.push(pendingCapture);
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      
+      return pendingCapture;
+    } catch (error) {
+      console.error('Failed to save pending capture:', error);
+      throw error;
+    }
+  }
+
+  // Get all pending captures
+  static async getAllPendingCaptures(): Promise<PendingCapture[]> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!data) return [];
+      
+      const captures: PendingCapture[] = JSON.parse(data);
+      
+      // Filter out old captures and clean them up
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - MAX_AGE_DAYS);
+      
+      const validCaptures = captures.filter(capture => {
+        const captureDate = new Date(capture.capturedAt);
+        if (captureDate < cutoffDate) {
+          // Clean up old image
+          this.deleteImageFile(capture.imageUri).catch(console.error);
+          return false;
+        }
+        return true;
+      });
+      
+      // Update storage if we filtered any out
+      if (validCaptures.length !== captures.length) {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validCaptures));
+      }
+      
+      return validCaptures;
+    } catch (error) {
+      console.error('Failed to get pending captures:', error);
+      return [];
+    }
+  }
+
+  // Get pending captures for today (PST)
+  static async getTodaysPendingCaptures(): Promise<PendingCapture[]> {
+    const allCaptures = await this.getAllPendingCaptures();
+    const todayPST = this.getTodayPST();
+    
+    return allCaptures.filter(capture => capture.dailyCaptureDate === todayPST);
+  }
+
+  // Update capture status
+  static async updateCaptureStatus(
+    captureId: string, 
+    status: PendingCapture['status'], 
+    error?: string
+  ): Promise<void> {
+    try {
+      const captures = await this.getAllPendingCaptures();
+      const index = captures.findIndex(c => c.id === captureId);
+      
+      if (index === -1) {
+        throw new Error('Capture not found');
+      }
+      
+      captures[index] = {
+        ...captures[index],
+        status,
+        error
+      };
+      
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(captures));
+    } catch (error) {
+      console.error('Failed to update capture status:', error);
+      throw error;
+    }
+  }
+
+  // Delete a pending capture (after successful identification)
+  static async deletePendingCapture(captureId: string): Promise<void> {
+    try {
+      const captures = await this.getAllPendingCaptures();
+      const capture = captures.find(c => c.id === captureId);
+      
+      if (!capture) {
+        throw new Error('Capture not found');
+      }
+      
+      // Delete the image file
+      await this.deleteImageFile(capture.imageUri);
+      
+      // Remove from array
+      const updatedCaptures = captures.filter(c => c.id !== captureId);
+      
+      // Update storage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCaptures));
+    } catch (error) {
+      console.error('Failed to delete pending capture:', error);
+      throw error;
+    }
+  }
+
+  // Helper to delete image file
+  private static async deleteImageFile(uri: string): Promise<void> {
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+      }
+    } catch (error) {
+      console.error('Failed to delete image file:', error);
+      // Don't throw - this is a cleanup operation
+    }
+  }
+
+  // Get count of pending captures for a specific date
+  static async getPendingCountForDate(date: string): Promise<number> {
+    const captures = await this.getAllPendingCaptures();
+    return captures.filter(c => c.dailyCaptureDate === date).length;
+  }
+
+  // Clear all pending captures (for debugging/testing)
+  static async clearAllPendingCaptures(): Promise<void> {
+    try {
+      const captures = await this.getAllPendingCaptures();
+      
+      // Delete all image files
+      await Promise.all(
+        captures.map(capture => this.deleteImageFile(capture.imageUri))
+      );
+      
+      // Clear storage
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      
+      // Remove directory and recreate
+      await FileSystem.deleteAsync(IMAGE_DIR, { idempotent: true });
+      await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+    } catch (error) {
+      console.error('Failed to clear pending captures:', error);
+      throw error;
+    }
+  }
+}

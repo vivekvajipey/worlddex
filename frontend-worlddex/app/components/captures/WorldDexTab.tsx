@@ -1,15 +1,15 @@
 import React, { useEffect } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
-import { Capture } from "../../../database/types";
+import { CombinedCapture } from "../../../src/types/combinedCapture";
 import CaptureThumbnail from "./CaptureThumbnail";
 import { usePostHog } from "posthog-react-native";
 
 interface WorldDexTabProps {
-  displayCaptures: Capture[];
+  displayCaptures: CombinedCapture[];
   loading: boolean;
   urlsLoading?: boolean;
   urlMap?: Record<string, string>;
-  onCapturePress: (capture: Capture) => void;
+  onCapturePress: (capture: CombinedCapture) => void;
   active: boolean; // Add active prop to the interface
 }
 
@@ -57,8 +57,9 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
           <CaptureThumbnail
             capture={item}
             onPress={() => onCapturePress(item)}
-            downloadUrl={urlMap[item.thumb_key || item.image_key]}
+            downloadUrl={item.isPending ? urlMap[item.id] : urlMap[item.thumb_key || item.image_key]}
             loading={urlsLoading}
+            isPending={item.isPending}
           />
         )}
         numColumns={3}
