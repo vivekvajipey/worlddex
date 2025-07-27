@@ -132,7 +132,7 @@ export const fetchTopCaptures = async (
     .select("*", { count: "exact" })
     .eq("is_public", true)
     .gte("like_count", minUpvotes)
-    .order("like_count", { ascending: false })
+    .order("captured_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   // Add optional filter by item_id
