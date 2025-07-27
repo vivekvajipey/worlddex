@@ -721,9 +721,9 @@ export default function CameraScreen({
             const xpResult = await calculateAndAwardCaptureXP(
               session.user.id,
               captureRecord.id,
-              item.id,
+              item.name,
               rarityTier,
-              tier1?.xpValue, // Use XP value from backend if available
+              (tier1 as any)?.xpValue, // Use XP value from backend if available
               isGlobalFirst // Pass global first flag
             );
             if (xpResult.total > 0) {

@@ -89,7 +89,7 @@ async function awardXP(
 export async function calculateAndAwardCaptureXP(
   userId: string,
   captureId: string,
-  itemId: string,
+  itemName: string,
   rarityTier: string,
   baseXP?: number,
   isGlobalFirst?: boolean
@@ -112,7 +112,7 @@ export async function calculateAndAwardCaptureXP(
     if (isGlobalFirst) {
       // Global first gets 2x multiplier!
       captureXP = rarityXP * XP_BONUSES.GLOBAL_FIRST_CAPTURE_MULTIPLIER;
-      captureReason = `🌟 WORLD'S FIRST capture! (${rarityTier})`;
+      captureReason = `You were the first to capture ${itemName} (${rarityTier})!`;
     }
     
     // Award capture XP
@@ -275,7 +275,8 @@ export function getXPRequiredForLevel(level: number): number {
   if (level <= 1) return 0;
   
   let xpTotal = 0;
-  for (let i = 1; i <= level; i++) {
+  // Calculate XP needed to REACH this level (not including XP needed for this level)
+  for (let i = 1; i < level; i++) {
     xpTotal += i * 50;
   }
   
