@@ -400,23 +400,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-background">
-        {/* Debug info */}
-        <View style={{
-          position: 'absolute',
-          top: 50,
-          left: 10,
-          zIndex: 9999,
-          backgroundColor: 'rgba(255,0,0,0.8)',
-          padding: 5,
-          borderRadius: 5
-        }}>
-          <Text style={{ color: 'white', fontSize: 10 }}>
-            Pending: {selectedPendingCapture ? 'YES' : 'NO'}{'\n'}
-            Coin Modal: {coinModalVisible ? 'YES' : 'NO'}{'\n'}
-            Level Modal: {levelUpModalVisible ? 'YES' : 'NO'}
-          </Text>
-        </View>
-        
         {/* Header Tabs */}
         <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-12">
@@ -522,7 +505,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
           <PendingCaptureIdentifier
             pendingCapture={selectedPendingCapture}
             onClose={() => {
-              console.log("=== PendingCaptureIdentifier onClose called ===");
               setSelectedPendingCapture(null);
               refreshData(); // Refresh to update the list
             }}
@@ -555,7 +537,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         <CoinRewardModal
           visible={coinModalVisible}
           onClose={() => {
-            console.log("=== CoinRewardModal onClose called ===");
             setCoinModalVisible(false);
           }}
           total={coinModalData.total}
@@ -569,7 +550,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         <LevelUpModal
           visible={levelUpModalVisible}
           onClose={() => {
-            console.log("=== LevelUpModal onClose called ===");
             setLevelUpModalVisible(false);
           }}
           newLevel={levelUpData.newLevel}

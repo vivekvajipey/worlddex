@@ -197,12 +197,7 @@ export default function PendingCaptureIdentifier({
   }, [identify, reset]);
 
   const handleDismissPreview = useCallback(async () => {
-    console.log("=== handleDismissPreview called ===");
-    console.log("pendingCapture exists:", !!pendingCapture);
-    console.log("session exists:", !!session);
-    
     if (!pendingCapture || !session) {
-      console.log("No pendingCapture or session, closing immediately");
       onClose();
       return;
     }
@@ -331,7 +326,6 @@ export default function PendingCaptureIdentifier({
         }
         
         // Call onSuccess first
-        console.log("=== SUCCESS - Calling onSuccess and onClose ===");
         onSuccess();
         
         // Always close the modal after success
@@ -354,7 +348,6 @@ export default function PendingCaptureIdentifier({
     }
     
     // Reset states and close (for error/rejection cases)
-    console.log("=== ERROR/REJECTION - Calling reset and onClose ===");
     reset();
     onClose();
   }, [
@@ -389,25 +382,6 @@ export default function PendingCaptureIdentifier({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black">
-        {/* Debug close button */}
-        <TouchableOpacity 
-          onPress={() => {
-            console.log("=== Force close button pressed ===");
-            onClose();
-          }}
-          style={{
-            position: 'absolute',
-            top: 50,
-            right: 20,
-            zIndex: 1000,
-            backgroundColor: 'red',
-            padding: 10,
-            borderRadius: 5
-          }}
-        >
-          <Text style={{ color: 'white' }}>FORCE CLOSE</Text>
-        </TouchableOpacity>
-        
         {isProcessing && !idLoading && !identificationComplete ? (
           <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" color="#FFF" />
