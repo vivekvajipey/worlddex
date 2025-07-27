@@ -22,6 +22,7 @@ import type { Capture, CollectionItem } from "../../database/types";
 import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
 import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
 import CoinRewardModal from "../components/CoinRewardModal";
+import LevelUpModal from "../components/LevelUpModal";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import {
   createUserCollectionItem,
@@ -111,6 +112,10 @@ export default function CameraScreen({
     levelUp?: boolean;
     newLevel?: number;
   }>({ total: 0, rewards: [] });
+  
+  // Add state for level up modal
+  const [levelUpModalVisible, setLevelUpModalVisible] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{ newLevel: number }>({ newLevel: 1 });
 
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
@@ -734,6 +739,12 @@ export default function CameraScreen({
           // Calculate and award coins
           const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
           
+          // Check for level up first
+          if (xpData?.levelUp && xpData?.newLevel) {
+            setLevelUpData({ newLevel: xpData.newLevel });
+            setLevelUpModalVisible(true);
+          }
+          
           // Show combined rewards modal if either coins or XP were awarded
           if (coinsAwarded > 0 || xpData) {
             setCoinModalData({ 
@@ -744,7 +755,13 @@ export default function CameraScreen({
               levelUp: xpData?.levelUp,
               newLevel: xpData?.newLevel
             });
-            setCoinModalVisible(true);
+            // Only show coin/XP modal if there's no level up, or delay it
+            if (!xpData?.levelUp) {
+              setCoinModalVisible(true);
+            } else {
+              // Show coin modal after level up modal closes
+              setTimeout(() => setCoinModalVisible(true), 500);
+            }
           }
         }
       } catch (err) {
@@ -924,6 +941,12 @@ export default function CameraScreen({
           xpRewards={coinModalData.xpRewards}
           levelUp={coinModalData.levelUp}
           newLevel={coinModalData.newLevel}
+        />
+        
+        <LevelUpModal
+          visible={levelUpModalVisible}
+          onClose={() => setLevelUpModalVisible(false)}
+          newLevel={levelUpData.newLevel}
         />
 
       </View>

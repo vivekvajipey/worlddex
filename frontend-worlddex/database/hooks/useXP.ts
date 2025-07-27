@@ -78,7 +78,19 @@ async function awardXP(
       return null;
     }
 
-    return data?.[0] || null;
+    console.log("award_xp RPC response:", data);
+    
+    // The RPC function returns an array with one object
+    if (data && data.length > 0) {
+      const result = data[0];
+      return {
+        newXP: result.new_xp,
+        newLevel: result.new_level,
+        levelUp: result.level_up
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error("Error in awardXP:", error);
     return null;
@@ -142,9 +154,24 @@ export async function calculateAndAwardCaptureXP(
       }
     }
 
-    // Determine if there was a level up
-    const levelUp = rewards.some(r => r.levelUp);
-    const newLevel = rewards.find(r => r.newLevel)?.newLevel;
+    // Determine if there was a level up by checking all rewards
+    let levelUp = false;
+    let newLevel: number | undefined = undefined;
+    
+    for (const reward of rewards) {
+      if (reward.levelUp) {
+        levelUp = true;
+        newLevel = reward.newLevel;
+        break; // Take the first level up we find
+      }
+    }
+
+    console.log("XP Award Summary:", {
+      totalXP,
+      rewards,
+      levelUp,
+      newLevel
+    });
 
     return { total: totalXP, rewards, levelUp, newLevel };
   } catch (error) {
