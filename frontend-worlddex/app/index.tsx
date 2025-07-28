@@ -95,6 +95,9 @@ export default function HomeScreen() {
 
       {/* Social button (bottom left) */}
       <View className="absolute bottom-8 left-8 items-center">
+        <View className="bg-black/50 px-2 py-0.5 rounded-full mb-1">
+          <Text className="text-xs text-white font-lexend-medium">Social</Text>
+        </View>
         <TouchableOpacity
           className="w-16 h-16 rounded-full bg-background justify-center items-center shadow-lg overflow-hidden"
           onPress={() => setSocialModalVisible(true)}
@@ -105,11 +108,13 @@ export default function HomeScreen() {
             contentFit="contain"
           />
         </TouchableOpacity>
-        <Text className="text-xs text-text-secondary mt-1 font-lexend-medium">Social</Text>
       </View>
 
       {/* Center app logo button */}
       <View className="absolute bottom-8 left-0 right-0 items-center">
+        <View className="bg-black/50 px-2 py-0.5 rounded-full mb-1">
+          <Text className="text-xs text-white font-lexend-medium">WorldDex</Text>
+        </View>
         <TouchableOpacity
           className="w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg overflow-hidden"
           onPress={handleCapturesButtonClick}
@@ -120,7 +125,6 @@ export default function HomeScreen() {
             contentFit="cover"
           />
         </TouchableOpacity>
-        <Text className="text-xs text-text-secondary mt-1 font-lexend-medium">WorldDex</Text>
       </View>
 
       {/* Captures Modal */}
