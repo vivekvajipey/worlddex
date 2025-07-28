@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert, Linking } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
@@ -127,6 +127,7 @@ export default function CameraScreen({
   // Location prompt state
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [locationPromptItem, setLocationPromptItem] = useState<string>("");
+  
   
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
   
@@ -280,6 +281,7 @@ export default function CameraScreen({
     setShowLocationPrompt(false);
     // Don't ask again for a while
   }, []);
+
 
   // Track when a capture review is shown or dismissed
   useEffect(() => {

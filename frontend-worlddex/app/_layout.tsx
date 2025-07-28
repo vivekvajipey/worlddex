@@ -11,6 +11,7 @@ import { PostHogProvider } from "posthog-react-native";
 import { Slot } from "expo-router";     // expo-router's root
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationService } from "../src/services/NotificationService";
+import { NotificationPermissionManager } from "./components/permissions/NotificationPermissionManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,6 +140,7 @@ export default function RootLayout() {
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <Slot />
+            <NotificationPermissionManager />
           </QueryClientProvider>
         </AuthProvider>
       </GestureHandlerRootView>

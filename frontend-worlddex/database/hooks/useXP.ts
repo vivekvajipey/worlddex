@@ -124,7 +124,7 @@ export async function calculateAndAwardCaptureXP(
     if (isGlobalFirst) {
       // Global first gets 2x multiplier!
       captureXP = rarityXP * XP_BONUSES.GLOBAL_FIRST_CAPTURE_MULTIPLIER;
-      captureReason = `You were the first to capture ${itemName} (${rarityTier})!`;
+      captureReason = `You were the first to capture ${itemName}!`;
     }
     
     // Award capture XP
