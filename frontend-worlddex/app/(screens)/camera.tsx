@@ -278,12 +278,8 @@ export default function CameraScreen({
         
         console.log("Location obtained:", currentLocation.coords);
         
-        showAlert({
-          title: "Location Enabled!",
-          message: "Your future captures will remember where you found them",
-          icon: "location",
-          iconColor: "#10B981"
-        });
+        // Don't show modal alert as it might interfere with camera state
+        console.log("Location permission granted and location obtained successfully");
       } catch (error) {
         console.error("Error getting location after permission:", error);
       }
@@ -320,6 +316,21 @@ export default function CameraScreen({
     console.log("Current capturedUri:", capturedUri);
     console.log("Current identificationComplete:", identificationComplete);
   }, [showLocationPrompt, isCapturing, capturedUri, identificationComplete]);
+
+  // Safety check: if camera is stuck in capturing state without a captured image
+  useEffect(() => {
+    if (isCapturing && !capturedUri) {
+      const timeoutId = setTimeout(() => {
+        if (isCapturing && !capturedUri) {
+          console.warn("=== CAMERA STUCK IN CAPTURING STATE - FORCING RESET ===");
+          setIsCapturing(false);
+          cameraCaptureRef.current?.resetLasso();
+        }
+      }, 5000); // Give 5 seconds for normal flow
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isCapturing, capturedUri]);
 
   // Update useEffect that watches for tier1 and tier2 changes
   useEffect(() => {
@@ -448,6 +459,7 @@ export default function CameraScreen({
       });
 
       // Start capture state - freeze UI
+      console.log("=== SETTING isCapturing = true (lasso capture) ===");
       setIsCapturing(true);
 
       if (!photo) {
@@ -663,6 +675,7 @@ export default function CameraScreen({
     setIdentificationComplete(false);
 
     // Start capture state - freeze UI
+    console.log("=== SETTING isCapturing = true (full screen capture) ===");
     setIsCapturing(true);
 
     const cameraRef = cameraCaptureRef.current.getCameraRef();
@@ -924,7 +937,7 @@ export default function CameraScreen({
             // Delay showing location prompt until after other modals
             setTimeout(() => {
               console.log("=== SHOWING LOCATION PROMPT NOW ===");
-              console.log("Current isCapturing state:", isCapturing);
+              // Don't log isCapturing here as it might be stale
               setShowLocationPrompt(true);
             }, 2000); // Delay to ensure other modals are done
           } else {
@@ -987,6 +1000,7 @@ export default function CameraScreen({
 
     // Reset all states regardless of whether it was accepted or rejected, or if processing happened
     console.log("Resetting states in handleDismissPreview.");
+    console.log("=== SETTING isCapturing = false (handleDismissPreview) ===");
     setIsCapturing(false);
     setCapturedUri(null);
     cameraCaptureRef.current?.resetLasso();
