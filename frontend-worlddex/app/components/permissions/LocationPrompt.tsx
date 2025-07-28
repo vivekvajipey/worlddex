@@ -22,6 +22,7 @@ export const LocationPrompt: React.FC<LocationPromptProps> = ({
       transparent
       animationType="fade"
       statusBarTranslucent
+      onRequestClose={onSkip}
     >
       <BlurView intensity={80} tint="dark" style={{ flex: 1 }}>
         <View className="flex-1 justify-center items-center px-6">

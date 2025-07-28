@@ -255,8 +255,11 @@ export default function CameraScreen({
   // Handle location prompt responses
   const handleEnableLocation = useCallback(async () => {
     console.log("=== USER ENABLING LOCATION ===");
+    console.log("Camera state - isCapturing:", isCapturing);
     setShowLocationPrompt(false);
     setLocationPromptItem(""); // Reset for clean state
+    
+    // Don't force reset camera state - let normal flow handle it
     
     const { status } = await requestLocationPermission();
     console.log("Location permission result:", status);
@@ -285,14 +288,20 @@ export default function CameraScreen({
         console.error("Error getting location after permission:", error);
       }
     }
-  }, [requestLocationPermission, showAlert]);
+    
+    // Log camera state after permission handling
+    console.log("Camera state after location permission - isCapturing:", isCapturing);
+  }, [requestLocationPermission, showAlert, isCapturing]);
 
   const handleSkipLocation = useCallback(() => {
     console.log("=== USER SKIPPED LOCATION ===");
+    console.log("Camera state - isCapturing:", isCapturing);
     setShowLocationPrompt(false);
     // Reset the prompt so it can show again on next capture
     setLocationPromptItem("");
-  }, []);
+    
+    // Don't force reset camera state - let normal flow handle it
+  }, [isCapturing]);
 
 
   // Track when a capture review is shown or dismissed
@@ -303,6 +312,14 @@ export default function CameraScreen({
       setHasCapture(true);
     }
   }, [isCapturing, capturedUri]);
+
+  // Log location prompt state changes for debugging
+  useEffect(() => {
+    console.log("Location prompt visibility changed:", showLocationPrompt);
+    console.log("Current isCapturing state:", isCapturing);
+    console.log("Current capturedUri:", capturedUri);
+    console.log("Current identificationComplete:", identificationComplete);
+  }, [showLocationPrompt, isCapturing, capturedUri, identificationComplete]);
 
   // Update useEffect that watches for tier1 and tier2 changes
   useEffect(() => {
@@ -907,6 +924,7 @@ export default function CameraScreen({
             // Delay showing location prompt until after other modals
             setTimeout(() => {
               console.log("=== SHOWING LOCATION PROMPT NOW ===");
+              console.log("Current isCapturing state:", isCapturing);
               setShowLocationPrompt(true);
             }, 2000); // Delay to ensure other modals are done
           } else {
@@ -983,6 +1001,11 @@ export default function CameraScreen({
       console.log("Calling reset on useIdentify hook.");
       reset();
     }
+    
+    // Force a state update to ensure camera is interactive
+    requestAnimationFrame(() => {
+      console.log("Camera should now be interactive again");
+    });
   }, [
     capturedUri,
     session,
