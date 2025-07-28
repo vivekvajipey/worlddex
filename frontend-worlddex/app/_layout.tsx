@@ -111,15 +111,8 @@ export default function RootLayout() {
       // Hide splash screen once fonts are loaded
       SplashScreen.hideAsync();
 
-      // Setup notifications
-      const setupNotifications = async () => {
-        const hasPermission = await NotificationService.requestPermissions();
-        if (hasPermission) {
-          await NotificationService.scheduleDailyNotification();
-        }
-      };
-
-      setupNotifications();
+      // Don't request notifications on app launch anymore
+      // Will be requested after user engagement (3 captures or 2 days)
     }
   }, [fontsLoaded]);
 

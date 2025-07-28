@@ -13,6 +13,7 @@ import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraC
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraOnboarding from "../components/camera/CameraOnboarding";
 import { CameraPlaceholder } from "../components/camera/CameraPlaceholder";
+import { LocationPrompt } from "../components/permissions/LocationPrompt";
 import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -33,6 +34,7 @@ import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollecti
 import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 import { IdentifyRequest } from "../../../shared/types/identify";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
+import { supabase } from "../../database/supabase-client";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
@@ -121,6 +123,10 @@ export default function CameraScreen({
   
   // Add state for rarity score
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
+  
+  // Location prompt state
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locationPromptItem, setLocationPromptItem] = useState<string>("");
   
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
   
@@ -243,6 +249,36 @@ export default function CameraScreen({
   // Handle onboarding reset
   const handleOnboardingReset = useCallback(() => {
     setResetCounter(prev => prev + 1);
+  }, []);
+
+  // Handle location prompt responses
+  const handleEnableLocation = useCallback(async () => {
+    setShowLocationPrompt(false);
+    const { status } = await requestLocationPermission();
+    
+    if (status === 'granted') {
+      // Get location for future captures
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+      
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude
+      });
+      
+      showAlert({
+        title: "Location Enabled!",
+        message: "Your future captures will remember where you found them",
+        icon: "location",
+        iconColor: "#10B981"
+      });
+    }
+  }, [requestLocationPermission, showAlert]);
+
+  const handleSkipLocation = useCallback(() => {
+    setShowLocationPrompt(false);
+    // Don't ask again for a while
   }, []);
 
   // Track when a capture review is shown or dismissed
@@ -841,6 +877,26 @@ export default function CameraScreen({
           // Calculate and award coins
           const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
           
+          // Check for location permission after any successful capture
+          console.log("Location permission check:", {
+            locationPermissionStatus: locationPermission?.status,
+            locationPermissionGranted: locationPermission?.granted,
+            hasLocation: !!location,
+            identifiedLabel
+          });
+          
+          // Show location prompt if permission not granted (regardless of capture count)
+          if (!locationPermission?.granted) {
+            console.log("Showing location prompt for:", identifiedLabel);
+            setLocationPromptItem(identifiedLabel);
+            // Delay showing location prompt until after other modals
+            setTimeout(() => {
+              setShowLocationPrompt(true);
+            }, 2000); // Delay to ensure other modals are done
+          } else {
+            console.log("Location permission already granted, skipping prompt");
+          }
+          
           // Check for level up first
           if (xpData?.levelUp && xpData?.newLevel) {
             setLevelUpData({ newLevel: xpData.newLevel });
@@ -1029,6 +1085,14 @@ export default function CameraScreen({
           visible={levelUpModalVisible}
           onClose={() => setLevelUpModalVisible(false)}
           newLevel={levelUpData.newLevel}
+        />
+        
+        {/* Location Permission Prompt */}
+        <LocationPrompt
+          visible={showLocationPrompt}
+          itemName={locationPromptItem}
+          onEnableLocation={handleEnableLocation}
+          onSkip={handleSkipLocation}
         />
         
         {/* Styled Alert Component */}
