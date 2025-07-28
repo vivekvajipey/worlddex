@@ -290,7 +290,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           <Text className="text-sm text-white font-lexend-medium">Profile</Text>
         </View>
         <TouchableOpacity
-          className="w-20 h-20 rounded-full flex justify-center items-center"
+          className="w-20 h-20 rounded-full flex justify-center items-center shadow-lg overflow-hidden"
           onPress={handleOpenModal}
         >
           {loadingProfilePic || isInitialLoading ? (
@@ -300,7 +300,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           ) : displayProfilePic ? (
             <Image
               source={{ uri: displayProfilePic }}
-              style={{ width: 80, height: 80, borderRadius: 40 }}
+              style={{ width: 80, height: 80 }}
               contentFit="cover"
               transition={200}
             />
