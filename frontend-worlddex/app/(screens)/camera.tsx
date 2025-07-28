@@ -1,7 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as MediaLibrary from "expo-media-library";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,6 +12,7 @@ import { useStyledAlert } from "../../src/hooks/useStyledAlert";
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraOnboarding from "../components/camera/CameraOnboarding";
+import { CameraPlaceholder } from "../components/camera/CameraPlaceholder";
 import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -56,7 +56,6 @@ export default function CameraScreen({
   const { processImageForVLM } = useImageProcessor();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
-  const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
@@ -92,9 +91,7 @@ export default function CameraScreen({
   const [identificationComplete, setIdentificationComplete] = useState(false);
   
   // Derive permission resolution status - no useState needed
-  const permissionsResolved = 
-    permission?.status != null && 
-    mediaPermission?.status != null;
+  const permissionsResolved = permission?.status != null;
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -186,12 +183,8 @@ export default function CameraScreen({
     OfflineCaptureService.initialize().catch(console.error);
   }, []);
 
-  // Request location permission after camera permission
-  useEffect(() => {
-    if (permission?.granted && !locationPermission?.granted) {
-      requestLocationPermission();
-    }
-  }, [permission?.granted, locationPermission]);
+  // Don't automatically request location permission anymore
+  // It will be requested contextually after a successful capture
 
   // Get location when permission is granted
   useEffect(() => {
@@ -334,6 +327,13 @@ export default function CameraScreen({
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
+    // Check camera permission first
+    if (!permission?.granted) {
+      // This shouldn't happen with placeholder, but just in case
+      await requestPermission();
+      return;
+    }
+    
     if (posthog) {
       posthog.capture("capture_initiated", { method: "lasso" });
     }
@@ -547,10 +547,17 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
+    // Check camera permission first
+    if (!permission?.granted) {
+      // This shouldn't happen with placeholder, but just in case
+      await requestPermission();
+      return;
+    }
+    
     if (posthog) {
       posthog.capture("capture_initiated", { method: "full_screen" });
     }
@@ -710,7 +717,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -929,39 +936,12 @@ export default function CameraScreen({
   }, [posthog, pathname]);
 
   if (!permissionsResolved) {
-    // Camera or media permissions are still loading - DON'T render anything camera-related
+    // Camera permissions are still loading - DON'T render anything camera-related
     return <View className="flex-1 bg-background" />;
   }
 
-  if (!permission.granted) {
-    // Camera permissions are not granted yet
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-center text-text-primary font-lexend-medium mb-4">
-          We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="Grant camera permission" />
-      </View>
-    );
-  }
-
-  if (!mediaPermission.granted) {
-    // Media library permissions are not granted yet
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-center text-text-primary font-lexend-medium mb-4">
-          We need your permission to save photos
-        </Text>
-        <Button onPress={requestMediaPermission} title="Grant media permission" />
-      </View>
-    );
-  }
-
-  // Location permission UI (optional)
-  if (!locationPermission?.granted) {
-    // Continue without location, but show a message
-    console.log("Location permission not granted. Some features may be limited.");
-  }
+  // Don't request location automatically anymore
+  // It will be requested after first successful capture
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -985,13 +965,20 @@ export default function CameraScreen({
           </TouchableOpacity>
         )}
 
-        {/* Camera capture component */}
-        <CameraCapture
-          ref={cameraCaptureRef}
-          onCapture={handleCapture}
-          isCapturing={isCapturing}
-          onFullScreenCapture={handleFullScreenCapture}
-        />
+        {/* Camera capture component or placeholder */}
+        {permission?.granted ? (
+          <CameraCapture
+            ref={cameraCaptureRef}
+            onCapture={handleCapture}
+            isCapturing={isCapturing}
+            onFullScreenCapture={handleFullScreenCapture}
+          />
+        ) : (
+          <CameraPlaceholder
+            onRequestPermission={requestPermission}
+            permissionStatus={permission?.status || 'undetermined'}
+          />
+        )}
 
         {/* Polaroid development and animation overlay */}
         {isCapturing && capturedUri && (

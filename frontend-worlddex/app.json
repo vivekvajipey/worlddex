@@ -31,7 +31,7 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow WorldDex to access your photos",
+          "photosPermission": "Allow WorldDex to select images for collections and profile",
           "savePhotosPermission": "Allow WorldDex to save photos",
           "isAccessMediaLocationEnabled": true
         }
