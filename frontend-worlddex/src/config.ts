@@ -4,10 +4,11 @@ import Constants from "expo-constants";
 declare const __DEV__: boolean;
 
 // export const API_URL = "https://backend-worlddex.fly.dev/api";
-export const API_URL = "http://192.168.4.38:3000/api";
+// export const API_URL = "http://192.168.4.38:3000/api"; // 1 Brady St.
 // export const API_URL = "https://10.35.9.132:3000/api";
 // export const API_URL = "http://10.32.122.153:3000/api";
 // export const API_URL = "http://10.0.0.195:3000/api";
+export const API_URL = "http://10.80.82.111:3000/api"; // True SF Office
 
 // // In development, use localhost
 // export const API_URL = __DEV__

@@ -61,84 +61,105 @@ export default function CoinRewardModal({
     }
   }, [visible, total, xpTotal, rewards, xpRewards, levelUp, newLevel, posthog]);
   
+  // Check if we have both rewards or just one
+  const hasBothRewards = total > 0 && xpTotal > 0;
+  const hasSingleReward = (total > 0 && xpTotal === 0) || (total === 0 && xpTotal > 0);
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View className="flex-1 justify-center items-center bg-black/60">
-        <View className="bg-background rounded-2xl p-6 w-80 items-center">
+        <View className="bg-surface rounded-3xl p-6 w-80 items-center shadow-lg">
+          {/* Header */}
+          <Text className="text-text-primary font-lexend-bold text-2xl mb-6">
+            REWARDS EARNED!
+          </Text>
+
+          {/* Main reward cards */}
+          <View className={`flex-row justify-center mb-4 ${hasBothRewards ? 'gap-4' : ''}`}>
+            {/* Coins card */}
+            {total > 0 && (
+              <View className={`items-center ${hasBothRewards ? 'bg-primary/10 border-2 border-primary/20' : ''} rounded-2xl p-5 ${hasBothRewards ? 'flex-1' : ''}`}>
+                <Image source={retroCoin} style={{ width: 56, height: 56, marginBottom: 12 }} />
+                <Text className="text-primary font-lexend-bold text-4xl">
+                  +{total} {hasSingleReward ? 'Coins' : ''}
+                </Text>
+                {hasBothRewards && (
+                  <Text className="text-primary font-lexend-semibold text-base uppercase tracking-wide mt-1">
+                    Coins
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* XP card */}
+            {xpTotal > 0 && (
+              <View className={`items-center ${hasBothRewards ? 'bg-accent/10 border-2 border-accent/20' : ''} rounded-2xl p-5 ${hasBothRewards ? 'flex-1' : ''}`}>
+                <Ionicons name="star" size={56} color={Colors.accent.DEFAULT} style={{ marginBottom: 12 }} />
+                <Text className="text-accent font-lexend-bold text-4xl">
+                  +{xpTotal} {hasSingleReward ? 'XP' : ''}
+                </Text>
+                {hasBothRewards && (
+                  <Text className="text-accent font-lexend-semibold text-base uppercase tracking-wide mt-1">
+                    XP
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Detailed breakdown - only show if multiple reasons exist */}
+          {((rewards.length > 1 || xpRewards.length > 1) || (rewards.length > 0 && xpRewards.length > 0)) && (
+            <View className="w-full border border-text-secondary/10 rounded-xl p-4 mb-4">
+              {/* Coins reasons */}
+              {rewards.map((r, i) => (
+                <Text key={`coin-${i}`} className="text-text-secondary font-lexend-regular text-sm mb-1.5">
+                  {r.reason}
+                </Text>
+              ))}
+              
+              {/* Separator if both exist */}
+              {rewards.length > 0 && xpRewards.length > 0 && (
+                <View className="h-px bg-text-secondary/20 my-2" />
+              )}
+              
+              {/* XP reasons */}
+              {xpRewards.map((r, i) => (
+                <Text key={`xp-${i}`} className="text-text-secondary font-lexend-regular text-sm mb-1.5 last:mb-0">
+                  {r.reason}
+                </Text>
+              ))}
+            </View>
+          )}
+
+          {/* Single reason display - cleaner for single rewards */}
+          {hasSingleReward && rewards.length === 1 && (
+            <Text className="text-text-secondary font-lexend-regular text-base mb-6">
+              {rewards[0].reason}
+            </Text>
+          )}
+          {hasSingleReward && xpRewards.length === 1 && (
+            <Text className="text-text-secondary font-lexend-regular text-base mb-6">
+              {xpRewards[0].reason}
+            </Text>
+          )}
+
           {/* Level up notification if applicable */}
           {levelUp && newLevel && (
-            <View className="mb-4 items-center">
-              <Text className="text-primary font-lexend-bold text-2xl">
-                Level Up!
-              </Text>
-              <Text className="text-text-secondary font-lexend-medium text-lg">
-                You reached Level {newLevel}
+            <View className="mb-4 items-center bg-accent/20 rounded-xl px-6 py-3">
+              <Text className="text-accent font-lexend-bold text-xl">
+                Level {newLevel} Reached!
               </Text>
             </View>
           )}
 
-          {/* Coins section */}
-          {total > 0 && (
-            <>
-              <View className="flex-row items-center mb-2">
-                <Image source={retroCoin} style={{ width: 36, height: 36, marginRight: 8 }} />
-                <Text className="text-primary font-lexend-bold text-2xl">
-                  +{total} Coins!
-                </Text>
-              </View>
-              <View className="w-full mb-3">
-                {rewards.map((r, i) => (
-                  <View key={`coin-${i}`} className="flex-row items-start mb-1">
-                    <Image source={retroCoin} style={{ width: 16, height: 16, marginRight: 6, marginTop: 2 }} />
-                    <Text className="text-primary font-lexend-medium text-sm">
-                      +{r.amount}
-                    </Text>
-                    <Text className="text-text-secondary text-sm ml-2 flex-1" numberOfLines={2}>
-                      {r.reason}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* XP section */}
-          {xpTotal > 0 && (
-            <>
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="star" size={32} color={Colors.primary.DEFAULT} style={{ marginRight: 8 }} />
-                <Text className="text-primary font-lexend-bold text-2xl">
-                  +{xpTotal} XP!
-                </Text>
-              </View>
-              {/* Only show breakdown if there are multiple XP rewards */}
-              {xpRewards.length > 1 && (
-                <View className="w-full mb-3">
-                  {xpRewards.map((r, i) => (
-                    <View key={`xp-${i}`} className="flex-row items-start mb-1">
-                      <Ionicons name="star-outline" size={14} color={Colors.text.secondary} style={{ marginRight: 6, marginTop: 3 }} />
-                      <Text className="text-text-secondary text-xs flex-1" numberOfLines={2}>
-                        {r.reason} (+{r.amount})
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-              {/* For single reward, show the reason as subtitle */}
-              {xpRewards.length === 1 && (
-                <Text className="text-text-secondary text-sm mb-3">
-                  {xpRewards[0].reason}
-                </Text>
-              )}
-            </>
-          )}
-
+          {/* OK Button */}
           <TouchableOpacity
-            className="bg-primary rounded-full px-6 py-2 mt-2"
+            className="bg-primary rounded-full px-12 py-3 shadow-md"
             onPress={onClose}
+            activeOpacity={0.8}
           >
-            <Text className="text-surface font-lexend-bold text-lg">
-              {levelUp ? "Awesome!" : "OK"}
+            <Text className="text-surface font-lexend-bold text-xl">
+              OK
             </Text>
           </TouchableOpacity>
         </View>

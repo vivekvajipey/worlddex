@@ -95,16 +95,16 @@ export default function HomeScreen() {
 
       {/* Social button (bottom left) */}
       <View className="absolute bottom-8 left-8 items-center">
-        <View className="bg-black/50 px-2 py-0.5 rounded-full mb-1">
-          <Text className="text-xs text-white font-lexend-medium">Social</Text>
+        <View className="bg-black/50 px-3 py-1 rounded-full mb-1">
+          <Text className="text-sm text-white font-lexend-medium">Social</Text>
         </View>
         <TouchableOpacity
-          className="w-16 h-16 rounded-full bg-background justify-center items-center shadow-lg overflow-hidden"
+          className="w-20 h-20 rounded-full bg-background justify-center items-center shadow-lg overflow-hidden"
           onPress={() => setSocialModalVisible(true)}
         >
           <Image
             source={require('../assets/images/Social Icon.png')}
-            style={{ width: 64, height: 64 }}
+            style={{ width: 80, height: 80 }}
             contentFit="contain"
           />
         </TouchableOpacity>
@@ -112,16 +112,16 @@ export default function HomeScreen() {
 
       {/* Center app logo button */}
       <View className="absolute bottom-8 left-0 right-0 items-center">
-        <View className="bg-black/50 px-2 py-0.5 rounded-full mb-1">
-          <Text className="text-xs text-white font-lexend-medium">WorldDex</Text>
+        <View className="bg-black/50 px-3 py-1 rounded-full mb-1">
+          <Text className="text-sm text-white font-lexend-medium">WorldDex</Text>
         </View>
         <TouchableOpacity
-          className="w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg overflow-hidden"
+          className="w-20 h-20 rounded-full bg-primary justify-center items-center shadow-lg overflow-hidden"
           onPress={handleCapturesButtonClick}
         >
           <Image
             source={require('../assets/images/icon.png')}
-            style={{ width: 64, height: 64 }}
+            style={{ width: 80, height: 80 }}
             contentFit="cover"
           />
         </TouchableOpacity>
