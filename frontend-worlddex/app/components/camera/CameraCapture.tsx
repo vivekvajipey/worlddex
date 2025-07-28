@@ -463,22 +463,22 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           <>
             {/* Flip camera button - top right */}
             <TouchableOpacity
-              className="absolute top-20 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
+              className="absolute top-20 right-6 bg-background rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-10"
               onPress={toggleCameraFacing}
               activeOpacity={0.7}
             >
-              <Ionicons name="sync-outline" size={22} color="black" />
+              <Ionicons name="sync-outline" size={30} color="black" />
             </TouchableOpacity>
 
             {/* Flashlight/torch toggle button - top right, below flip button */}
             <TouchableOpacity
-              className="absolute top-36 right-6 bg-background rounded-full w-10 h-10 flex items-center justify-center shadow-lg z-10"
+              className="absolute top-40 right-6 bg-background rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-10"
               onPress={toggleTorch}
               activeOpacity={0.7}
             >
               <Ionicons
                 name={torchEnabled ? "flashlight" : "flashlight-outline"}
-                size={22}
+                size={30}
                 color="black"
               />
             </TouchableOpacity>
