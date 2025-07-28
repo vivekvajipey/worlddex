@@ -79,7 +79,17 @@ export const useNotificationTrigger = () => {
       });
 
       // Trigger if either condition is met and haven't prompted in this session
-      return (hasEnoughCaptures || hasBeenLongEnough) && !triggerData.triggeredAt;
+      const shouldTrigger = (hasEnoughCaptures || hasBeenLongEnough) && !triggerData.triggeredAt;
+      
+      // If we should trigger, mark it immediately to prevent loops
+      if (shouldTrigger) {
+        await AsyncStorage.setItem(NOTIFICATION_TRIGGER_KEY, JSON.stringify({
+          ...triggerData,
+          triggeredAt: new Date().toISOString()
+        }));
+      }
+      
+      return shouldTrigger;
     } catch (error) {
       console.error('Error checking notification triggers:', error);
       return false;
@@ -126,7 +136,7 @@ export const useNotificationTrigger = () => {
     }
   }, []);
 
-  // Check triggers periodically
+  // Check triggers once on mount
   useEffect(() => {
     if (!session?.user?.id) return;
 
@@ -137,13 +147,18 @@ export const useNotificationTrigger = () => {
       setIsChecking(false);
     };
 
-    // Check immediately
+    // Check once when component mounts
     checkAndUpdate();
-
-    // Check again after each capture (in case they just hit the threshold)
-    const interval = setInterval(checkAndUpdate, 60000); // Check every minute
-
-    return () => clearInterval(interval);
+  }, [session?.user?.id]); // Only re-check if user changes
+  
+  // Provide a manual way to re-check triggers
+  const recheckTriggers = useCallback(async () => {
+    if (!session?.user?.id) return;
+    
+    setIsChecking(true);
+    const shouldShow = await checkTriggers();
+    setShouldShowPrompt(shouldShow);
+    setIsChecking(false);
   }, [session, checkTriggers]);
 
   return {
@@ -151,7 +166,8 @@ export const useNotificationTrigger = () => {
     isChecking,
     markPromptShown,
     handlePermissionGranted,
-    checkTriggers
+    checkTriggers,
+    recheckTriggers
   };
 };
 

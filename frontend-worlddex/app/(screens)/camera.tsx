@@ -254,32 +254,44 @@ export default function CameraScreen({
 
   // Handle location prompt responses
   const handleEnableLocation = useCallback(async () => {
+    console.log("=== USER ENABLING LOCATION ===");
     setShowLocationPrompt(false);
+    setLocationPromptItem(""); // Reset for clean state
+    
     const { status } = await requestLocationPermission();
+    console.log("Location permission result:", status);
     
     if (status === 'granted') {
       // Get location for future captures
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced
-      });
-      
-      setLocation({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude
-      });
-      
-      showAlert({
-        title: "Location Enabled!",
-        message: "Your future captures will remember where you found them",
-        icon: "location",
-        iconColor: "#10B981"
-      });
+      try {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        
+        setLocation({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude
+        });
+        
+        console.log("Location obtained:", currentLocation.coords);
+        
+        showAlert({
+          title: "Location Enabled!",
+          message: "Your future captures will remember where you found them",
+          icon: "location",
+          iconColor: "#10B981"
+        });
+      } catch (error) {
+        console.error("Error getting location after permission:", error);
+      }
     }
   }, [requestLocationPermission, showAlert]);
 
   const handleSkipLocation = useCallback(() => {
+    console.log("=== USER SKIPPED LOCATION ===");
     setShowLocationPrompt(false);
-    // Don't ask again for a while
+    // Reset the prompt so it can show again on next capture
+    setLocationPromptItem("");
   }, []);
 
 
@@ -880,23 +892,31 @@ export default function CameraScreen({
           const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
           
           // Check for location permission after any successful capture
-          console.log("Location permission check:", {
-            locationPermissionStatus: locationPermission?.status,
-            locationPermissionGranted: locationPermission?.granted,
-            hasLocation: !!location,
-            identifiedLabel
-          });
+          console.log("=== LOCATION PERMISSION CHECK ===");
+          console.log("locationPermission object:", locationPermission);
+          console.log("locationPermission?.status:", locationPermission?.status);
+          console.log("locationPermission?.granted:", locationPermission?.granted);
+          console.log("identifiedLabel:", identifiedLabel);
+          console.log("showLocationPrompt state:", showLocationPrompt);
           
-          // Show location prompt if permission not granted (regardless of capture count)
-          if (!locationPermission?.granted) {
-            console.log("Showing location prompt for:", identifiedLabel);
+          // Show location prompt if permission not granted
+          // Check for undetermined status specifically
+          if (locationPermission && !locationPermission.granted && locationPermission.status === 'undetermined') {
+            console.log("=== SCHEDULING LOCATION PROMPT ===");
             setLocationPromptItem(identifiedLabel);
             // Delay showing location prompt until after other modals
             setTimeout(() => {
+              console.log("=== SHOWING LOCATION PROMPT NOW ===");
               setShowLocationPrompt(true);
             }, 2000); // Delay to ensure other modals are done
           } else {
-            console.log("Location permission already granted, skipping prompt");
+            console.log("=== NOT SHOWING LOCATION PROMPT ===");
+            console.log("Reason:", 
+              !locationPermission ? "No permission object" :
+              locationPermission.granted ? "Already granted" :
+              locationPermission.status !== 'undetermined' ? `Status is ${locationPermission.status}` :
+              "Unknown"
+            );
           }
           
           // Check for level up first

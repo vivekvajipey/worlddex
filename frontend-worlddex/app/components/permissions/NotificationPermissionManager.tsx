@@ -8,15 +8,18 @@ import { useAuth } from '../../../src/contexts/AuthContext';
 
 export const NotificationPermissionManager: React.FC = () => {
   const [showPrimer, setShowPrimer] = useState(false);
-  const { shouldShowPrompt, markPromptShown, handlePermissionGranted } = useNotificationTrigger();
+  const [hasShownThisSession, setHasShownThisSession] = useState(false);
+  const { shouldShowPrompt, markPromptShown, handlePermissionGranted, recheckTriggers } = useNotificationTrigger();
   const posthog = usePostHog();
   const { session } = useAuth();
 
   // Show primer when triggers are met
   useEffect(() => {
-    if (shouldShowPrompt && !showPrimer) {
+    // Only check once per session to prevent loops
+    if (shouldShowPrompt && !showPrimer && !hasShownThisSession) {
       console.log('Showing notification permission primer');
       setShowPrimer(true);
+      setHasShownThisSession(true);
       markPromptShown();
       
       // Track analytics
@@ -24,7 +27,7 @@ export const NotificationPermissionManager: React.FC = () => {
         trigger: 'engagement_threshold'
       });
     }
-  }, [shouldShowPrompt, showPrimer, markPromptShown, posthog]);
+  }, [shouldShowPrompt, showPrimer, hasShownThisSession, markPromptShown, posthog]);
 
   // Handle allow button
   const handleAllow = useCallback(async () => {
