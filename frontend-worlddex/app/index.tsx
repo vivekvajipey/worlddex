@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { Redirect, usePathname } from 'expo-router';
 import { usePostHog } from 'posthog-react-native';
@@ -105,6 +105,7 @@ export default function HomeScreen() {
             contentFit="contain"
           />
         </TouchableOpacity>
+        <Text className="text-xs text-text-secondary mt-1 font-lexend-medium">Social</Text>
       </View>
 
       {/* Center app logo button */}
@@ -119,6 +120,7 @@ export default function HomeScreen() {
             contentFit="cover"
           />
         </TouchableOpacity>
+        <Text className="text-xs text-text-secondary mt-1 font-lexend-medium">WorldDex</Text>
       </View>
 
       {/* Captures Modal */}

@@ -18,8 +18,7 @@
             "./assets/fonts/LexendDeca-Bold.ttf",
             "./assets/fonts/LexendDeca-Light.ttf",
             "./assets/fonts/LexendDeca-Medium.ttf",
-            "./assets/fonts/LexendDeca-SemiBold.ttf",
-            "./assets/fonts/PatrickHand-Regular.ttf"
+            "./assets/fonts/LexendDeca-SemiBold.ttf"
           ]
         }
       ],
@@ -41,8 +40,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#ffffff",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "color": "#ffffff"
         }
       ],
       "expo-localization"
@@ -54,8 +52,13 @@
         "NSCameraUsageDescription": "WorldDex needs access to your camera to take pictures",
         "NSPhotoLibraryUsageDescription": "WorldDex needs access to your photo library to save pictures",
         "NSPhotoLibraryAddUsageDescription": "WorldDex needs permission to save photos to your library",
-        "UIBackgroundModes": ["remote-notification"]
-      }
+        "NSLocationWhenInUseUsageDescription": "Allow WorldDex to access your location to tag where your captures were taken",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow WorldDex to access your location to tag where your captures were taken",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      },
+      "appleTeamId": "2DU8Q2C5DK"
     },
     "android": {
       "adaptiveIcon": {
@@ -71,7 +74,9 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "NOTIFICATIONS",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
     "web": {

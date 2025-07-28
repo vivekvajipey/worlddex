@@ -46,3 +46,5 @@ app-example
 
 # Local development config
 src/dev.local.config.ts
+
+ios/
