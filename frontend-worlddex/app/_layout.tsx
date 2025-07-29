@@ -12,6 +12,8 @@ import { Slot } from "expo-router";     // expo-router's root
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotificationService } from "../src/services/NotificationService";
 import { NotificationPermissionManager } from "./components/permissions/NotificationPermissionManager";
+import { ModalQueueProvider } from "../src/contexts/ModalQueueContext";
+import { ModalCoordinator } from "./components/modals/ModalCoordinator";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,8 +141,11 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <Slot />
-            <NotificationPermissionManager />
+            <ModalQueueProvider>
+              <Slot />
+              <NotificationPermissionManager />
+              <ModalCoordinator />
+            </ModalQueueProvider>
           </QueryClientProvider>
         </AuthProvider>
       </GestureHandlerRootView>

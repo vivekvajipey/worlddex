@@ -47,13 +47,6 @@ export const NotificationPermissionManager: React.FC = () => {
       
       if (status === 'granted') {
         await handlePermissionGranted();
-        
-        // Show success message
-        Alert.alert(
-          'Notifications Enabled! 🎉',
-          'You\'ll get a daily reminder to capture something new',
-          [{ text: 'Great!', style: 'default' }]
-        );
       } else if (status === 'denied') {
         // Show settings prompt
         Alert.alert(

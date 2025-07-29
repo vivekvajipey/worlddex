@@ -13,7 +13,6 @@ import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraC
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraOnboarding from "../components/camera/CameraOnboarding";
 import { CameraPlaceholder } from "../components/camera/CameraPlaceholder";
-import { LocationPrompt } from "../components/permissions/LocationPrompt";
 import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -23,8 +22,6 @@ import { useUser } from "../../database/hooks/useUsers";
 import type { Capture, CollectionItem } from "../../database/types";
 import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
 import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
-import CoinRewardModal from "../components/CoinRewardModal";
-import LevelUpModal from "../components/LevelUpModal";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import {
   createUserCollectionItem,
@@ -35,6 +32,7 @@ import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 import { IdentifyRequest } from "../../../shared/types/identify";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { supabase } from "../../database/supabase-client";
+import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
@@ -103,30 +101,14 @@ export default function CameraScreen({
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
 
-  // Add state for coin reward modal
-  const [coinModalVisible, setCoinModalVisible] = useState(false);
-  const [coinModalData, setCoinModalData] = useState<{ 
-    total: number; 
-    rewards: { amount: number; reason: string }[];
-    xpTotal?: number;
-    xpRewards?: { amount: number; reason: string }[];
-    levelUp?: boolean;
-    newLevel?: number;
-  }>({ total: 0, rewards: [] });
+  // Modal queue system
+  const { enqueueModal } = useModalQueue();
   
-  // Add state for level up modal
-  const [levelUpModalVisible, setLevelUpModalVisible] = useState(false);
-  const [levelUpData, setLevelUpData] = useState<{ newLevel: number }>({ newLevel: 1 });
-
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
   
   // Add state for rarity score
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
-  
-  // Location prompt state
-  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
-  const [locationPromptItem, setLocationPromptItem] = useState<string>("");
   
   
   const polaroidError = vlmCaptureSuccess === true ? null : idError;
@@ -255,11 +237,6 @@ export default function CameraScreen({
   // Handle location prompt responses
   const handleEnableLocation = useCallback(async () => {
     console.log("=== USER ENABLING LOCATION ===");
-    console.log("Camera state - isCapturing:", isCapturing);
-    setShowLocationPrompt(false);
-    setLocationPromptItem(""); // Reset for clean state
-    
-    // Don't force reset camera state - let normal flow handle it
     
     const { status } = await requestLocationPermission();
     console.log("Location permission result:", status);
@@ -278,26 +255,22 @@ export default function CameraScreen({
         
         console.log("Location obtained:", currentLocation.coords);
         
-        // Don't show modal alert as it might interfere with camera state
-        console.log("Location permission granted and location obtained successfully");
+        showAlert({
+          title: "Location Enabled!",
+          message: "Your future captures will remember where you found them",
+          icon: "location",
+          iconColor: "#10B981"
+        });
       } catch (error) {
         console.error("Error getting location after permission:", error);
       }
     }
-    
-    // Log camera state after permission handling
-    console.log("Camera state after location permission - isCapturing:", isCapturing);
-  }, [requestLocationPermission, showAlert, isCapturing]);
+  }, [requestLocationPermission, showAlert]);
 
   const handleSkipLocation = useCallback(() => {
     console.log("=== USER SKIPPED LOCATION ===");
-    console.log("Camera state - isCapturing:", isCapturing);
-    setShowLocationPrompt(false);
-    // Reset the prompt so it can show again on next capture
-    setLocationPromptItem("");
-    
-    // Don't force reset camera state - let normal flow handle it
-  }, [isCapturing]);
+    // The modal coordinator handles dismissal automatically
+  }, []);
 
 
   // Track when a capture review is shown or dismissed
@@ -308,14 +281,6 @@ export default function CameraScreen({
       setHasCapture(true);
     }
   }, [isCapturing, capturedUri]);
-
-  // Log location prompt state changes for debugging
-  useEffect(() => {
-    console.log("Location prompt visibility changed:", showLocationPrompt);
-    console.log("Current isCapturing state:", isCapturing);
-    console.log("Current capturedUri:", capturedUri);
-    console.log("Current identificationComplete:", identificationComplete);
-  }, [showLocationPrompt, isCapturing, capturedUri, identificationComplete]);
 
   // Safety check: if camera is stuck in capturing state without a captured image
   useEffect(() => {
@@ -921,58 +886,54 @@ export default function CameraScreen({
           // Calculate and award coins
           const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
           
-          // Check for location permission after any successful capture
-          console.log("=== LOCATION PERMISSION CHECK ===");
-          console.log("locationPermission object:", locationPermission);
-          console.log("locationPermission?.status:", locationPermission?.status);
-          console.log("locationPermission?.granted:", locationPermission?.granted);
-          console.log("identifiedLabel:", identifiedLabel);
-          console.log("showLocationPrompt state:", showLocationPrompt);
+          // Queue modals using the new system
+          console.log("=== QUEUEING POST-CAPTURE MODALS ===");
           
-          // Show location prompt if permission not granted
-          // Check for undetermined status specifically
+          // 1. Level up modal (highest priority)
+          if (xpData?.levelUp && xpData?.newLevel) {
+            console.log("Queueing level up modal");
+            enqueueModal({
+              type: 'levelUp',
+              data: { newLevel: xpData.newLevel },
+              priority: 100,
+              persistent: false
+            });
+          }
+          
+          // 2. Coin/XP reward modal (medium priority)
+          if (coinsAwarded > 0 || xpData) {
+            console.log("Queueing coin reward modal");
+            enqueueModal({
+              type: 'coinReward',
+              data: {
+                total: coinsAwarded,
+                rewards,
+                xpTotal: xpData?.total || 0,
+                xpRewards: xpData?.rewards || [],
+                levelUp: xpData?.levelUp,
+                newLevel: xpData?.newLevel
+              },
+              priority: 50,
+              persistent: false
+            });
+          }
+          
+          // 3. Location prompt (lowest priority, persistent)
           if (locationPermission && !locationPermission.granted && locationPermission.status === 'undetermined') {
-            console.log("=== SCHEDULING LOCATION PROMPT ===");
-            setLocationPromptItem(identifiedLabel);
-            // Delay showing location prompt until after other modals
-            setTimeout(() => {
-              console.log("=== SHOWING LOCATION PROMPT NOW ===");
-              // Don't log isCapturing here as it might be stale
-              setShowLocationPrompt(true);
-            }, 2000); // Delay to ensure other modals are done
+            console.log("Queueing location prompt (persistent)");
+            enqueueModal({
+              type: 'locationPrompt',
+              data: { itemName: identifiedLabel },
+              priority: 10,
+              persistent: true // This survives navigation!
+            });
           } else {
-            console.log("=== NOT SHOWING LOCATION PROMPT ===");
-            console.log("Reason:", 
+            console.log("Not queueing location prompt:", 
               !locationPermission ? "No permission object" :
               locationPermission.granted ? "Already granted" :
               locationPermission.status !== 'undetermined' ? `Status is ${locationPermission.status}` :
               "Unknown"
             );
-          }
-          
-          // Check for level up first
-          if (xpData?.levelUp && xpData?.newLevel) {
-            setLevelUpData({ newLevel: xpData.newLevel });
-            setLevelUpModalVisible(true);
-          }
-          
-          // Show combined rewards modal if either coins or XP were awarded
-          if (coinsAwarded > 0 || xpData) {
-            setCoinModalData({ 
-              total: coinsAwarded, 
-              rewards,
-              xpTotal: xpData?.total || 0,
-              xpRewards: xpData?.rewards || [],
-              levelUp: xpData?.levelUp,
-              newLevel: xpData?.newLevel
-            });
-            // Only show coin/XP modal if there's no level up, or delay it
-            if (!xpData?.levelUp) {
-              setCoinModalVisible(true);
-            } else {
-              // Show coin modal after level up modal closes
-              setTimeout(() => setCoinModalVisible(true), 500);
-            }
           }
         }
       } catch (err) {
@@ -1040,7 +1001,9 @@ export default function CameraScreen({
     // Dependencies for coin logic
     calculateAndAwardCoins,
     // Dependencies for user field updates
-    incrementUserField
+    incrementUserField,
+    // Modal queue
+    enqueueModal
   ]);
 
   useEffect(() => {
@@ -1129,31 +1092,6 @@ export default function CameraScreen({
           />
         )}
 
-        <CoinRewardModal
-          visible={coinModalVisible}
-          onClose={() => setCoinModalVisible(false)}
-          total={coinModalData.total}
-          rewards={coinModalData.rewards}
-          xpTotal={coinModalData.xpTotal}
-          xpRewards={coinModalData.xpRewards}
-          levelUp={coinModalData.levelUp}
-          newLevel={coinModalData.newLevel}
-        />
-        
-        <LevelUpModal
-          visible={levelUpModalVisible}
-          onClose={() => setLevelUpModalVisible(false)}
-          newLevel={levelUpData.newLevel}
-        />
-        
-        {/* Location Permission Prompt */}
-        <LocationPrompt
-          visible={showLocationPrompt}
-          itemName={locationPromptItem}
-          onEnableLocation={handleEnableLocation}
-          onSkip={handleSkipLocation}
-        />
-        
         {/* Styled Alert Component */}
         <AlertComponent />
 

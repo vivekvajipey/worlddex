@@ -2,18 +2,44 @@ import React from 'react';
 import CoinRewardModal from '../CoinRewardModal';
 import LevelUpModal from '../LevelUpModal';
 import { LocationPrompt } from '../permissions/LocationPrompt';
-import { useModalQueue } from '../../../src/hooks/useModalQueue';
+import { useModalQueue } from '../../../src/contexts/ModalQueueContext';
+import { usePathname, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 
-interface ModalCoordinatorProps {
-  onLocationEnable?: () => void;
-  onLocationSkip?: () => void;
-}
-
-export const ModalCoordinator: React.FC<ModalCoordinatorProps> = ({
-  onLocationEnable,
-  onLocationSkip
-}) => {
+export const ModalCoordinator: React.FC = () => {
   const { currentModal, isShowingModal, dismissCurrentModal } = useModalQueue();
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  // Location handlers - only used when on camera screen
+  const handleLocationEnable = React.useCallback(async () => {
+    console.log("=== USER ENABLING LOCATION (from coordinator) ===");
+    
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    console.log("Location permission result:", status);
+    
+    if (status === 'granted') {
+      // Get location for future captures
+      try {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        
+        console.log("Location obtained:", currentLocation.coords);
+        
+        console.log("Location enabled successfully - future captures will include location");
+      } catch (error) {
+        console.error("Error getting location after permission:", error);
+      }
+    }
+    
+    dismissCurrentModal();
+  }, [dismissCurrentModal]);
+  
+  const handleLocationSkip = React.useCallback(() => {
+    console.log("=== USER SKIPPED LOCATION (from coordinator) ===");
+    dismissCurrentModal();
+  }, [dismissCurrentModal]);
 
   if (!isShowingModal || !currentModal) {
     return null;
@@ -48,14 +74,8 @@ export const ModalCoordinator: React.FC<ModalCoordinatorProps> = ({
         <LocationPrompt
           visible={true}
           itemName={currentModal.data.itemName}
-          onEnableLocation={() => {
-            dismissCurrentModal();
-            onLocationEnable?.();
-          }}
-          onSkip={() => {
-            dismissCurrentModal();
-            onLocationSkip?.();
-          }}
+          onEnableLocation={handleLocationEnable}
+          onSkip={handleLocationSkip}
         />
       );
 
