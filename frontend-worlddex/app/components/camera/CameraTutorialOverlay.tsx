@@ -153,23 +153,20 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       {/* Semi-transparent backdrop for better text visibility */}
       <View className="absolute inset-0 bg-black/20" />
       
-      {/* Tutorial text */}
+      {/* Tutorial text - positioned to avoid top buttons */}
       <Animated.View 
         style={textAnimatedStyle}
-        className="absolute top-32 px-6"
+        className="absolute top-48 left-0 right-0 px-8"
       >
-        <View className="bg-black/70 rounded-2xl px-6 py-4">
-          <Text className="text-white text-lg font-lexend-semibold text-center">
-            Double-tap anywhere to capture!
-          </Text>
-          <Text className="text-white/80 text-sm font-lexend-regular text-center mt-1">
-            Point your camera at any object
+        <View className="bg-black/70 rounded-2xl px-5 py-3 mx-auto">
+          <Text className="text-white text-base font-lexend-semibold text-center">
+            Double-tap to capture any object
           </Text>
         </View>
       </Animated.View>
 
-      {/* Double tap animation */}
-      <View className="relative">
+      {/* Double tap animation - moved up slightly */}
+      <View className="relative -mt-8">
         {/* Ripple effect commented out */}
         {/*
         <Animated.View 
