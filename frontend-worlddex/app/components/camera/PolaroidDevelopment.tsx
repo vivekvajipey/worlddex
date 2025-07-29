@@ -75,6 +75,19 @@ export default function PolaroidDevelopment({
   const { session } = useAuth();
   const userId = session?.user?.id || null;
   const { user } = useUser(userId);
+  
+  // Detect offline state (when showing "Saving...") and trigger proper flow
+  useEffect(() => {
+    // This state only happens when offline - captureSuccess null and isIdentifying false
+    if (captureSuccess === null && isIdentifying === false && !error) {
+      console.log("Detected offline state in polaroid - will auto-dismiss");
+      // Auto-dismiss after showing "Saving..." briefly
+      const timer = setTimeout(() => {
+        onDismiss();
+      }, 1500); // Same timing as our other auto-dismiss
+      return () => clearTimeout(timer);
+    }
+  }, [captureSuccess, isIdentifying, error, onDismiss]);
 
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -895,31 +908,7 @@ export default function PolaroidDevelopment({
 
         {/* Bottom space with label text */}
         <View className="flex items-center justify-center" style={{ height: FRAME_BOTTOM_PADDING }}>
-          {error && (
-            <View className="px-4 pt-3 pb-4 items-center">
-              <View className="flex-row items-center justify-between w-full mb-3">
-                <View className="w-6" /> {/* Spacer for visual balance */}
-                <Text className="text-red-500 font-lexend-semibold text-lg text-center">
-                  Identification Failed
-                </Text>
-                <TouchableOpacity 
-                  onPress={onDismiss}
-                  className="p-1"
-                >
-                  <Ionicons name="close" size={20} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity 
-                className="bg-primary rounded-full px-5 py-2 flex-row items-center"
-                onPress={onRetry}
-              >
-                <Ionicons name="refresh" size={16} color="white" />
-                <Text className="text-white font-lexend-medium text-sm ml-2">
-                  Retry
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {/* Removed error state - we handle errors differently now */}
           {captureSuccess === true && label && (
             <View className="flex-row items-center justify-center">
               <Text className="font-shadows text-black text-center text-3xl">
@@ -966,10 +955,10 @@ export default function PolaroidDevelopment({
               </View>
             </View>
           )}
-          {!error && !(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && (
+          {!(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && (
             <View className="px-4 items-center justify-center">
               <Text className="font-shadows text-black text-center text-2xl">
-                {captureSuccess === false ? "Identification Failed" : "..."}
+                Saving...
               </Text>
             </View>
           )}

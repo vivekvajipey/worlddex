@@ -6,11 +6,11 @@ import EventSource from "react-native-sse";
 
 // Configuration constants
 const TIMEOUTS = {
-  INITIAL_POST: 4000,      // 4s for initial identify request
-  SSE_CONNECTION: 2000,    // 2s to establish SSE connection
-  SSE_COMPLETE: 10000,     // 10s for SSE to complete (5s processing + buffer)
-  POLL_REQUEST: 3000,      // 3s per poll request
-  TOTAL_OPERATION: 15000,  // 15s absolute maximum
+  INITIAL_POST: 10000,     // 10s for initial identify request (increased from 4s)
+  SSE_CONNECTION: 5000,    // 5s to establish SSE connection (increased from 2s)
+  SSE_COMPLETE: 15000,     // 15s for SSE to complete (increased from 10s)
+  POLL_REQUEST: 5000,      // 5s per poll request (increased from 3s)
+  TOTAL_OPERATION: 30000,  // 30s absolute maximum (increased from 15s)
 } as const;
 
 const POLL_INTERVAL = 1000; // 1s between polls (more responsive)

@@ -82,6 +82,8 @@ export default function CameraScreen({
   const isRejectedRef = useRef(false);
   // Add state to track whether identification is fully complete (both tiers if applicable)
   const [identificationComplete, setIdentificationComplete] = useState(false);
+  // Track if capture was saved offline
+  const [savedOffline, setSavedOffline] = useState(false);
   
   // Derive permission resolution status - no useState needed
   const permissionsResolved = permission?.status != null;
@@ -105,7 +107,8 @@ export default function CameraScreen({
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
   
   
-  const polaroidError = vlmCaptureSuccess === true ? null : idError;
+  // Don't show error in polaroid if we're saving offline
+  const polaroidError = (vlmCaptureSuccess === true || savedOffline) ? null : idError;
   
   // Use styled alerts
   const { showAlert, AlertComponent } = useStyledAlert();
@@ -264,12 +267,8 @@ export default function CameraScreen({
     }
   }, [user, enqueueModal, updateUser]);
 
-  useEffect(() => {
-    if (idError) {
-      setVlmCaptureSuccess(false);   // tells the polaroid it's a failure
-      setIdentificationComplete(true);
-    }
-  }, [idError]);
+  // Removed automatic error handling - errors are now handled in the catch blocks
+  // This prevents the polaroid from showing "Identification Failed" when we're saving offline
 
 
   // Handle location prompt responses
@@ -373,8 +372,9 @@ export default function CameraScreen({
         // Otherwise, wait for tier2 to finish - will be handled below
       } else {
         console.log("Tier1 identification failed - no label.");
-        setVlmCaptureSuccess(false);
-        setIdentificationComplete(true);
+        // Don't set failure state - this will be handled by offline save logic
+        // setVlmCaptureSuccess(false);
+        // setIdentificationComplete(true);
       }
     }
 
@@ -447,6 +447,9 @@ export default function CameraScreen({
       // Start capture state - freeze UI
       console.log("=== SETTING isCapturing = true (lasso capture) ===");
       setIsCapturing(true);
+      // Set initial identifying state so polaroid shows "Identifying..." instead of "..."
+      setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
 
       if (!photo) {
         throw new Error("Failed to capture photo");
@@ -548,7 +551,17 @@ export default function CameraScreen({
       } catch (idError) {
         console.error("VLM Identification API Error:", idError);
         
-        // If identification fails, save locally for later
+        // Immediately set states to show saving state in polaroid (before any async operations)
+        // Force all updates in a single batch to ensure re-render
+        setSavedOffline(true);
+        setVlmCaptureSuccess(true); // This will prevent error state
+        setIdentifiedLabel("Saving...");
+        setIdentificationComplete(true);
+        
+        // Force a re-render by updating a counter
+        setResetCounter(prev => prev + 1);
+        
+        // Now save locally for later
         try {
           const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri);
           await OfflineCaptureService.savePendingCapture({
@@ -567,17 +580,13 @@ export default function CameraScreen({
             }
           });
 
-          // Reset states
-          setIsCapturing(false);
-          setCapturedUri(null);
+          // Reset lasso
           cameraCaptureRef.current?.resetLasso();
 
-          showAlert({
-            title: "Saved for Later",
-            message: "We'll identify your capture when you're back online.",
-            icon: "save-outline",
-            iconColor: "#10B981"
-          });
+          // Auto-dismiss polaroid after brief delay
+          setTimeout(() => {
+            handleDismissPreview();
+          }, 1500); // 1.5 seconds to see "Saving..." message
 
           // Track offline capture
           if (posthog) {
@@ -586,7 +595,6 @@ export default function CameraScreen({
               reason: "identification_failed"
             });
           }
-          return;
         } catch (saveError) {
           console.error("Failed to save offline capture:", saveError);
           showAlert({
@@ -595,9 +603,9 @@ export default function CameraScreen({
             icon: "alert-circle-outline",
             iconColor: "#EF4444"
           });
+          cameraCaptureRef.current?.resetLasso();
           setIsCapturing(false);
           setCapturedUri(null);
-          cameraCaptureRef.current?.resetLasso();
           return;
         }
       }
@@ -652,6 +660,9 @@ export default function CameraScreen({
     // Start capture state - freeze UI
     console.log("=== SETTING isCapturing = true (full screen capture) ===");
     setIsCapturing(true);
+    // Set initial identifying state so polaroid shows "Identifying..." instead of "..."
+    setVlmCaptureSuccess(null);
+    setIdentifiedLabel(null);
 
     const cameraRef = cameraCaptureRef.current.getCameraRef();
 
@@ -717,7 +728,16 @@ export default function CameraScreen({
       } catch (vlmApiError) {
         console.error("VLM Identification API Error:", vlmApiError);
         
-        // If identification fails, save locally for later
+        // Immediately set states to show saving state in polaroid (before any async operations)
+        setSavedOffline(true);
+        setVlmCaptureSuccess(true); // This will prevent error state
+        setIdentifiedLabel("Saving...");
+        setIdentificationComplete(true);
+        
+        // Force a re-render by updating a counter
+        setResetCounter(prev => prev + 1);
+        
+        // Now save locally for later
         try {
           const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri);
           await OfflineCaptureService.savePendingCapture({
@@ -730,16 +750,10 @@ export default function CameraScreen({
             captureBox: captureBoxDimensions
           });
 
-          // Reset states
-          setIsCapturing(false);
-          setCapturedUri(null);
-
-          showAlert({
-            title: "Saved for Later",
-            message: "We'll identify your capture when you're back online.",
-            icon: "save-outline",
-            iconColor: "#10B981"
-          });
+          // Auto-dismiss polaroid after brief delay
+          setTimeout(() => {
+            handleDismissPreview();
+          }, 1500); // 1.5 seconds to see "Saving..." message
 
           // Track offline capture
           if (posthog) {
@@ -748,7 +762,6 @@ export default function CameraScreen({
               reason: "identification_failed"
             });
           }
-          return;
         } catch (saveError) {
           console.error("Failed to save offline capture:", saveError);
           showAlert({
@@ -759,6 +772,7 @@ export default function CameraScreen({
           });
           setIsCapturing(false);
           setCapturedUri(null);
+          setVlmCaptureSuccess(false);
           return;
         }
       }
@@ -774,7 +788,100 @@ export default function CameraScreen({
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
     console.log("==== handleDismissPreview called ====");
-    console.log("Current state: identificationComplete:", identificationComplete, "vlmCaptureSuccess:", vlmCaptureSuccess, "identifiedLabel:", identifiedLabel, "isRejectedRef.current:", isRejectedRef.current);
+    console.log("Current state: identificationComplete:", identificationComplete, "vlmCaptureSuccess:", vlmCaptureSuccess, "identifiedLabel:", identifiedLabel, "isRejectedRef.current:", isRejectedRef.current, "savedOffline:", savedOffline);
+
+    // Detect offline state (polaroid auto-dismissed with no success)
+    if (!identificationComplete && vlmCaptureSuccess === null && !identifiedLabel && capturedUri && !isRejectedRef.current) {
+      console.log("Detected offline auto-dismiss - saving locally");
+      
+      try {
+        const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri);
+        
+        // For lasso captures, we need captureBox from state
+        // For full screen, use default dimensions
+        const offlineCaptureBox = captureBox || {
+          x: SCREEN_WIDTH * 0.1,
+          y: SCREEN_HEIGHT * 0.2,
+          width: SCREEN_WIDTH * 0.8,
+          height: SCREEN_WIDTH * 0.8,
+          aspectRatio: 1
+        };
+        
+        await OfflineCaptureService.savePendingCapture({
+          imageUri: localImageUri,
+          capturedAt: new Date().toISOString(),
+          location: location ? { 
+            latitude: location.latitude, 
+            longitude: location.longitude 
+          } : undefined,
+          captureBox: offlineCaptureBox
+        });
+
+        // Show the modal after a brief delay
+        setTimeout(() => {
+          showAlert({
+            title: "Saved for Later",
+            message: "We'll identify your capture when you're back online.",
+            icon: "save-outline",
+            iconColor: "#10B981"
+          });
+        }, 300);
+
+        // Track offline capture
+        if (posthog) {
+          posthog.capture("offline_capture_saved", {
+            method: "auto_dismiss",
+            reason: "network_unavailable"
+          });
+        }
+      } catch (saveError) {
+        console.error("Failed to save offline capture:", saveError);
+        showAlert({
+          title: "Error",
+          message: "Failed to save capture. Please try again.",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
+      }
+      
+      // Reset states
+      setIsCapturing(false);
+      setCapturedUri(null);
+      cameraCaptureRef.current?.resetLasso();
+      setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
+      setIdentificationComplete(false);
+      isRejectedRef.current = false;
+      reset();
+      return;
+    }
+
+    // Handle offline save case (from catch block)
+    if (savedOffline && !isRejectedRef.current) {
+      // Animate polaroid dismissal first
+      setIsCapturing(false);
+      setCapturedUri(null);
+      
+      // Show the modal after a brief delay for smooth transition
+      setTimeout(() => {
+        showAlert({
+          title: "Saved for Later",
+          message: "We'll identify your capture when you're back online.",
+          icon: "save-outline",
+          iconColor: "#10B981"
+        });
+      }, 300); // Small delay for smooth transition
+      
+      // Reset states
+      setSavedOffline(false);
+      cameraCaptureRef.current?.resetLasso();
+      setVlmCaptureSuccess(null);
+      setIdentifiedLabel(null);
+      setIdentificationComplete(false);
+      isRejectedRef.current = false;
+      reset();
+      return;
+    }
 
     // Only proceed if identification is complete, was successful, a label exists,
     // there's a captured URI, a session, and the user didn't explicitly reject it.
@@ -784,7 +891,8 @@ export default function CameraScreen({
       identifiedLabel &&
       capturedUri &&
       session &&
-      !isRejectedRef.current
+      !isRejectedRef.current &&
+      !savedOffline
     ) {
       console.log("Proceeding with capture save logic.");
       try {
@@ -986,6 +1094,7 @@ export default function CameraScreen({
     setIdentificationComplete(false); // Reset for the next capture cycle
     setIsCapturePublic(true); // Reset to default public status
     isRejectedRef.current = false; // Reset rejection flag
+    setSavedOffline(false); // Reset offline flag
 
     // Reset the useIdentify hook's internal state if a reset function is available
     if (reset) {
@@ -1019,7 +1128,15 @@ export default function CameraScreen({
     // Dependencies for user field updates
     incrementUserField,
     // Modal queue
-    enqueueModal
+    enqueueModal,
+    // Offline handling
+    savedOffline,
+    showAlert,
+    captureBox,
+    location,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    posthog
   ]);
 
   useEffect(() => {
@@ -1075,7 +1192,7 @@ export default function CameraScreen({
             captureBox={captureBox}
             onDismiss={handleDismissPreview}
             captureSuccess={vlmCaptureSuccess}
-            isIdentifying={idLoading}
+            isIdentifying={savedOffline ? false : idLoading}
             label={identifiedLabel ?? ""}
             onReject={() => {
               // Mark as rejected so handleDismissPreview won't save it
