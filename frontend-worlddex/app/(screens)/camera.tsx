@@ -40,16 +40,10 @@ const IMAGE_COMPRESSION_LEVEL = 0.8; // JPEG compression level
 
 interface CameraScreenProps {
   capturesButtonClicked?: boolean;
-  isServerConnected?: boolean;
-  isCheckingServer?: boolean;
-  onRetryConnection?: () => Promise<void>;
 }
 
 export default function CameraScreen({ 
-  capturesButtonClicked = false, 
-  isServerConnected = true,
-  isCheckingServer = false,
-  onRetryConnection,
+  capturesButtonClicked = false
 }: CameraScreenProps) {
   const posthog = usePostHog();
   const pathname = usePathname();
@@ -124,33 +118,14 @@ export default function CameraScreen({
       requestAnimationFrame(res);   // wait exactly one frame
     });
   
-    /** 1️⃣  Check / restore connectivity first */
-    if (onRetryConnection) {
-      await onRetryConnection();                 // ping your API again
-    }
-    if (isCheckingServer) {
-      Alert.alert(
-        "Connecting…",
-        "Please wait while we check the server connection."
-      );
-      return;
-    }
-    if (!isServerConnected) {
-      Alert.alert(
-        "Offline",
-        "Still no internet connection. Try again once you're back online."
-      );
-      return;
-    }
-  
-    /** 2  Clear local UI state */
+    /** Clear local UI state */
     reset();
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     setIdentificationComplete(false);
     isRejectedRef.current = false;
   
-    /** 3  Fire the request again */
+    /** Fire the request again */
     try {
       await identify(lastIdentifyPayloadRef.current);
     } catch (err) {
@@ -161,10 +136,7 @@ export default function CameraScreen({
   }, [
     identify,
     reset,
-    lastIdentifyPayloadRef,
-    onRetryConnection,
-    isCheckingServer,
-    isServerConnected,
+    lastIdentifyPayloadRef
   ]);
 
   // Initialize offline capture service
@@ -448,11 +420,6 @@ export default function CameraScreen({
     }
     if (!cameraRef.current || points.length < 3) return;
 
-    // Check connection status before proceeding with capture
-    if (onRetryConnection) {
-      await onRetryConnection();
-    }
-
     // Check if user has reached their daily capture limit (only count accepted captures)
     if (user && user.daily_captures_used >= 10) {
       showAlert({
@@ -460,18 +427,6 @@ export default function CameraScreen({
         message: "You have used all 10 daily captures! They will reset at midnight PST.",
         icon: "timer-outline",
         iconColor: "#EF4444"
-      });
-      cameraCaptureRef.current?.resetLasso();
-      return;
-    }
-
-    // Prevent capture if checking connection
-    if (isCheckingServer) {
-      showAlert({
-        title: "Connecting...",
-        message: "Please wait while we check the server connection.",
-        icon: "wifi-outline",
-        iconColor: "#3B82F6"
       });
       cameraCaptureRef.current?.resetLasso();
       return;
@@ -560,62 +515,7 @@ export default function CameraScreen({
       // Store the captured URI for the animation (use the cropped one)
       setCapturedUri(cropResult.uri);
 
-      // Check if we're offline
-      if (!isServerConnected) {
-        // Save capture locally for later identification
-        try {
-          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri);
-          await OfflineCaptureService.savePendingCapture({
-            imageUri: localImageUri,
-            capturedAt: new Date().toISOString(),
-            location: location ? { 
-              latitude: location.latitude, 
-              longitude: location.longitude 
-            } : undefined,
-            captureBox: {
-              x: minX / scaleX,
-              y: minY / scaleY,
-              width: cropWidth / scaleX,
-              height: cropHeight / scaleY,
-              aspectRatio
-            }
-          });
-
-          // Reset states
-          setIsCapturing(false);
-          setCapturedUri(null);
-          cameraCaptureRef.current?.resetLasso();
-
-          showAlert({
-            title: "Capture Saved Offline",
-            message: "Your capture has been saved! You can identify it later when you're back online.",
-            icon: "cloud-offline-outline",
-            iconColor: "#F59E0B"
-          });
-
-          // Track offline capture
-          if (posthog) {
-            posthog.capture("offline_capture_saved", {
-              method: "lasso"
-            });
-          }
-          return;
-        } catch (error) {
-          console.error("Failed to save offline capture:", error);
-          showAlert({
-            title: "Error",
-            message: "Failed to save capture offline. Please try again.",
-            icon: "alert-circle-outline",
-            iconColor: "#EF4444"
-          });
-          setIsCapturing(false);
-          setCapturedUri(null);
-          cameraCaptureRef.current?.resetLasso();
-          return;
-        }
-      }
-
-      // Online flow - proceed with identification
+      // Always try to identify first
       // Resize and compress the CROPPED image for VLM
       const vlmImage = await processImageForVLM(cropResult.uri, cropResult.width, cropResult.height);
 
@@ -647,7 +547,59 @@ export default function CameraScreen({
         });
       } catch (idError) {
         console.error("VLM Identification API Error:", idError);
-        setVlmCaptureSuccess(false);
+        
+        // If identification fails, save locally for later
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: {
+              x: minX / scaleX,
+              y: minY / scaleY,
+              width: cropWidth / scaleX,
+              height: cropHeight / scaleY,
+              aspectRatio
+            }
+          });
+
+          // Reset states
+          setIsCapturing(false);
+          setCapturedUri(null);
+          cameraCaptureRef.current?.resetLasso();
+
+          showAlert({
+            title: "Saved for Later",
+            message: "We'll identify your capture when you're back online.",
+            icon: "save-outline",
+            iconColor: "#10B981"
+          });
+
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "lasso",
+              reason: "identification_failed"
+            });
+          }
+          return;
+        } catch (saveError) {
+          console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
+          setIsCapturing(false);
+          setCapturedUri(null);
+          cameraCaptureRef.current?.resetLasso();
+          return;
+        }
       }
     } catch (error) {
       console.error("Error capturing selected area:", error);
@@ -657,7 +609,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay]);
+  }, [identify, tier1, tier2, user, location, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay, posthog]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -681,11 +633,6 @@ export default function CameraScreen({
     }
     if (!cameraCaptureRef.current) return;
     
-    // Check connection status before proceeding with capture
-    if (onRetryConnection) {
-      await onRetryConnection();
-    }
-
     // Check if user has reached their daily capture limit (only count accepted captures)
     if (user && user.daily_captures_used >= 10) {
       showAlert({
@@ -693,17 +640,6 @@ export default function CameraScreen({
         message: "You have used all 10 daily captures! They will reset at midnight PST.",
         icon: "timer-outline",
         iconColor: "#EF4444"
-      });
-      return;
-    }
-
-    // Prevent capture if checking connection
-    if (isCheckingServer) {
-      showAlert({
-        title: "Connecting...",
-        message: "Please wait while we check the server connection.",
-        icon: "wifi-outline",
-        iconColor: "#3B82F6"
       });
       return;
     }
@@ -749,54 +685,7 @@ export default function CameraScreen({
       };
       setCaptureBox(captureBoxDimensions);
 
-      // Check if we're offline
-      if (!isServerConnected) {
-        // Save capture locally for later identification
-        try {
-          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri);
-          await OfflineCaptureService.savePendingCapture({
-            imageUri: localImageUri,
-            capturedAt: new Date().toISOString(),
-            location: location ? { 
-              latitude: location.latitude, 
-              longitude: location.longitude 
-            } : undefined,
-            captureBox: captureBoxDimensions
-          });
-
-          // Reset states
-          setIsCapturing(false);
-          setCapturedUri(null);
-
-          showAlert({
-            title: "Capture Saved Offline",
-            message: "Your capture has been saved! You can identify it later when you're back online.",
-            icon: "cloud-offline-outline",
-            iconColor: "#F59E0B"
-          });
-
-          // Track offline capture
-          if (posthog) {
-            posthog.capture("offline_capture_saved", {
-              method: "full_screen"
-            });
-          }
-          return;
-        } catch (error) {
-          console.error("Failed to save offline capture:", error);
-          showAlert({
-            title: "Error",
-            message: "Failed to save capture offline. Please try again.",
-            icon: "alert-circle-outline",
-            iconColor: "#EF4444"
-          });
-          setIsCapturing(false);
-          setCapturedUri(null);
-          return;
-        }
-      }
-
-      // Online flow - proceed with identification
+      // Always try to identify first
       // Resize and compress the FULL image for VLM
       const vlmImage = await processImageForVLM(photo.uri, photo.width, photo.height);
 
@@ -827,7 +716,51 @@ export default function CameraScreen({
         });
       } catch (vlmApiError) {
         console.error("VLM Identification API Error:", vlmApiError);
-        setVlmCaptureSuccess(false);
+        
+        // If identification fails, save locally for later
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: captureBoxDimensions
+          });
+
+          // Reset states
+          setIsCapturing(false);
+          setCapturedUri(null);
+
+          showAlert({
+            title: "Saved for Later",
+            message: "We'll identify your capture when you're back online.",
+            icon: "save-outline",
+            iconColor: "#10B981"
+          });
+
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "full_screen",
+              reason: "identification_failed"
+            });
+          }
+          return;
+        } catch (saveError) {
+          console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
+          setIsCapturing(false);
+          setCapturedUri(null);
+          return;
+        }
       }
     } catch (error) {
       console.error("Error capturing full screen:", error);
@@ -836,7 +769,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay, posthog]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -1110,25 +1043,6 @@ export default function CameraScreen({
         className="flex-1"
         {...panResponder.panHandlers}
       >
-        {/* Server Status Indicator - Styled as a rounded rectangle */}
-        {isCheckingServer && (
-          <View 
-            className="absolute self-center bg-yellow-500 px-4 py-2 rounded-lg shadow-md z-50"
-            style={{ top: insets.top + 8 }} // Position below status bar with a small margin
-          >
-            <Text className="text-white font-lexend-bold text-sm">Checking connection...</Text>
-          </View>
-        )}
-        {!isCheckingServer && !isServerConnected && (
-          <TouchableOpacity 
-            className="absolute self-center bg-red-600 px-4 py-2 rounded-lg shadow-md z-50"
-            style={{ top: insets.top + 8 }} // Position below status bar with a small margin
-            onPress={onRetryConnection}
-          >
-            <Text className="text-white font-lexend-bold text-sm">Offline - Tap to retry</Text>
-          </TouchableOpacity>
-        )}
-
         {/* Camera capture component or placeholder */}
         {permission?.granted ? (
           <CameraCapture

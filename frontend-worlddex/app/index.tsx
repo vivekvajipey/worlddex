@@ -10,7 +10,6 @@ import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
 import CapturesModal from './(screens)/personal-captures';
 import SocialModal from './(screens)/social';
-import { checkServerStatus } from '../src/services/apiService';
 
 // This is the home route component at "/"
 export default function HomeScreen() {
@@ -22,43 +21,11 @@ export default function HomeScreen() {
   const [socialModalVisible, setSocialModalVisible] = useState(false);
   const [capturesButtonClicked, setCapturesButtonClicked] = useState(false);
 
-  // Server connection state
-  const [isServerConnected, setIsServerConnected] = useState(true);
-  const [isCheckingServer, setIsCheckingServer] = useState(true);
-
   // Handler for when the captures button is clicked
   const handleCapturesButtonClick = useCallback(() => {
     setCapturesButtonClicked(true);
     setCapturesModalVisible(true);
   }, []);
-
-  // Function to manually retry the connection
-  const handleRetryConnection = useCallback(async () => {
-    if (session && !authLoading) {
-      setIsCheckingServer(true);
-      const status = await checkServerStatus();
-      setIsServerConnected(status);
-      setIsCheckingServer(false);
-    }
-  }, [session, authLoading]);
-
-  // Effect to check server status on mount or when session changes
-  useEffect(() => {
-    const performHealthCheck = async () => {
-      if (session && !authLoading) {
-        setIsCheckingServer(true);
-        const status = await checkServerStatus();
-        setIsServerConnected(status);
-        setIsCheckingServer(false);
-      }
-    };
-
-    performHealthCheck();
-
-    // Optional: Set up an interval to periodically check server status
-    const intervalId = setInterval(performHealthCheck, 60000); // Check every minute
-    return () => clearInterval(intervalId); // Cleanup interval on unmount
-  }, [session, authLoading]);
 
   // Effect to track the home screen view
   useEffect(() => {
@@ -83,9 +50,6 @@ export default function HomeScreen() {
     <View className="flex-1">
       <CameraScreen 
         capturesButtonClicked={capturesButtonClicked} 
-        isServerConnected={isServerConnected}
-        isCheckingServer={isCheckingServer}
-        onRetryConnection={handleRetryConnection}
       />
       <Profile onOpenFeedback={() => setFeedbackVisible(true)} />
       <FeedbackForm
