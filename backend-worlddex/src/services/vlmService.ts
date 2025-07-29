@@ -59,10 +59,10 @@ export class VlmService {
     }
 
     /**
-     * Check if a label represents a person-related identification
+     * Check if a label contains banned content that should be auto-rejected
      * Uses smart matching to avoid false positives like "Snowman"
      */
-    private isPersonRelated(label: string): boolean {
+    private isBannedLabel(label: string): boolean {
         if (!label) return false;
         
         const labelLower = label.toLowerCase();
