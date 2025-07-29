@@ -380,8 +380,8 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                     const centerY = screenHeight / 2;
                     const topY = centerY - (squareSize / 2);
                     const bottomY = centerY + (squareSize / 2);
-                    const cornerLength = 20; // Length of corner indicator lines
-                    const cornerOpacity = 0.3; // Subtle opacity
+                    const cornerLength = 30; // Length of corner indicator lines
+                    const cornerOpacity = 0.6; // More visible opacity
                     const inset = 4; // Inset from screen edges to prevent cutoff
                     
                     return (
@@ -390,7 +390,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                         <Path
                           d={`M ${inset} ${topY + cornerLength} L ${inset} ${topY} L ${inset + cornerLength} ${topY}`}
                           stroke={backgroundColor}
-                          strokeWidth={2}
+                          strokeWidth={3}
                           strokeOpacity={cornerOpacity}
                           fill="none"
                         />
@@ -399,7 +399,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                         <Path
                           d={`M ${screenWidth - inset - cornerLength} ${topY} L ${screenWidth - inset} ${topY} L ${screenWidth - inset} ${topY + cornerLength}`}
                           stroke={backgroundColor}
-                          strokeWidth={2}
+                          strokeWidth={3}
                           strokeOpacity={cornerOpacity}
                           fill="none"
                         />
@@ -408,7 +408,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                         <Path
                           d={`M ${inset} ${bottomY - cornerLength} L ${inset} ${bottomY} L ${inset + cornerLength} ${bottomY}`}
                           stroke={backgroundColor}
-                          strokeWidth={2}
+                          strokeWidth={3}
                           strokeOpacity={cornerOpacity}
                           fill="none"
                         />
@@ -417,7 +417,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
                         <Path
                           d={`M ${screenWidth - inset - cornerLength} ${bottomY} L ${screenWidth - inset} ${bottomY} L ${screenWidth - inset} ${bottomY - cornerLength}`}
                           stroke={backgroundColor}
-                          strokeWidth={2}
+                          strokeWidth={3}
                           strokeOpacity={cornerOpacity}
                           fill="none"
                         />
