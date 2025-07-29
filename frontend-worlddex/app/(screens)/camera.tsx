@@ -919,8 +919,9 @@ export default function CameraScreen({
           }
           
           // 3. Location prompt (lowest priority, persistent)
-          // Re-check current permission status to avoid stale state
-          if (locationPermission && !locationPermission.granted && locationPermission.status === 'undetermined') {
+          // Get fresh permission status to avoid stale state from earlier modal interactions
+          const currentLocationPermission = await Location.getForegroundPermissionsAsync();
+          if (!currentLocationPermission.granted && currentLocationPermission.status === 'undetermined') {
             console.log("Queueing location prompt (persistent)");
             enqueueModal({
               type: 'locationPrompt',
@@ -930,9 +931,9 @@ export default function CameraScreen({
             });
           } else {
             console.log("Not queueing location prompt:", 
-              !locationPermission ? "No permission object" :
-              locationPermission.granted ? "Already granted" :
-              locationPermission.status !== 'undetermined' ? `Status is ${locationPermission.status}` :
+              !currentLocationPermission ? "No permission object" :
+              currentLocationPermission.granted ? "Already granted" :
+              currentLocationPermission.status !== 'undetermined' ? `Status is ${currentLocationPermission.status}` :
               "Unknown"
             );
           }
