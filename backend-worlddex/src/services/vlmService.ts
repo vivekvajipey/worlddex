@@ -224,7 +224,7 @@ export class VlmService {
             console.log("Processed VLM Results:", { identifiedLabel, category, subcategory, rarityScore });
 
             // Check for person-related identifications and auto-reject
-            if (identifiedLabel && this.isPersonRelated(identifiedLabel)) {
+            if (identifiedLabel && this.isBannedLabel(identifiedLabel)) {
                 console.log(`🚫 Person detected in label: "${identifiedLabel}" - auto-rejecting`);
                 // Return a null label to trigger the breaking animation
                 return { 
