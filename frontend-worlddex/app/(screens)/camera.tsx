@@ -108,7 +108,8 @@ export default function CameraScreen({
   
   
   // Don't show error in polaroid if we're saving offline
-  const polaroidError = (vlmCaptureSuccess === true || savedOffline) ? null : idError;
+  // Don't pass network errors to polaroid - we handle them differently
+  const polaroidError = (vlmCaptureSuccess === true || savedOffline || (idError && idError.message === 'Network request failed')) ? null : idError;
   
   // Use styled alerts
   const { showAlert, AlertComponent } = useStyledAlert();
@@ -146,6 +147,56 @@ export default function CameraScreen({
   useEffect(() => {
     OfflineCaptureService.initialize().catch(console.error);
   }, []);
+  
+  // Handle network errors from useIdentify
+  useEffect(() => {
+    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline) {
+      console.log("[OFFLINE FLOW] Detected network error from useIdentify");
+      
+      // Set states to trigger offline save flow
+      setSavedOffline(true);
+      setVlmCaptureSuccess(null);
+      setIdentificationComplete(false);
+      
+      // Save the capture locally
+      (async () => {
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri);
+          
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: captureBox
+          });
+          
+          console.log("[OFFLINE FLOW] Successfully saved offline capture");
+          
+          // Reset lasso if available
+          cameraCaptureRef.current?.resetLasso();
+          
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "capture",
+              reason: "network_error"
+            });
+          }
+        } catch (saveError) {
+          console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
+        }
+      })();
+    }
+  }, [idError, isCapturing, capturedUri, savedOffline, location, captureBox, posthog, showAlert]);
 
   // Don't automatically request location permission anymore
   // It will be requested contextually after a successful capture
@@ -550,16 +601,17 @@ export default function CameraScreen({
         });
       } catch (idError) {
         console.error("VLM Identification API Error:", idError);
+        console.log("[OFFLINE FLOW] Starting offline save flow");
         
-        // Immediately set states to show saving state in polaroid (before any async operations)
-        // Force all updates in a single batch to ensure re-render
+        // Set states to trigger auto-dismiss in PolaroidDevelopment
+        // captureSuccess=null and isIdentifying=false triggers auto-dismiss after 1.5s
+        console.log("[OFFLINE FLOW] Setting states: savedOffline=true, vlmCaptureSuccess=null");
         setSavedOffline(true);
-        setVlmCaptureSuccess(true); // This will prevent error state
-        setIdentifiedLabel("Saving...");
-        setIdentificationComplete(true);
+        setVlmCaptureSuccess(null); // Keep null to trigger auto-dismiss
+        // Don't set label - PolaroidDevelopment will show "Saving..." automatically
+        setIdentificationComplete(false); // Not complete yet
         
-        // Force a re-render by updating a counter
-        setResetCounter(prev => prev + 1);
+        console.log("[OFFLINE FLOW] States set, expecting PolaroidDevelopment to auto-dismiss")
         
         // Now save locally for later
         try {
@@ -583,11 +635,10 @@ export default function CameraScreen({
           // Reset lasso
           cameraCaptureRef.current?.resetLasso();
 
-          // Auto-dismiss polaroid after brief delay
-          setTimeout(() => {
-            handleDismissPreview();
-          }, 1500); // 1.5 seconds to see "Saving..." message
+          // No need for manual dismiss - PolaroidDevelopment handles it
 
+          console.log("[OFFLINE FLOW] Successfully saved offline capture");
+          
           // Track offline capture
           if (posthog) {
             posthog.capture("offline_capture_saved", {
@@ -750,10 +801,7 @@ export default function CameraScreen({
             captureBox: captureBoxDimensions
           });
 
-          // Auto-dismiss polaroid after brief delay
-          setTimeout(() => {
-            handleDismissPreview();
-          }, 1500); // 1.5 seconds to see "Saving..." message
+          // No need for manual dismiss - PolaroidDevelopment handles it
 
           // Track offline capture
           if (posthog) {
@@ -858,12 +906,15 @@ export default function CameraScreen({
 
     // Handle offline save case (from catch block)
     if (savedOffline && !isRejectedRef.current) {
+      console.log("[OFFLINE FLOW] handleDismissPreview - offline save case detected");
+      
       // Animate polaroid dismissal first
       setIsCapturing(false);
       setCapturedUri(null);
       
       // Show the modal after a brief delay for smooth transition
       setTimeout(() => {
+        console.log("[OFFLINE FLOW] Showing saved for later modal");
         showAlert({
           title: "Saved for Later",
           message: "We'll identify your capture when you're back online.",
@@ -1186,7 +1237,17 @@ export default function CameraScreen({
         )}
 
         {/* Polaroid development and animation overlay */}
-        {isCapturing && capturedUri && (
+        {isCapturing && capturedUri && (() => {
+          console.log("[CAMERA] Rendering PolaroidDevelopment with:", {
+            vlmCaptureSuccess,
+            savedOffline,
+            idLoading,
+            isIdentifying: savedOffline ? false : idLoading,
+            identifiedLabel,
+            identificationComplete
+          });
+          return true;
+        })() && (
           <PolaroidDevelopment
             photoUri={capturedUri}
             captureBox={captureBox}

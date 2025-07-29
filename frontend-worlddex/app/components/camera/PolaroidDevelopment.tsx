@@ -78,14 +78,22 @@ export default function PolaroidDevelopment({
   
   // Detect offline state (when showing "Saving...") and trigger proper flow
   useEffect(() => {
+    console.log("[POLAROID] useEffect - captureSuccess:", captureSuccess, "isIdentifying:", isIdentifying, "error:", error);
+    
     // This state only happens when offline - captureSuccess null and isIdentifying false
-    if (captureSuccess === null && isIdentifying === false && !error) {
-      console.log("Detected offline state in polaroid - will auto-dismiss");
+    // Also handle network errors specifically
+    const isNetworkError = error && error.message === 'Network request failed';
+    if (captureSuccess === null && isIdentifying === false && (!error || isNetworkError)) {
+      console.log("[POLAROID] Detected offline state - setting up auto-dismiss timer");
       // Auto-dismiss after showing "Saving..." briefly
       const timer = setTimeout(() => {
+        console.log("[POLAROID] Auto-dismiss timer fired, calling onDismiss");
         onDismiss();
       }, 1500); // Same timing as our other auto-dismiss
-      return () => clearTimeout(timer);
+      return () => {
+        console.log("[POLAROID] Cleanup - clearing auto-dismiss timer");
+        clearTimeout(timer);
+      };
     }
   }, [captureSuccess, isIdentifying, error, onDismiss]);
 
