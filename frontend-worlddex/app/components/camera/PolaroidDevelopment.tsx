@@ -1086,7 +1086,19 @@ export default function PolaroidDevelopment({
 
       {/* Control buttons - only show after initial animation is done AND identification is complete */}
       {initialAnimationDone && !isRipping && !isMinimizing && identificationComplete && (
-        <View className="absolute bottom-28 left-0 right-0 flex flex-col items-center z-10">
+        <View 
+          style={{
+            position: 'absolute',
+            // Calculate position based on polaroid bottom position
+            // Add 20px spacing below the polaroid frame
+            top: SCREEN_HEIGHT / 2 + targetDimensions.height / 2 + 20,
+            left: 0,
+            right: 0,
+            // Ensure buttons don't go below screen height - 180px (safe area for bottom nav)
+            maxHeight: SCREEN_HEIGHT - (SCREEN_HEIGHT / 2 + targetDimensions.height / 2 + 20) - 180,
+          }}
+          className="flex flex-col items-center z-10"
+        >
           {/* Reject/Accept buttons */}
           <View className="flex flex-row justify-center items-center">
             {/* Reject button */}
@@ -1117,6 +1129,13 @@ export default function PolaroidDevelopment({
 function calculateTargetDimensions(aspectRatio: number) {
   let photoWidth, photoHeight, frameWidth, frameHeight;
 
+  // Calculate safe area constraints
+  // Top safe area (~50px) + polaroid + buttons (~100px) + bottom nav (~180px)
+  const BUTTON_AREA_HEIGHT = 100; // Space for buttons and margins
+  const BOTTOM_NAV_HEIGHT = 180; // Bottom navigation safe area
+  const TOP_SAFE_AREA = 50; // Top status bar area
+  const AVAILABLE_HEIGHT = SCREEN_HEIGHT - TOP_SAFE_AREA - BUTTON_AREA_HEIGHT - BOTTOM_NAV_HEIGHT;
+
   if (aspectRatio >= 1) {
     // Landscape or square image
     photoWidth = POLAROID_MAX_WIDTH - (FRAME_EDGE_PADDING * 2);
@@ -1124,28 +1143,38 @@ function calculateTargetDimensions(aspectRatio: number) {
     frameWidth = POLAROID_MAX_WIDTH;
     frameHeight = photoHeight + FRAME_EDGE_PADDING + FRAME_BOTTOM_PADDING;
 
-    // Check if frame exceeds max height
-    if (frameHeight > MAX_FRAME_HEIGHT) {
-      const scale = MAX_FRAME_HEIGHT / frameHeight;
+    // Check if frame exceeds available height
+    if (frameHeight > AVAILABLE_HEIGHT) {
+      const scale = AVAILABLE_HEIGHT / frameHeight;
       frameWidth *= scale;
-      frameHeight = MAX_FRAME_HEIGHT;
+      frameHeight = AVAILABLE_HEIGHT;
       photoWidth = frameWidth - (FRAME_EDGE_PADDING * 2);
       photoHeight = photoWidth / aspectRatio;
     }
   } else {
     // Portrait image
-    const maxPhotoHeight = MAX_FRAME_HEIGHT - FRAME_EDGE_PADDING - FRAME_BOTTOM_PADDING;
-    photoHeight = maxPhotoHeight;
+    // Start with max available height
+    frameHeight = Math.min(MAX_FRAME_HEIGHT, AVAILABLE_HEIGHT);
+    photoHeight = frameHeight - FRAME_EDGE_PADDING - FRAME_BOTTOM_PADDING;
     photoWidth = photoHeight * aspectRatio;
 
     // Check if photo width exceeds max polaroid width
     if (photoWidth + (FRAME_EDGE_PADDING * 2) > POLAROID_MAX_WIDTH) {
       photoWidth = POLAROID_MAX_WIDTH - (FRAME_EDGE_PADDING * 2);
       photoHeight = photoWidth / aspectRatio;
+      frameHeight = photoHeight + FRAME_EDGE_PADDING + FRAME_BOTTOM_PADDING;
     }
 
     frameWidth = photoWidth + (FRAME_EDGE_PADDING * 2);
-    frameHeight = photoHeight + FRAME_EDGE_PADDING + FRAME_BOTTOM_PADDING;
+    
+    // Final check to ensure it fits in available height
+    if (frameHeight > AVAILABLE_HEIGHT) {
+      const scale = AVAILABLE_HEIGHT / frameHeight;
+      frameWidth *= scale;
+      frameHeight = AVAILABLE_HEIGHT;
+      photoWidth = frameWidth - (FRAME_EDGE_PADDING * 2);
+      photoHeight = photoWidth / aspectRatio;
+    }
   }
 
   return {
