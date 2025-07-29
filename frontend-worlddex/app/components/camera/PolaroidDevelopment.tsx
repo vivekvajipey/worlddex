@@ -1020,7 +1020,7 @@ export default function PolaroidDevelopment({
         </View>
         
         {/* Pending tag - positioned in label area */}
-        {isOfflineSave && initialAnimationDone && (
+        {isOfflineSave && initialAnimationDone && !label && (
           <Animated.View
             style={{
               position: 'absolute',
