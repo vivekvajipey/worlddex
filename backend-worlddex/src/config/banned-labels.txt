@@ -1,0 +1,52 @@
+# Person-related labels that should be auto-rejected
+# One word/phrase per line
+# Lines starting with # are comments and will be ignored
+# Case-insensitive matching
+
+Person
+People
+Man
+Men
+Woman
+Women
+Child
+Children
+Kid
+Kids
+Boy
+Boys
+Girl
+Girls
+Baby
+Babies
+Toddler
+Toddlers
+Adult
+Adults
+Human
+Humans
+Individual
+Individuals
+Guy
+Guys
+Lady
+Ladies
+Teen
+Teenager
+Teenagers
+Senior
+Seniors
+Elderly
+Youth
+Infant
+Infants
+Family
+Families
+Group
+Crowd
+Student
+Students
+Worker
+Workers
+Employee
+Employees

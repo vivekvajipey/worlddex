@@ -1,4 +1,6 @@
 import { OpenAI } from "openai";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { VlmIdentificationRequest, VlmIdentificationResponse } from "../../shared/types/vlm";
 import { calculateCost, logCostDetails } from "../utils/aiCostCalculator";
 // import { sampleRarityTier } from "../utils/rarity";
@@ -23,6 +25,100 @@ const vlmClient = new OpenAI({
 const VLM_MODEL = "gpt-4.1-mini-2025-04-14";
 
 export class VlmService {
+    private bannedLabels: Set<string> = new Set();
+
+    constructor() {
+        this.loadBannedLabels();
+    }
+
+    /**
+     * Load banned labels from the configuration file
+     */
+    private loadBannedLabels(): void {
+        try {
+            const bannedLabelsPath = join(__dirname, '../config/banned-labels.txt');
+            const fileContent = readFileSync(bannedLabelsPath, 'utf-8');
+            
+            // Parse the file, ignoring comments and empty lines
+            const lines = fileContent.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                // Skip empty lines and comments
+                if (trimmed && !trimmed.startsWith('#')) {
+                    // Convert to lowercase for case-insensitive matching
+                    this.bannedLabels.add(trimmed.toLowerCase());
+                }
+            }
+            
+            console.log(`📝 Loaded ${this.bannedLabels.size} banned labels for person detection`);
+        } catch (error) {
+            console.error('❌ Failed to load banned labels file:', error);
+            // Fallback to basic person detection if file can't be loaded
+            this.bannedLabels = new Set(['person', 'people', 'man', 'woman', 'child', 'human']);
+        }
+    }
+
+    /**
+     * Check if a label represents a person-related identification
+     * Uses smart matching to avoid false positives like "Snowman"
+     */
+    private isPersonRelated(label: string): boolean {
+        if (!label) return false;
+        
+        const labelLower = label.toLowerCase();
+        
+        // Direct match check
+        if (this.bannedLabels.has(labelLower)) {
+            return true;
+        }
+        
+        // Check for exact word matches to avoid false positives
+        // Split the label into words and check each word
+        const words = labelLower.split(/[\s-_]+/);
+        for (const word of words) {
+            if (this.bannedLabels.has(word)) {
+                // Additional safeguards for compound words
+                // Allow words like "snowman", "superman", etc. where "man" is part of a compound
+                const isCompoundWord = this.isLikelySafeCompound(labelLower, word);
+                if (!isCompoundWord) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if a word containing a banned term is likely a safe compound word
+     */
+    private isLikelySafeCompound(fullLabel: string, bannedWord: string): boolean {
+        // List of safe prefixes/suffixes that indicate non-human entities
+        const safeCompounds = [
+            'snowman', 'snowmen', 'superman', 'batman', 'spiderman', 'ironman',
+            'doorman', 'mailman', 'postman', 'fireman', 'fisherman', 'businessman',
+            'chairman', 'spokesman', 'craftsman', 'salesman', 'workman', 'yeoman',
+            'gingerbread man', 'stick figure', 'toy', 'doll', 'statue', 'sculpture',
+            'drawing', 'painting', 'cartoon', 'animated', 'character', 'mascot'
+        ];
+        
+        // Check if the full label matches any safe compound
+        for (const safeCompound of safeCompounds) {
+            if (fullLabel.includes(safeCompound)) {
+                return true;
+            }
+        }
+        
+        // Additional context-based checks
+        if (fullLabel.includes('toy') || fullLabel.includes('statue') || 
+            fullLabel.includes('drawing') || fullLabel.includes('painting') ||
+            fullLabel.includes('sculpture') || fullLabel.includes('cartoon')) {
+            return true;
+        }
+        
+        return false;
+    }
+
     // Updated prompt to return structured data
 //     private getIdentificationPrompt(): string {
 //         return `Identify the primary subject in the image. Return a JSON object with:
@@ -126,6 +222,20 @@ export class VlmService {
             }
 
             console.log("Processed VLM Results:", { identifiedLabel, category, subcategory, rarityScore });
+
+            // Check for person-related identifications and auto-reject
+            if (identifiedLabel && this.isPersonRelated(identifiedLabel)) {
+                console.log(`🚫 Person detected in label: "${identifiedLabel}" - auto-rejecting`);
+                // Return a null label to trigger the breaking animation
+                return { 
+                    label: null,
+                    category: "person",
+                    subcategory: "auto_rejected",
+                    rarityScore: 0,
+                    rarityTier: undefined,
+                    xpValue: 0
+                };
+            }
 
             // Calculate and log cost using the utility
             if (response.usage) {
