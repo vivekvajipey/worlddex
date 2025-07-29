@@ -87,8 +87,9 @@ export default function PolaroidDevelopment({
       console.log("[POLAROID] Detected offline state - setting up auto-dismiss timer");
       // Auto-dismiss after showing "Saving..." briefly
       const timer = setTimeout(() => {
-        console.log("[POLAROID] Auto-dismiss timer fired, calling onDismiss");
-        onDismiss();
+        console.log("[POLAROID] Auto-dismiss timer fired, setting completed state");
+        // Set completed state to trigger the minimize animation
+        setIsCompleted(true);
       }, 1500); // Same timing as our other auto-dismiss
       return () => {
         console.log("[POLAROID] Cleanup - clearing auto-dismiss timer");
@@ -96,6 +97,17 @@ export default function PolaroidDevelopment({
       };
     }
   }, [captureSuccess, isIdentifying, error, onDismiss]);
+  
+  // Store reference to trigger animation later
+  const shouldTriggerMinimize = useRef(false);
+  
+  // Trigger minimize animation when completed in offline state
+  useEffect(() => {
+    if (isCompleted && captureSuccess === null && !isMinimizing) {
+      console.log("[POLAROID] Offline save completed, will trigger minimize animation");
+      shouldTriggerMinimize.current = true;
+    }
+  }, [isCompleted, captureSuccess, isMinimizing]);
 
   // Animation values - initialize with their starting values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -384,6 +396,15 @@ export default function PolaroidDevelopment({
       }
     });
   };
+  
+  // Check if we need to trigger minimize animation from offline state
+  useEffect(() => {
+    if (shouldTriggerMinimize.current && !isMinimizing) {
+      console.log("[POLAROID] Executing deferred minimize animation");
+      runMinimizeAnimation();
+      shouldTriggerMinimize.current = false;
+    }
+  }, [isCompleted, isMinimizing]);
 
   // Function to manually reject the capture
   const handleReject = () => {
