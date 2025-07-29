@@ -18,6 +18,7 @@ import { fetchUserCollectionsByUser } from "../../../database/hooks/useUserColle
 import type { Capture, CollectionItem } from "../../../database/types";
 import { IdentifyRequest } from "../../../../shared/types/identify";
 import { usePostHog } from "posthog-react-native";
+import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -42,6 +43,7 @@ export default function PendingCaptureIdentifier({
   onLevelUp
 }: PendingCaptureIdentifierProps) {
   const posthog = usePostHog();
+  const { enqueueModal } = useModalQueue();
   const { processImageForVLM } = useImageProcessor();
   const { identify, tier1, tier2, isLoading: idLoading, error: idError, reset } = useIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
@@ -296,20 +298,30 @@ export default function PendingCaptureIdentifier({
         // Calculate and award coins
         const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
         
-        // Handle level up
-        if (xpData?.levelUp && xpData?.newLevel && onLevelUp) {
-          onLevelUp(xpData.newLevel);
+        // Handle level up - queue modal to show when back on camera
+        if (xpData?.levelUp && xpData?.newLevel) {
+          enqueueModal({
+            type: 'levelUp',
+            data: { newLevel: xpData.newLevel },
+            priority: 100,
+            persistent: false
+          });
         }
         
-        // Handle coin/XP rewards - only show modal if coins were actually awarded
-        if (coinsAwarded > 0 && onCoinReward) {
-          onCoinReward({ 
-            total: coinsAwarded, 
-            rewards,
-            xpTotal: xpData?.total || 0,
-            xpRewards: xpData?.rewards || [],
-            levelUp: xpData?.levelUp,
-            newLevel: xpData?.newLevel
+        // Handle coin/XP rewards - queue modal to show when back on camera
+        if (coinsAwarded > 0 || (xpData?.total && xpData.total > 0)) {
+          enqueueModal({
+            type: 'coinReward',
+            data: {
+              total: coinsAwarded,
+              rewards,
+              xpTotal: xpData?.total || 0,
+              xpRewards: xpData?.rewards || [],
+              levelUp: xpData?.levelUp,
+              newLevel: xpData?.newLevel
+            },
+            priority: 90,
+            persistent: false
           });
         }
         
