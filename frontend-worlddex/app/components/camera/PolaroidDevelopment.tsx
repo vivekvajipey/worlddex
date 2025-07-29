@@ -1019,40 +1019,46 @@ export default function PolaroidDevelopment({
           )}
         </View>
         
-        {/* Pending tag - diagonal banner in corner */}
-        {isOfflineSave && (
+        {/* Pending tag - positioned in label area */}
+        {isOfflineSave && initialAnimationDone && (
           <Animated.View
             style={{
               position: 'absolute',
-              top: -15,
-              right: -15,
-              backgroundColor: '#FF6B6B',
-              paddingHorizontal: 20,
-              paddingVertical: 8,
+              bottom: FRAME_BOTTOM_PADDING / 2 - 20, // Center in label area
+              left: 0,
+              right: 0,
+              alignItems: 'center',
               transform: [
                 { scale: pendingTagScale },
                 { rotate: pendingTagRotate.interpolate({
                   inputRange: [-45, -25],
-                  outputRange: ['-45deg', '-25deg']
+                  outputRange: ['-15deg', '-5deg'] // Less rotation for label area
                 }) }
               ],
+            }}
+          >
+            <View style={{
+              backgroundColor: '#F97316', // orange-500 from Tailwind
+              paddingHorizontal: 24,
+              paddingVertical: 10,
+              borderRadius: 6,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
               elevation: 5,
-              borderRadius: 4,
-            }}
-          >
-            <Text style={{
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: 14,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
             }}>
-              PENDING
-            </Text>
+              <Text style={{
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: 16,
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+                fontFamily: 'Lexend-Bold',
+              }}>
+                PENDING
+              </Text>
+            </View>
           </Animated.View>
         )}
       </Animated.View>
