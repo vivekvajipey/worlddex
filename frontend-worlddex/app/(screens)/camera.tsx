@@ -919,6 +919,7 @@ export default function CameraScreen({
           }
           
           // 3. Location prompt (lowest priority, persistent)
+          // Re-check current permission status to avoid stale state
           if (locationPermission && !locationPermission.granted && locationPermission.status === 'undetermined') {
             console.log("Queueing location prompt (persistent)");
             enqueueModal({
