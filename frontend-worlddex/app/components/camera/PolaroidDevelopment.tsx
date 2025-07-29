@@ -46,6 +46,7 @@ interface PolaroidDevelopmentProps {
   rarityTier?: RarityTier;
   error?: Error | null;
   onRetry?: () => void;
+  isOfflineSave?: boolean;
 }
 
 export default function PolaroidDevelopment({
@@ -60,7 +61,8 @@ export default function PolaroidDevelopment({
   identificationComplete = false, // Default to false for backward compatibility
   rarityTier = "common", // Default to common if no rarity tier is provided
   error = null,
-  onRetry
+  onRetry,
+  isOfflineSave = false
 }: PolaroidDevelopmentProps) {
   // Add logging for props
   console.log("==== POLAROID DEVELOPMENT PROPS ====");
@@ -115,6 +117,10 @@ export default function PolaroidDevelopment({
   const expandAnim = useRef(new Animated.Value(0)).current;
   const blurIntensityRef = useRef({ value: INITIAL_BLUR });
   const blurIntensity = useRef(new Animated.Value(INITIAL_BLUR)).current;
+  
+  // Pending tag animation values
+  const pendingTagScale = useRef(new Animated.Value(0)).current;
+  const pendingTagRotate = useRef(new Animated.Value(-45)).current;
 
   // Loading animation values
   const dot1Opacity = useRef(new Animated.Value(0.3)).current;
@@ -752,6 +758,26 @@ export default function PolaroidDevelopment({
       </Animated.View>
     );
   };
+  
+  // Animate pending tag when offline save
+  useEffect(() => {
+    if (isOfflineSave && initialAnimationDone) {
+      // Animate the pending tag in with a spring effect
+      Animated.parallel([
+        Animated.spring(pendingTagScale, {
+          toValue: 1,
+          tension: 40,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pendingTagRotate, {
+          toValue: -25, // Final rotation angle
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+  }, [isOfflineSave, initialAnimationDone]);
 
   return (
     <View className="absolute inset-0">
@@ -984,7 +1010,7 @@ export default function PolaroidDevelopment({
               </View>
             </View>
           )}
-          {!(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && (
+          {!(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && !isOfflineSave && (
             <View className="px-4 items-center justify-center">
               <Text className="font-shadows text-black text-center text-2xl">
                 Saving...
@@ -992,6 +1018,43 @@ export default function PolaroidDevelopment({
             </View>
           )}
         </View>
+        
+        {/* Pending tag - diagonal banner in corner */}
+        {isOfflineSave && (
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: -15,
+              right: -15,
+              backgroundColor: '#FF6B6B',
+              paddingHorizontal: 20,
+              paddingVertical: 8,
+              transform: [
+                { scale: pendingTagScale },
+                { rotate: pendingTagRotate.interpolate({
+                  inputRange: [-45, -25],
+                  outputRange: ['-45deg', '-25deg']
+                }) }
+              ],
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+              borderRadius: 4,
+            }}
+          >
+            <Text style={{
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: 14,
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+            }}>
+              PENDING
+            </Text>
+          </Animated.View>
+        )}
       </Animated.View>
 
       {/* Left half of torn polaroid */}

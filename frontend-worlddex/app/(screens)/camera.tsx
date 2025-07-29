@@ -782,7 +782,7 @@ export default function CameraScreen({
         // Immediately set states to show saving state in polaroid (before any async operations)
         setSavedOffline(true);
         setVlmCaptureSuccess(true); // This will prevent error state
-        setIdentifiedLabel("Saving...");
+        setIdentifiedLabel(""); // Keep label empty for offline saves
         setIdentificationComplete(true);
         
         // Force a re-render by updating a counter
@@ -1264,6 +1264,7 @@ export default function CameraScreen({
             rarityTier={rarityTier}
             error={polaroidError}
             onRetry={handleRetryIdentification}
+            isOfflineSave={savedOffline}
           />
         )}
 
