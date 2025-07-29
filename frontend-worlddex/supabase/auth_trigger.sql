@@ -5,11 +5,22 @@
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  random_username TEXT;
 BEGIN
+  -- Get a random available username from the pool
+  random_username := public.get_random_available_username();
+  
+  -- If no username available from pool, generate a fallback
+  IF random_username IS NULL THEN
+    random_username := 'Player' || substring(new.id::text, 1, 8);
+  END IF;
+  
   INSERT INTO public.users (
     id,
     email,
     username,
+    display_name,
     created_at,
     reputation_points,
     capture_tier,
@@ -22,7 +33,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(new.raw_user_meta_data->>'name', new.email), -- Use name from Google or fallback to email
+    random_username,
+    new.raw_user_meta_data->>'name', -- Store OAuth name separately
     now(),
     0,
     1,

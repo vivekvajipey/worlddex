@@ -273,7 +273,11 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
 
 
   const userInitial = refreshedUser?.username?.[0]?.toUpperCase() || session?.user?.email?.[0]?.toUpperCase() || "?";
-  const userEmail = session?.user?.email || "User";
+  
+  // Handle Apple's Hide My Email feature
+  const rawEmail = session?.user?.email || "User";
+  const isApplePrivateRelay = rawEmail.includes('@privaterelay.appleid.com');
+  const userEmail = isApplePrivateRelay ? 'Private Email' : rawEmail;
   const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
 
   // Use S3 profile pic or fall back to OAuth provider pic

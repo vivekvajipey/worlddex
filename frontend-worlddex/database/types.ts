@@ -2,6 +2,7 @@ export type User = {
   id: string;
   email: string;
   username: string;
+  display_name?: string;
   profile_picture_key?: string;
   created_at?: string;
   reputation_points: number;
