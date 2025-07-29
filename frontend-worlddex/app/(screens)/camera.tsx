@@ -229,6 +229,14 @@ export default function CameraScreen({
       }, 8000); // 8 seconds of inactivity
     }
   }, [idleTimerActive, showTutorialOverlay]);
+  
+  // Disable idle timer after first capture
+  const disableIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    setIdleTimerActive(false);
+  }, []);
 
   // PanResponder for idle detection - recreated when dependencies change
   const panResponder = useMemo(
@@ -420,8 +428,13 @@ export default function CameraScreen({
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
-    // Reset idle timer on capture attempt
-    resetIdleTimer();
+    // Disable idle timer permanently once they've initiated a capture
+    disableIdleTimer();
+    
+    // Hide tutorial for new users when they make their first capture attempt
+    if (showTutorialOverlay && !user?.is_onboarded) {
+      setShowTutorialOverlay(false);
+    }
     
     // Check camera permission first
     if (!permission?.granted) {
@@ -644,12 +657,17 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, resetIdleTimer]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
-    // Reset idle timer on capture attempt
-    resetIdleTimer();
+    // Disable idle timer permanently once they've initiated a capture
+    disableIdleTimer();
+    
+    // Hide tutorial for new users when they make their first capture attempt
+    if (showTutorialOverlay && !user?.is_onboarded) {
+      setShowTutorialOverlay(false);
+    }
     
     // Check camera permission first
     if (!permission?.granted) {
@@ -818,7 +836,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, resetIdleTimer]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {

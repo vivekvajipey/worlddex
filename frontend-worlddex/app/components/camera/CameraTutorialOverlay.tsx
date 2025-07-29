@@ -50,7 +50,7 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
                 withTiming(0.8, { duration: 80, easing: Easing.out(Easing.ease) }),
                 withTiming(1, { duration: 80, easing: Easing.in(Easing.ease) }),
                 // Longer pause before repeat
-                withDelay(1500, withTiming(1, { duration: 0 }))
+                withDelay(2500, withTiming(1, { duration: 0 }))
               )
             )
           ),
@@ -59,18 +59,19 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
         )
       );
       
-      // Ripple effect synchronized with taps
+      // Ripple effect commented out for now
+      /*
       rippleScale.value = withDelay(
         600,
         withRepeat(
           withSequence(
-            // First tap ripple
+            // First tap ripple - starts immediately with tap
             withSequence(
               withTiming(1, { duration: 0 }),
               withTiming(2, { duration: 300 })
             ),
-            // Reset and second tap ripple
-            withDelay(140,
+            // Reset and second tap ripple - delay matches when second tap starts (160ms + 60ms pause = 220ms)
+            withDelay(220,
               withSequence(
                 withTiming(1, { duration: 0 }),
                 withTiming(2, { duration: 300 }),
@@ -92,8 +93,8 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
               withTiming(0.3, { duration: 0 }),
               withTiming(0, { duration: 300 })
             ),
-            // Second tap ripple fade
-            withDelay(140,
+            // Second tap ripple fade - same delay as scale
+            withDelay(220,
               withSequence(
                 withTiming(0.3, { duration: 0 }),
                 withTiming(0, { duration: 300 }),
@@ -105,13 +106,14 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
           false
         )
       );
+      */
     } else {
       // Cancel animations when not visible
       cancelAnimation(tapScale);
       cancelAnimation(tapOpacity);
       cancelAnimation(textOpacity);
-      cancelAnimation(rippleScale);
-      cancelAnimation(rippleOpacity);
+      // cancelAnimation(rippleScale);
+      // cancelAnimation(rippleOpacity);
       
       tapScale.value = 1;
       tapOpacity.value = 0;
@@ -122,8 +124,8 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       cancelAnimation(tapScale);
       cancelAnimation(tapOpacity);
       cancelAnimation(textOpacity);
-      cancelAnimation(rippleScale);
-      cancelAnimation(rippleOpacity);
+      // cancelAnimation(rippleScale);
+      // cancelAnimation(rippleOpacity);
     };
   }, [visible]);
 
@@ -168,13 +170,15 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
 
       {/* Double tap animation */}
       <View className="relative">
-        {/* Ripple effect behind finger */}
+        {/* Ripple effect commented out */}
+        {/*
         <Animated.View 
           style={[rippleAnimatedStyle, { position: 'absolute' }]}
           className="w-24 h-24 items-center justify-center"
         >
           <View className="w-24 h-24 rounded-full bg-white/30" />
         </Animated.View>
+        */}
         
         {/* Finger tap */}
         <Animated.View style={tapAnimatedStyle}>
@@ -185,7 +189,7 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
         </Animated.View>
       </View>
 
-      {/* Skip hint */}
+      {/* Skip hint
       <Animated.View 
         style={textAnimatedStyle}
         className="absolute bottom-32"
@@ -193,7 +197,7 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
         <Text className="text-white/60 text-sm font-lexend-regular">
           Try it now!
         </Text>
-      </Animated.View>
+      </Animated.View> */}
     </View>
   );
 };

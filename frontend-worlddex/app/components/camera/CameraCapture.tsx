@@ -463,7 +463,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
           <>
             {/* Flip camera button - top right */}
             <TouchableOpacity
-              className="absolute top-20 right-6 bg-background rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-10"
+              className="absolute top-20 right-6 bg-background rounded-full w-12 h-12 flex items-center justify-center shadow-lg z-10"
               onPress={toggleCameraFacing}
               activeOpacity={0.7}
             >
@@ -472,7 +472,7 @@ const CameraCapture = forwardRef<CameraCaptureHandle, CameraCaptureProps>(
 
             {/* Flashlight/torch toggle button - top right, below flip button */}
             <TouchableOpacity
-              className="absolute top-40 right-6 bg-background rounded-full w-14 h-14 flex items-center justify-center shadow-lg z-10"
+              className="absolute top-40 right-6 bg-background rounded-full w-12 h-12 flex items-center justify-center shadow-lg z-10"
               onPress={toggleTorch}
               activeOpacity={0.7}
             >
