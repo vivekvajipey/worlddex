@@ -10,6 +10,9 @@ export type User = {
   daily_captures_used: number;
   capture_streak: number;
   is_onboarded?: boolean;
+  onboarding_circle_shown?: boolean;
+  onboarding_swipe_shown?: boolean;
+  total_captures?: number;
   default_public_captures?: boolean;
   balance: number;
   xp: number;

@@ -11,7 +11,7 @@ import { useStyledAlert } from "../../src/hooks/useStyledAlert";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
-import CameraOnboarding from "../components/camera/CameraOnboarding";
+import CameraTutorialOverlay from "../components/camera/CameraTutorialOverlay";
 import { CameraPlaceholder } from "../components/camera/CameraPlaceholder";
 import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
@@ -86,17 +86,14 @@ export default function CameraScreen({
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
-  const [resetCounter, setResetCounter] = useState(0);
   // Add state to track whether identification is fully complete (both tiers if applicable)
   const [identificationComplete, setIdentificationComplete] = useState(false);
   
   // Derive permission resolution status - no useState needed
   const permissionsResolved = permission?.status != null;
 
-  // Onboarding state
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasCapture, setHasCapture] = useState(false);
-  const [showingCaptureReview, setShowingCaptureReview] = useState(false);
+  // Tutorial overlay state
+  const [showTutorialOverlay, setShowTutorialOverlay] = useState(false);
 
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
@@ -201,12 +198,39 @@ export default function CameraScreen({
     getLocation();
   }, [locationPermission?.granted]);
 
-  // Check if onboarding should be shown
+  // Show tutorial overlay for new users
   useEffect(() => {
     if (user && !user.is_onboarded) {
-      setShowOnboarding(true);
+      setShowTutorialOverlay(true);
     }
   }, [user]);
+
+  // Check for progressive onboarding modals (circle and swipe)
+  useEffect(() => {
+    if (!user) return;
+
+    // Show circle tutorial modal after 3 captures
+    if (user.total_captures && user.total_captures >= 3 && !user.onboarding_circle_shown) {
+      enqueueModal({
+        type: 'onboardingCircle',
+        data: {},
+        priority: 80,
+        persistent: false
+      });
+      updateUser({ onboarding_circle_shown: true }).catch(console.error);
+    }
+
+    // Show swipe tutorial modal after 10 captures
+    if (user.total_captures && user.total_captures >= 10 && !user.onboarding_swipe_shown) {
+      enqueueModal({
+        type: 'onboardingSwipe',
+        data: {},
+        priority: 80,
+        persistent: false
+      });
+      updateUser({ onboarding_swipe_shown: true }).catch(console.error);
+    }
+  }, [user, enqueueModal, updateUser]);
 
   useEffect(() => {
     if (idError) {
@@ -215,24 +239,6 @@ export default function CameraScreen({
     }
   }, [idError]);
 
-  // Handle onboarding completion
-  const handleOnboardingComplete = useCallback(async () => {
-    setShowOnboarding(false);
-
-    // Update user record if we have a session
-    if (session?.user?.id) {
-      try {
-        await updateUser({ is_onboarded: true });
-      } catch (error) {
-        console.error("Failed to update onboarding status:", error);
-      }
-    }
-  }, [session, updateUser]);
-
-  // Handle onboarding reset
-  const handleOnboardingReset = useCallback(() => {
-    setResetCounter(prev => prev + 1);
-  }, []);
 
   // Handle location prompt responses
   const handleEnableLocation = useCallback(async () => {
@@ -273,14 +279,6 @@ export default function CameraScreen({
   }, []);
 
 
-  // Track when a capture review is shown or dismissed
-  useEffect(() => {
-    setShowingCaptureReview(isCapturing && capturedUri !== null);
-    // Set hasCapture to true when capture is initiated
-    if (isCapturing && capturedUri !== null) {
-      setHasCapture(true);
-    }
-  }, [isCapturing, capturedUri]);
 
   // Safety check: if camera is stuck in capturing state without a captured image
   useEffect(() => {
@@ -864,8 +862,15 @@ export default function CameraScreen({
             }
           }
 
-          // Increment daily_captures_used for the user
+          // Increment daily_captures_used and total_captures for the user
           await incrementUserField(session.user.id, "daily_captures_used", 1);
+          await incrementUserField(session.user.id, "total_captures", 1);
+          
+          // Hide tutorial overlay and mark as onboarded on first capture
+          if (showTutorialOverlay) {
+            setShowTutorialOverlay(false);
+            await updateUser({ is_onboarded: true });
+          }
 
           // Calculate and award XP
           let xpData = null;
@@ -1060,6 +1065,16 @@ export default function CameraScreen({
           />
         )}
 
+        {/* Tutorial overlay - shows on top of camera but under other UI */}
+        {permission?.granted && showTutorialOverlay && (
+          <CameraTutorialOverlay 
+            visible={showTutorialOverlay}
+            onComplete={() => {
+              // Tutorial completed when user makes their first capture
+            }}
+          />
+        )}
+
         {/* Polaroid development and animation overlay */}
         {isCapturing && capturedUri && (
           <PolaroidDevelopment
@@ -1081,18 +1096,6 @@ export default function CameraScreen({
           />
         )}
 
-        {/* Camera onboarding overlay */}
-        {showOnboarding && (
-          <CameraOnboarding
-            key={resetCounter}
-            onComplete={handleOnboardingComplete}
-            capturesButtonClicked={capturesButtonClicked}
-            hasCapture={hasCapture}
-            showingCaptureReview={showingCaptureReview}
-            captureLabel={identifiedLabel ?? ""}
-            onRequestReset={handleOnboardingReset}
-          />
-        )}
 
         {/* Styled Alert Component */}
         <AlertComponent />

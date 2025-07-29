@@ -58,7 +58,8 @@ export const incrementUserField = async (
     | "capture_tier"
     | "daily_captures_used"
     | "capture_streak"
-    | "balance",
+    | "balance"
+    | "total_captures",
   value: number = 1
 ): Promise<boolean> => {
   // First get the current value

@@ -2,6 +2,8 @@ import React from 'react';
 import CoinRewardModal from '../CoinRewardModal';
 import LevelUpModal from '../LevelUpModal';
 import { LocationPrompt } from '../permissions/LocationPrompt';
+import OnboardingCircleModal from '../OnboardingCircleModal';
+import OnboardingSwipeModal from '../OnboardingSwipeModal';
 import { useModalQueue } from '../../../src/contexts/ModalQueueContext';
 import { usePathname, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -76,6 +78,22 @@ export const ModalCoordinator: React.FC = () => {
           itemName={currentModal.data.itemName}
           onEnableLocation={handleLocationEnable}
           onSkip={handleLocationSkip}
+        />
+      );
+
+    case 'onboardingCircle':
+      return (
+        <OnboardingCircleModal
+          visible={true}
+          onClose={dismissCurrentModal}
+        />
+      );
+
+    case 'onboardingSwipe':
+      return (
+        <OnboardingSwipeModal
+          visible={true}
+          onClose={dismissCurrentModal}
         />
       );
 
