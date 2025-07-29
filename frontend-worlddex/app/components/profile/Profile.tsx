@@ -222,7 +222,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account",
-      "This action cannot be undone. All your data, including your captures, will be permanently deleted.",
+      "Your account will be deactivated and hidden from the app. You'll have 30 days to restore it by signing in again. After 30 days, your account and all data will be permanently deleted.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -232,7 +232,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
             if (!userId) return;
 
             try {
-              // Delete all user data using the utility function
+              // Soft delete user data
               await deleteAllUserData(userId);
 
               // Sign out user

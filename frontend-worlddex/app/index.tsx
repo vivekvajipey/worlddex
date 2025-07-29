@@ -8,6 +8,7 @@ import CameraScreen from './(screens)/camera';
 import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useAccountRecovery } from '../src/hooks/useAccountRecovery';
 import CapturesModal from './(screens)/personal-captures';
 import SocialModal from './(screens)/social';
 
@@ -20,6 +21,9 @@ export default function HomeScreen() {
   const [capturesModalVisible, setCapturesModalVisible] = useState(false);
   const [socialModalVisible, setSocialModalVisible] = useState(false);
   const [capturesButtonClicked, setCapturesButtonClicked] = useState(false);
+
+  // Check for account recovery on sign in
+  useAccountRecovery();
 
   // Handler for when the captures button is clicked
   const handleCapturesButtonClick = useCallback(() => {
