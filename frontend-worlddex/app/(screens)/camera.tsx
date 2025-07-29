@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
-import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert, Linking } from "react-native";
+import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert, Linking, PanResponder } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
@@ -94,6 +94,9 @@ export default function CameraScreen({
 
   // Tutorial overlay state
   const [showTutorialOverlay, setShowTutorialOverlay] = useState(false);
+  const [idleTimerActive, setIdleTimerActive] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tutorialShownCountRef = useRef(0);
 
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
@@ -202,8 +205,57 @@ export default function CameraScreen({
   useEffect(() => {
     if (user && !user.is_onboarded) {
       setShowTutorialOverlay(true);
+      setIdleTimerActive(false); // Don't use idle timer for first-time users
+    } else if (user && user.is_onboarded) {
+      // For returning users, activate idle detection
+      setIdleTimerActive(true);
     }
   }, [user]);
+
+  // Idle detection for tutorial nudge
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    
+    // Only set new timer if:
+    // 1. Idle timer is active (user is onboarded)
+    // 2. Tutorial isn't currently showing
+    // 3. Haven't shown it too many times
+    if (idleTimerActive && !showTutorialOverlay && tutorialShownCountRef.current < 3) {
+      idleTimerRef.current = setTimeout(() => {
+        setShowTutorialOverlay(true);
+        tutorialShownCountRef.current += 1;
+      }, 8000); // 8 seconds of inactivity
+    }
+  }, [idleTimerActive, showTutorialOverlay]);
+
+  // PanResponder for idle detection - recreated when dependencies change
+  const panResponder = useMemo(
+    () => PanResponder.create({
+      onStartShouldSetPanResponderCapture: () => {
+        // This fires on any touch interaction
+        if (showTutorialOverlay && user?.is_onboarded) {
+          // Hide tutorial on any interaction if user is already onboarded
+          setShowTutorialOverlay(false);
+        }
+        resetIdleTimer();
+        return false; // Important: Don't capture the touch, let it pass through
+      },
+    }),
+    [showTutorialOverlay, user, resetIdleTimer]
+  );
+
+  // Set up initial timer when component mounts or dependencies change
+  useEffect(() => {
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, [resetIdleTimer]);
 
   // Check for progressive onboarding modals (circle and swipe)
   useEffect(() => {
@@ -368,6 +420,9 @@ export default function CameraScreen({
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
+    // Reset idle timer on capture attempt
+    resetIdleTimer();
+    
     // Check camera permission first
     if (!permission?.granted) {
       // This shouldn't happen with placeholder, but just in case
@@ -589,10 +644,13 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission]);
+  }, [identify, tier1, tier2, user, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, resetIdleTimer]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
+    // Reset idle timer on capture attempt
+    resetIdleTimer();
+    
     // Check camera permission first
     if (!permission?.granted) {
       // This shouldn't happen with placeholder, but just in case
@@ -760,7 +818,7 @@ export default function CameraScreen({
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, isCheckingServer, isServerConnected, onRetryConnection, reset, permission, requestPermission, resetIdleTimer]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -1030,7 +1088,10 @@ export default function CameraScreen({
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1">
+      <View 
+        className="flex-1"
+        {...panResponder.panHandlers}
+      >
         {/* Server Status Indicator - Styled as a rounded rectangle */}
         {isCheckingServer && (
           <View 

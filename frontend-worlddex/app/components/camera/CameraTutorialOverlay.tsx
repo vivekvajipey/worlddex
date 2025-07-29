@@ -24,6 +24,8 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
   const tapScale = useSharedValue(1);
   const tapOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
+  const rippleScale = useSharedValue(1);
+  const rippleOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
@@ -33,26 +35,73 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       // Start tap animation after a brief delay
       tapOpacity.value = withDelay(300, withTiming(1, { duration: 300 }));
       
-      // Double tap animation loop
+      // Double tap animation loop - much faster, more realistic
       tapScale.value = withDelay(
         600,
         withRepeat(
           withSequence(
-            // First tap
-            withTiming(1.4, { duration: 200, easing: Easing.out(Easing.ease) }),
-            withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) }),
-            // Pause between taps
-            withDelay(200, 
+            // First tap with ripple
+            withTiming(0.8, { duration: 80, easing: Easing.out(Easing.ease) }),
+            withTiming(1, { duration: 80, easing: Easing.in(Easing.ease) }),
+            // Very short pause between taps (realistic double-tap)
+            withDelay(60, 
               // Second tap
               withSequence(
-                withTiming(1.4, { duration: 200, easing: Easing.out(Easing.ease) }),
-                withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) }),
+                withTiming(0.8, { duration: 80, easing: Easing.out(Easing.ease) }),
+                withTiming(1, { duration: 80, easing: Easing.in(Easing.ease) }),
                 // Longer pause before repeat
-                withDelay(1000, withTiming(1, { duration: 0 }))
+                withDelay(1500, withTiming(1, { duration: 0 }))
               )
             )
           ),
           -1, // Repeat indefinitely
+          false
+        )
+      );
+      
+      // Ripple effect synchronized with taps
+      rippleScale.value = withDelay(
+        600,
+        withRepeat(
+          withSequence(
+            // First tap ripple
+            withSequence(
+              withTiming(1, { duration: 0 }),
+              withTiming(2, { duration: 300 })
+            ),
+            // Reset and second tap ripple
+            withDelay(140,
+              withSequence(
+                withTiming(1, { duration: 0 }),
+                withTiming(2, { duration: 300 }),
+                withDelay(1200, withTiming(1, { duration: 0 }))
+              )
+            )
+          ),
+          -1,
+          false
+        )
+      );
+      
+      rippleOpacity.value = withDelay(
+        600,
+        withRepeat(
+          withSequence(
+            // First tap ripple fade
+            withSequence(
+              withTiming(0.3, { duration: 0 }),
+              withTiming(0, { duration: 300 })
+            ),
+            // Second tap ripple fade
+            withDelay(140,
+              withSequence(
+                withTiming(0.3, { duration: 0 }),
+                withTiming(0, { duration: 300 }),
+                withDelay(1200, withTiming(0, { duration: 0 }))
+              )
+            )
+          ),
+          -1,
           false
         )
       );
@@ -61,6 +110,8 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       cancelAnimation(tapScale);
       cancelAnimation(tapOpacity);
       cancelAnimation(textOpacity);
+      cancelAnimation(rippleScale);
+      cancelAnimation(rippleOpacity);
       
       tapScale.value = 1;
       tapOpacity.value = 0;
@@ -71,6 +122,8 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       cancelAnimation(tapScale);
       cancelAnimation(tapOpacity);
       cancelAnimation(textOpacity);
+      cancelAnimation(rippleScale);
+      cancelAnimation(rippleOpacity);
     };
   }, [visible]);
 
@@ -81,6 +134,11 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
 
   const textAnimatedStyle = useAnimatedStyle(() => ({
     opacity: textOpacity.value
+  }));
+
+  const rippleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: rippleScale.value }],
+    opacity: rippleOpacity.value
   }));
 
   if (!visible) return null;
@@ -109,25 +167,23 @@ export const CameraTutorialOverlay: React.FC<CameraTutorialOverlayProps> = ({
       </Animated.View>
 
       {/* Double tap animation */}
-      <Animated.View style={tapAnimatedStyle}>
-        <View className="relative">
-          {/* Tap ripple effect */}
-          <View className="absolute inset-0 items-center justify-center">
-            <View className="w-24 h-24 rounded-full bg-white/20" />
-          </View>
-          
-          {/* Hand icon */}
+      <View className="relative">
+        {/* Ripple effect behind finger */}
+        <Animated.View 
+          style={[rippleAnimatedStyle, { position: 'absolute' }]}
+          className="w-24 h-24 items-center justify-center"
+        >
+          <View className="w-24 h-24 rounded-full bg-white/30" />
+        </Animated.View>
+        
+        {/* Finger tap */}
+        <Animated.View style={tapAnimatedStyle}>
           <View className="w-24 h-24 items-center justify-center">
-            <Ionicons name="hand-left" size={48} color="white" />
-            
-            {/* Double tap indicators */}
-            <View className="absolute bottom-4 right-4 flex-row">
-              <View className="w-3 h-3 rounded-full bg-white mr-1" />
-              <View className="w-3 h-3 rounded-full bg-white" />
-            </View>
+            {/* Finger representation - simple circle */}
+            <View className="w-10 h-10 rounded-full bg-white shadow-lg" />
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
 
       {/* Skip hint */}
       <Animated.View 
