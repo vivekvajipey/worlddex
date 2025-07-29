@@ -738,7 +738,7 @@ export default function PolaroidDevelopment({
             height: targetDimensions.height,
             left: captureBox.x + (captureBox.width / 2) - (targetDimensions.width / 2),
             top: captureBox.y + (captureBox.height / 2) - (targetDimensions.height / 2),
-            overflow: 'visible',
+            overflow: 'hidden',
             zIndex: 2, // Ensure polaroid content is above gradient border
           },
           rarityTier !== 'legendary' ? getRarityStyles() : {},
