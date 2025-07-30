@@ -197,20 +197,22 @@ export default function CameraScreen({}: CameraScreenProps) {
           <CameraTutorialOverlay visible={showTutorialOverlay} onComplete={() => setShowTutorialOverlay(false)} />
         )}
         
-        <PolaroidDevelopment
-          photoUri={capturedUri || ''}
-          captureBox={captureBox}
-          onDismiss={dismissPolaroid}
-          label={identifiedLabel || undefined}
-          captureSuccess={vlmCaptureSuccess}
-          onRetry={handleRetryIdentification}
-          error={polaroidError}
-          identificationComplete={identificationComplete}
-          isOfflineSave={savedOffline}
-          onSetPublic={(value) => dispatch(actions.setPublicStatus(value))}
-          isIdentifying={idLoading}
-          rarityTier={rarityTier}
-        />
+        {capturedUri && (
+          <PolaroidDevelopment
+            photoUri={capturedUri}
+            captureBox={captureBox}
+            onDismiss={dismissPolaroid}
+            label={identifiedLabel || undefined}
+            captureSuccess={vlmCaptureSuccess}
+            onRetry={handleRetryIdentification}
+            error={polaroidError}
+            identificationComplete={identificationComplete}
+            isOfflineSave={savedOffline}
+            onSetPublic={(value) => dispatch(actions.setPublicStatus(value))}
+            isIdentifying={idLoading}
+            rarityTier={rarityTier}
+          />
+        )}
       </View>
     </GestureHandlerRootView>
     </CameraPermissionHandler>
