@@ -86,8 +86,28 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   if (!capture) return null;
 
   const handleDelete = () => {
-    if (onDelete && capture) {
-      onDelete(capture);
+    if (capture) {
+      showAlert({
+        title: "Delete Capture",
+        message: "Are you sure you want to delete this capture? This action can not be undone.",
+        icon: "trash-outline",
+        iconColor: "#EF4444",
+        buttons: [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => {
+              if (onDelete) {
+                onDelete(capture);
+              }
+            }
+          }
+        ]
+      });
     }
   };
 

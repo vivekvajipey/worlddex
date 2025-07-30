@@ -565,7 +565,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
             visible={captureModalVisible}
             capture={selectedCapture}
             onClose={handleCaptureDetailsClose}
-            onDelete={handleDeleteCapture}
+            onDelete={performDeleteCapture}
             onUpdate={handleUpdateCapture}
           />
         )}
