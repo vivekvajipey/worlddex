@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
-  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +19,7 @@ import { createCollection, updateCollection } from "../../../database/hooks/useC
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import AddCollectionItemsScreen from "./AddCollectionItemsScreen";
 import { usePostHog } from "posthog-react-native";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface CreateCollectionScreenProps {
   visible: boolean;
@@ -41,6 +41,7 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
   const userId = session?.user?.id;
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const posthog = usePostHog();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   const isProcessing = isLoading || isUploading;
 
@@ -66,7 +67,12 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert("Permission Required", "You need to grant permission to access your photos");
+      showAlert({
+        title: "Permission Required",
+        message: "You need to grant permission to access your photos",
+        icon: "images-outline",
+        iconColor: "#F59E0B"
+      });
       return;
     }
 
@@ -96,7 +102,12 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
 
   const handleCreateCollection = async () => {
     if (!name) {
-      Alert.alert("Missing Information", "Please fill all required fields");
+      showAlert({
+        title: "Missing Information",
+        message: "Please fill all required fields",
+        icon: "information-circle-outline",
+        iconColor: "#F59E0B"
+      });
       return;
     }
 
@@ -138,7 +149,12 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
               }
             } catch (error) {
               console.error('Failed to upload cover image:', error);
-              Alert.alert("Error", "Failed to upload cover image, but collection was created");
+              showAlert({
+                title: "Error",
+                message: "Failed to upload cover image, but collection was created",
+                icon: "alert-circle-outline",
+                iconColor: "#EF4444"
+              });
             }
           }
 
@@ -147,7 +163,12 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
         }
       } catch (error) {
         console.error('Failed to create collection:', error);
-        Alert.alert("Error", "An error occurred while creating the collection");
+        showAlert({
+          title: "Error",
+          message: "An error occurred while creating the collection",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -270,6 +291,9 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
             )}
           </TouchableOpacity>
         </ScrollView>
+        
+        {/* Styled Alert Component */}
+        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

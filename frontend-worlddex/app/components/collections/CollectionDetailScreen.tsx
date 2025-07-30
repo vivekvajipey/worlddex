@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, Alert, Switch } from "react-native";
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, SafeAreaView, Modal, Switch } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useCollectionItems, fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
@@ -15,6 +15,7 @@ import { deleteCollection } from "../../../database/hooks/useCollections";
 import { calculateAndAwardCoins } from "../../../database/hooks/useCoins";
 import CoinRewardModal from "../CoinRewardModal";
 import { usePostHog } from "posthog-react-native";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface CollectionDetailScreenProps {
   collectionId: string;
@@ -46,6 +47,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [coinReward, setCoinReward] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
 
   const posthog = usePostHog();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   useEffect(() => {
     // Track screen view when component mounts
@@ -205,10 +207,12 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const handleDeleteCollection = () => {
     if (!collection) return;
 
-    Alert.alert(
-      "Delete Collection",
-      `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`,
-      [
+    showAlert({
+      title: "Delete Collection",
+      message: `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`,
+      icon: "trash-outline",
+      iconColor: "#EF4444",
+      buttons: [
         {
           text: "Cancel",
           style: "cancel"
@@ -224,18 +228,28 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
                 // Close the detail screen and navigate back
                 onClose();
               } else {
-                Alert.alert("Error", "Failed to delete the collection. Please try again.");
+                showAlert({
+                  title: "Error",
+                  message: "Failed to delete the collection. Please try again.",
+                  icon: "alert-circle-outline",
+                  iconColor: "#EF4444"
+                });
               }
             } catch (error) {
               console.error("Error deleting collection:", error);
-              Alert.alert("Error", "An unexpected error occurred.");
+              showAlert({
+                title: "Error",
+                message: "An unexpected error occurred.",
+                icon: "alert-circle-outline",
+                iconColor: "#EF4444"
+              });
             } finally {
               setDeleteLoading(false);
             }
           }
         }
       ]
-    );
+    });
   };
 
   const isLoading = loading || itemsLoading || collectionLoading;
@@ -418,6 +432,9 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
         total={coinReward.total}
         rewards={coinReward.rewards}
       />
+      
+      {/* Styled Alert Component */}
+      <AlertComponent />
     </Modal>
   );
 };

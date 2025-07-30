@@ -7,13 +7,13 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  Alert
+  ScrollView
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as MailComposer from 'expo-mail-composer';
 import Colors from "../../../src/utils/colors";
 import { usePostHog } from "posthog-react-native";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface FeedbackFormProps {
   visible: boolean;
@@ -22,6 +22,7 @@ interface FeedbackFormProps {
 
 export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
   const posthog = usePostHog();
+  const { showAlert, AlertComponent } = useStyledAlert();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -35,7 +36,12 @@ export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
 
   const handleSendFeedback = async () => {
     if (!message.trim()) {
-      Alert.alert("Error", "Please enter a message");
+      showAlert({
+        title: "Error",
+        message: "Please enter a message",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
       return;
     }
 
@@ -46,10 +52,12 @@ export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
       const isAvailable = await MailComposer.isAvailableAsync();
 
       if (!isAvailable) {
-        Alert.alert(
-          "Error",
-          "Mail service is not available on this device. Please use a different method to send feedback."
-        );
+        showAlert({
+          title: "Error",
+          message: "Mail service is not available on this device. Please use a different method to send feedback.",
+          icon: "mail-outline",
+          iconColor: "#EF4444"
+        });
         return;
       }
 
@@ -69,7 +77,12 @@ export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
       }
     } catch (error) {
       console.error("Error sending feedback:", error);
-      Alert.alert("Error", "Failed to send feedback. Please try again later.");
+      showAlert({
+        title: "Error",
+        message: "Failed to send feedback. Please try again later.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     } finally {
       setIsSending(false);
     }
@@ -140,6 +153,9 @@ export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
             </TouchableOpacity>
           </View>
         </View>
+        
+        {/* Styled Alert Component */}
+        <AlertComponent />
       </KeyboardAvoidingView>
     </Modal>
   );
