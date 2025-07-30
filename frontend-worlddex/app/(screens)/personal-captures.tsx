@@ -28,8 +28,6 @@ import CollectionsTab from "../components/collections/CollectionsTab";
 import CaptureDetailsModal from "../components/captures/CaptureDetailsModal";
 import CollectionDetailScreen from "../components/collections/CollectionDetailScreen";
 import PendingCaptureIdentifier from "../components/captures/PendingCaptureIdentifier";
-import CoinRewardModal from "../components/CoinRewardModal";
-import LevelUpModal from "../components/LevelUpModal";
 
 const { width } = Dimensions.get("window");
 
@@ -50,18 +48,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const [pendingCaptures, setPendingCaptures] = useState<CombinedCapture[]>([]);
   const [selectedPendingCapture, setSelectedPendingCapture] = useState<any>(null);
   
-  // Coin/Level reward states
-  const [coinModalVisible, setCoinModalVisible] = useState(false);
-  const [coinModalData, setCoinModalData] = useState<{ 
-    total: number; 
-    rewards: { amount: number; reason: string }[];
-    xpTotal?: number;
-    xpRewards?: { amount: number; reason: string }[];
-    levelUp?: boolean;
-    newLevel?: number;
-  }>({ total: 0, rewards: [] });
-  const [levelUpModalVisible, setLevelUpModalVisible] = useState(false);
-  const [levelUpData, setLevelUpData] = useState<{ newLevel: number }>({ newLevel: 1 });
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -669,47 +655,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
               // Just refresh data
               refreshData();
             }}
-            onCoinReward={(data) => {
-              console.log("=== onCoinReward called ===", data);
-              setCoinModalData(data);
-              // Only show modal if there are actually coins or XP to show
-              if ((data.total > 0 || data.xpTotal > 0) && !data.levelUp) {
-                console.log("Setting coinModalVisible to true");
-                setCoinModalVisible(true);
-              } else if (data.levelUp) {
-                // Show coin modal after level up modal closes
-                console.log("Level up detected, delaying coin modal");
-                setTimeout(() => setCoinModalVisible(true), 500);
-              }
-            }}
-            onLevelUp={(newLevel) => {
-              setLevelUpData({ newLevel });
-              setLevelUpModalVisible(true);
-            }}
           />
         )}
         
-        {/* Reward Modals */}
-        <CoinRewardModal
-          visible={coinModalVisible}
-          onClose={() => {
-            setCoinModalVisible(false);
-          }}
-          total={coinModalData.total}
-          rewards={coinModalData.rewards}
-          xpTotal={coinModalData.xpTotal}
-          xpRewards={coinModalData.xpRewards}
-          levelUp={coinModalData.levelUp}
-          newLevel={coinModalData.newLevel}
-        />
-        
-        <LevelUpModal
-          visible={levelUpModalVisible}
-          onClose={() => {
-            setLevelUpModalVisible(false);
-          }}
-          newLevel={levelUpData.newLevel}
-        />
         
       </SafeAreaView>
     </Modal>

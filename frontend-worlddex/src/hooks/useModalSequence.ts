@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import * as Location from 'expo-location';
-import { useModalQueue } from './useModalQueue';
+import { useModalQueue } from '../contexts/ModalQueueContext';
 import { calculateAndAwardCoins } from '../../database/hooks/useCoins';
 import { calculateAndAwardCaptureXP } from '../../database/hooks/useXP';
 

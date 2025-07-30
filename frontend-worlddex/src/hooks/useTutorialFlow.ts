@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { PanResponder } from 'react-native';
 import { useUser, updateUserField } from '../../database/hooks/useUsers';
-import { useModalQueue } from './useModalQueue';
+import { useModalQueue } from '../contexts/ModalQueueContext';
 
 interface UseTutorialFlowReturn {
   showTutorialOverlay: boolean;
