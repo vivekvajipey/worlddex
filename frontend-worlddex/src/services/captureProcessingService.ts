@@ -1,4 +1,5 @@
 import type { Capture, CollectionItem } from '../../database/types';
+import { OfflineCaptureService } from './offlineCaptureService';
 
 // Define interfaces for the service
 export interface ProcessCaptureParams {
@@ -22,6 +23,9 @@ export interface ProcessCaptureParams {
     checkUserHasCollectionItem: (userId: string, itemId: string) => Promise<boolean>;
     createUserCollectionItem: (data: any) => Promise<any>;
   };
+  
+  // Optional: Save as temporary capture for immediate display
+  enableTemporaryCapture?: boolean;
   
   // Optional callbacks
   onProgress?: (status: string) => void;
@@ -98,10 +102,31 @@ export async function processCaptureAfterIdentification(
     rarityScore,
     tier1Response,
     services,
+    enableTemporaryCapture,
     onProgress
   } = params;
   
+  let temporaryCaptureId: string | null = null;
+  
   try {
+    // 0. Save as temporary capture for immediate display (if enabled)
+    if (enableTemporaryCapture) {
+      try {
+        onProgress?.('Saving temporary capture...');
+        const tempCapture = await OfflineCaptureService.saveTemporaryCapture({
+          imageUri: capturedUri,
+          capturedAt: new Date().toISOString(),
+          label: identifiedLabel,
+          rarityTier,
+          rarityScore
+        }, userId);
+        temporaryCaptureId = tempCapture.id;
+        console.log("[CAPTURE] Temporary capture saved for immediate display:", temporaryCaptureId);
+      } catch (tempError) {
+        // Non-critical - continue without temporary capture
+        console.error("[CAPTURE] Failed to save temporary capture:", tempError);
+      }
+    }
     // 1. Create or increment item
     onProgress?.('Creating item record...');
     console.log("[CAPTURE] Getting/creating item for label:", identifiedLabel);
@@ -158,6 +183,17 @@ export async function processCaptureAfterIdentification(
     console.log('[CAPTURE] Incremented capture count');
 
     console.log("[CAPTURE] Successfully saved to database");
+    
+    // 6. Clean up temporary capture after successful DB save
+    if (temporaryCaptureId) {
+      try {
+        await OfflineCaptureService.deletePendingCapture(temporaryCaptureId, userId);
+        console.log("[CAPTURE] Cleaned up temporary capture:", temporaryCaptureId);
+      } catch (cleanupError) {
+        // Non-critical - temporary will be cleaned up by WorldDex
+        console.error("[CAPTURE] Failed to clean up temporary capture:", cleanupError);
+      }
+    }
     
     return {
       success: true,

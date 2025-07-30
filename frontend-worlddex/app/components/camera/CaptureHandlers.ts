@@ -359,6 +359,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
           rarityTier,
           rarityScore,
           tier1Response,
+          enableTemporaryCapture: true, // Enable for immediate display in WorldDex
           services: {
             incrementOrCreateItem,
             uploadCapturePhoto,

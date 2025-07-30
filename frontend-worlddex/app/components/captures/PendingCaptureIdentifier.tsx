@@ -190,7 +190,7 @@ export default function PendingCaptureIdentifier({
         message: error instanceof Error && error.message === 'Network request failed' 
           ? "No internet connection. Please check your connection and try again."
           : "Failed to identify capture. Please try again.",
-        icon: "wifi-off",
+        icon: "wifi-outline",
         iconColor: "#EF4444"
       });
     }
@@ -237,10 +237,13 @@ export default function PendingCaptureIdentifier({
           rarityTier,
           rarityScore,
           tier1Response: tier1,
+          enableTemporaryCapture: true, // Enable for immediate display in WorldDex
           services: {
             incrementOrCreateItem,
             uploadCapturePhoto,
-            incrementCaptureCount: () => incrementUserField(session.user.id, "daily_captures_used", 1),
+            incrementCaptureCount: async () => {
+              await incrementUserField(session.user.id, "daily_captures_used", 1);
+            },
             fetchUserCollectionsByUser,
             fetchCollectionItems,
             checkUserHasCollectionItem,
