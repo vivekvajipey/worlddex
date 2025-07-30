@@ -56,3 +56,49 @@ jest.mock('react-native-gesture-handler', () => {
 
 // Setup global mocks
 global.__reanimatedWorkletInit = jest.fn();
+
+// Mock react-native-css-interop
+jest.mock('react-native-css-interop/src/runtime/native/appearance-observables', () => ({
+  getColorScheme: jest.fn(() => 'light'),
+}));
+
+// Mock Appearance from react-native
+jest.mock('react-native/Libraries/Utilities/Appearance', () => ({
+  getColorScheme: jest.fn(() => 'light'),
+  addChangeListener: jest.fn(),
+  removeChangeListener: jest.fn(),
+}));
+
+// Set __DEV__ for tests
+global.__DEV__ = true;
+
+// Mock requestAnimationFrame
+global.requestAnimationFrame = (callback) => {
+  setTimeout(callback, 0);
+};
+
+// Mock expo-camera
+jest.mock('expo-camera', () => ({
+  CameraView: 'CameraView',
+  useCameraPermissions: jest.fn(() => [
+    { status: 'granted', granted: true },
+    jest.fn()
+  ]),
+  CameraPermissionStatus: {
+    GRANTED: 'granted',
+    DENIED: 'denied',
+    UNDETERMINED: 'undetermined'
+  }
+}));
+
+// Mock expo-location  
+jest.mock('expo-location', () => ({
+  getCurrentPositionAsync: jest.fn(),
+  useForegroundPermissions: jest.fn(() => [
+    { status: 'granted', granted: true },
+    jest.fn()
+  ]),
+  Accuracy: {
+    High: 5
+  }
+}));
