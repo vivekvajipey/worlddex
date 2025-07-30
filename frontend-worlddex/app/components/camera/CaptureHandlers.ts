@@ -166,7 +166,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       lastIdentifyPayloadRef.current = identifyPayload;
 
       // Make the identification request
-      console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
+      // console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
       await identify(identifyPayload);
       
       await incrementCaptureCount();

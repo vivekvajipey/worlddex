@@ -397,7 +397,6 @@ export default function CameraScreen({}: CameraScreenProps) {
         // Identification complete will be set by tier1/tier2 effects
       } else {
         // Make the identification request
-        console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
         await identify(identifyPayload);
         
         // Increment capture count after successful capture  
@@ -756,17 +755,17 @@ export default function CameraScreen({}: CameraScreenProps) {
   ]);
 
   // Debug logging for state changes
-  useEffect(() => {
-    console.log("=== CAMERA STATE UPDATE ===");
-    console.log("isCapturing:", isCapturing);
-    console.log("capturedUri:", capturedUri);
-    console.log("vlmCaptureSuccess:", vlmCaptureSuccess);
-    console.log("identifiedLabel:", identifiedLabel);
-    console.log("identificationComplete:", identificationComplete);
-    console.log("idLoading:", idLoading);
-    console.log("idError:", idError);
-    console.log("savedOffline:", savedOffline);
-  }, [isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete, idLoading, idError, savedOffline]);
+  // useEffect(() => {
+  //   console.log("=== CAMERA STATE UPDATE ===");
+  //   console.log("isCapturing:", isCapturing);
+  //   console.log("capturedUri:", capturedUri);
+  //   console.log("vlmCaptureSuccess:", vlmCaptureSuccess);
+  //   console.log("identifiedLabel:", identifiedLabel);
+  //   console.log("identificationComplete:", identificationComplete);
+  //   console.log("idLoading:", idLoading);
+  //   console.log("idError:", idError);
+  //   console.log("savedOffline:", savedOffline);
+  // }, [isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete, idLoading, idError, savedOffline]);
 
   if (!permissionsResolved) {
     return <CameraPlaceholder onRequestPermission={requestPermission} />;

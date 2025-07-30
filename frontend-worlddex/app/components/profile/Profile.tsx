@@ -287,7 +287,8 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const rawEmail = session?.user?.email || "User";
   const isApplePrivateRelay = rawEmail.includes('@privaterelay.appleid.com');
   const userEmail = isApplePrivateRelay ? 'Private Email' : rawEmail;
-  const dailyCapturesRemaining = refreshedUser ? Math.max(0, 10 - (refreshedUser.daily_captures_used || 0)) : 0;
+  const dailyCapturesRemaining = refreshedUser ? 
+    (refreshedUser.is_admin ? "∞" : Math.max(0, 10 - (refreshedUser.daily_captures_used || 0))) : 0;
 
   // Use S3 profile pic or fall back to OAuth provider pic
   const oauthProfilePic = session?.user?.user_metadata?.avatar_url;
@@ -401,6 +402,11 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
                           <Text className="text-text-primary font-lexend-bold text-xl mr-2">
                             {refreshedUser?.username || "Set Username"}
                           </Text>
+                          {refreshedUser?.is_admin && (
+                            <View className="bg-primary/20 px-2 py-0.5 rounded-full mr-2">
+                              <Text className="text-primary text-xs font-lexend-bold">ADMIN</Text>
+                            </View>
+                          )}
                           <TouchableOpacity onPress={() => setIsEditing(true)}>
                             <Ionicons name="pencil" size={16} color={Colors.text.secondary} />
                           </TouchableOpacity>

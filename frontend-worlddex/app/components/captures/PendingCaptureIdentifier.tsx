@@ -335,7 +335,7 @@ export default function PendingCaptureIdentifier({
             type: 'levelUp',
             data: { newLevel: xpData.newLevel },
             priority: 100,
-            persistent: false
+            persistent: true
           });
         }
         
@@ -352,7 +352,7 @@ export default function PendingCaptureIdentifier({
               newLevel: xpData?.newLevel
             },
             priority: 90,
-            persistent: false
+            persistent: true
           });
         }
         
