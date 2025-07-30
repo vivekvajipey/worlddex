@@ -317,7 +317,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         setIsRefreshing(false);
       }
     }
-  }, [userId, fetchPendingCaptures, pendingCaptures]);
+  }, [userId, fetchPendingCaptures]);
 
   // Reset to WorldDex tab and refresh data when modal opens
   useEffect(() => {
