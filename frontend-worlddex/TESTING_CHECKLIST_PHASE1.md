@@ -2,38 +2,38 @@
 
 ## Prerequisites
 - [x] Ensure the app builds successfully
-- [ ] Have a test account ready
-- [ ] Clear app data/cache for fresh testing
-- [ ] Enable airplane mode for offline testing
+- [x] Have a test account ready
+- [x] Clear app data/cache for fresh testing
+- [x] Enable airplane mode for offline testing
 
 ## Core Camera Functionality
 
 ### Lasso Capture
-- [ ] Open camera screen
-- [ ] Draw lasso around an object
-- [ ] Verify photo is captured
-- [ ] Verify polaroid animation plays
-- [ ] Verify object is identified correctly
-- [ ] Verify capture is saved to database
+- [x] Open camera screen
+- [x] Draw lasso around an object
+- [x] Verify photo is captured
+- [x] Verify polaroid animation plays
+- [x] Verify object is identified correctly
+- [x] Verify capture is saved to database
 
 ### Full Screen Capture
-- [ ] Open camera screen
-- [ ] Long press for full screen capture
-- [ ] Verify photo is captured
-- [ ] Verify polaroid animation plays
-- [ ] Verify scene is identified
-- [ ] Verify capture is saved to database
+- [x] Open camera screen
+- [x] Double tap for full screen capture
+- [x] Verify photo is captured
+- [x] Verify polaroid animation plays
+- [x] Verify scene is identified
+- [x] Verify capture is saved to database
 
 ## Capture Limits Testing
 
 ### Daily Limit Enforcement
-- [ ] Create test user with 9 captures
-- [ ] Take 1 capture successfully
-- [ ] Attempt 11th capture
-- [ ] Verify "Daily Limit Reached" alert shows
-- [ ] Verify alert message mentions "10 daily captures"
-- [ ] Verify alert mentions "midnight PST"
-- [ ] Verify capture is blocked
+- [x] Create test user with 9 captures
+- [x] Take 1 capture successfully
+- [x] Attempt 11th capture
+- [x] Verify "Daily Limit Reached" alert shows
+- [x] Verify alert message mentions "10 daily captures"
+- [x] Verify alert mentions "midnight PST"
+- [x] Verify capture is blocked
 
 ### Limit Reset
 - [ ] Wait until midnight PST (or manually update DB)
