@@ -173,7 +173,9 @@ export default function PendingCaptureIdentifier({
         gps: gpsData,
       };
       
-      // Start identification
+      // Start identification - don't wait for processing to complete before showing polaroid
+      setIsProcessing(false); // Show polaroid immediately for optimistic UI
+      
       await identify({
         base64Data: vlmImage.base64,
         contentType: "image/jpeg",
@@ -183,6 +185,7 @@ export default function PendingCaptureIdentifier({
     } catch (error) {
       console.error("Failed to start identification:", error);
       setVlmCaptureSuccess(false);
+      setIdentificationComplete(true);
       if (session?.user?.id) {
         await OfflineCaptureService.updateCaptureStatus(
           pendingCapture.id, 
@@ -191,8 +194,15 @@ export default function PendingCaptureIdentifier({
           error instanceof Error ? error.message : 'Unknown error'
         );
       }
-    } finally {
-      setIsProcessing(false);
+      // Show alert for network or processing errors
+      showAlert({
+        title: "Identification Failed",
+        message: error instanceof Error && error.message === 'Network request failed' 
+          ? "No internet connection. Please check your connection and try again."
+          : "Failed to identify capture. Please try again.",
+        icon: "wifi-off",
+        iconColor: "#EF4444"
+      });
     }
   };
 

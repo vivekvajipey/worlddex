@@ -86,5 +86,6 @@ export const NotificationPermissionManager: React.FC = () => {
         onAllow={handleAllow}
         onDeny={handleDeny}
       />
+    </>
   );
 };
