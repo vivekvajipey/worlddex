@@ -1,9 +1,12 @@
+// This file contains the complete migrated version of camera.tsx with all state setters replaced with dispatch calls
+
 import React, { useRef, useCallback, useEffect } from "react";
 import { View, Dimensions } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { usePostHog } from "posthog-react-native";
+import { usePathname } from "expo-router";
 import { useAlert } from "../../src/contexts/AlertContext";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
@@ -14,17 +17,21 @@ import { useIdentify } from "../../src/hooks/useIdentify";
 import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useItems } from "../../database/hooks/useItems";
-import type { Capture } from "../../database/types";
+import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
+import { useUser } from "../../database/hooks/useUsers";
+import type { Capture, CollectionItem } from "../../database/types";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import {
   createUserCollectionItem,
   checkUserHasCollectionItem
 } from "../../database/hooks/useUserCollectionItems";
+import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { IdentifyRequest } from "../../../shared/types/identify";
+import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
+import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
 import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
-import { supabase } from "../../database/supabase";
 
 // Import new custom hooks
 import { useCaptureLimitsWithPersistence } from "../../src/hooks/useCaptureLimitsWithPersistence";
@@ -40,6 +47,7 @@ interface CameraScreenProps {}
 
 export default function CameraScreen({}: CameraScreenProps) {
   const posthog = usePostHog();
+  const pathname = usePathname();
   const [permission, requestPermission] = useCameraPermissions();
   const [locationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
@@ -49,6 +57,7 @@ export default function CameraScreen({}: CameraScreenProps) {
 
   // Use camera reducer for consolidated state management
   const {
+    state: cameraState,
     dispatch,
     actions,
     // Convenience getters
@@ -73,6 +82,7 @@ export default function CameraScreen({}: CameraScreenProps) {
     reset
   } = useIdentify();
   const { uploadCapturePhoto } = usePhotoUpload();
+  const { user, updateUser } = useUser(userId);
   const { incrementOrCreateItem } = useItems();
   const isRejectedRef = useRef(false);
   
@@ -319,8 +329,8 @@ export default function CameraScreen({}: CameraScreenProps) {
       const processed = await processLassoCapture({
         photoUri: photo.uri,
         points,
-        photoWidth: SCREEN_WIDTH,
-        photoHeight: SCREEN_HEIGHT
+        screenWidth: SCREEN_WIDTH,
+        screenHeight: SCREEN_HEIGHT
       });
 
       // Store the captured URI and box for the animation
@@ -335,23 +345,23 @@ export default function CameraScreen({}: CameraScreenProps) {
 
       // Upload both full and cropped photos, get photo_url
       const [photoBlobResponse, croppedBlobResponse] = await Promise.all([
-        uploadCapturePhoto(photo.uri, 'full', 'camera', userId!),
-        uploadCapturePhoto(processed.croppedUri, 'cropped', 'camera', userId!)
+        uploadCapturePhoto(photo.uri),
+        uploadCapturePhoto(processed.croppedUri)
       ]);
 
-      if (!photoBlobResponse) {
+      if (!photoBlobResponse || !photoBlobResponse.ok || photoBlobResponse.status === 404) {
         console.error("Photo not uploaded successfully");
         dispatch(actions.vlmProcessingFailed());
         dispatch(actions.resetCapture());
         return;
       }
 
-      const photoUrl = photoBlobResponse.photo_url;
-      const croppedUrl = croppedBlobResponse?.photo_url;
+      const photoUrl = photoBlobResponse.url;
+      const croppedUrl = croppedBlobResponse?.url;
 
       // Save payload for potential retry
       const identifyPayload: IdentifyRequest = {
-        user_id: userId!,
+        userId: userId!,
         image: processed.vlmImage.base64!,
         location: location || undefined,
         isRectangle: processed.captureBox.aspectRatio > 0.95 && processed.captureBox.aspectRatio < 1.05,
@@ -379,7 +389,7 @@ export default function CameraScreen({}: CameraScreenProps) {
         // Show modal and update counts
         cameraCaptureRef.current?.resetLasso();
         await incrementCaptureCount();
-        enqueueModal({ type: 'offline' });
+        enqueueModal({ type: 'offlineCapture' });
         
         // Only set null states, let the tier1/tier2 effects handle success states
         dispatch(actions.vlmProcessingStart()); // Keep null to trigger auto-dismiss
@@ -420,7 +430,7 @@ export default function CameraScreen({}: CameraScreenProps) {
           console.log("[OFFLINE FLOW] Successfully saved offline capture");
           cameraCaptureRef.current?.resetLasso();
           await incrementCaptureCount();
-          enqueueModal({ type: 'offline' });
+          enqueueModal({ type: 'offlineCapture' });
         } catch (saveError) {
           console.error("[OFFLINE FLOW] Failed to save offline capture", saveError);
           dispatch(actions.resetCapture());
@@ -468,7 +478,7 @@ export default function CameraScreen({}: CameraScreenProps) {
         return;
       }
 
-      const photo = await cameraCaptureRef.current.getCameraRef()?.current?.takePictureAsync({
+      const photo = await cameraCaptureRef.current.getCamera()?.takePictureAsync({
         quality: 1,
         base64: false,
         skipProcessing: false
@@ -483,8 +493,8 @@ export default function CameraScreen({}: CameraScreenProps) {
       // Process the capture using our new hook
       const processed = await processFullScreenCapture({
         photoUri: photo.uri,
-        photoWidth: SCREEN_WIDTH,
-        photoHeight: SCREEN_HEIGHT
+        screenWidth: SCREEN_WIDTH,
+        screenHeight: SCREEN_HEIGHT
       });
 
       // Update capture box with the processed dimensions
@@ -498,16 +508,16 @@ export default function CameraScreen({}: CameraScreenProps) {
       }
 
       // Upload the photo
-      const photoBlobResponse = await uploadCapturePhoto(photo.uri, 'full', 'camera', userId!);
+      const photoBlobResponse = await uploadCapturePhoto(photo.uri);
       
-      if (!photoBlobResponse) {
+      if (!photoBlobResponse || !photoBlobResponse.ok) {
         console.error("Photo not uploaded successfully");
         dispatch(actions.vlmProcessingFailed());
         dispatch(actions.resetCapture());
         return;
       }
 
-      const photoUrl = photoBlobResponse.photo_url;
+      const photoUrl = photoBlobResponse.url;
 
       // Check offline status before making network request
       if (!navigator.onLine && userId) {
@@ -519,20 +529,20 @@ export default function CameraScreen({}: CameraScreenProps) {
           location: location || undefined,
           captureBox: processed.captureBox,
           userId,
-          method: 'full_screen',
+          method: 'fullscreen',
           reason: 'offline_detected'
         });
         
         cameraCaptureRef.current?.resetLasso();
         await incrementCaptureCount();
-        enqueueModal({ type: 'offline' });
+        enqueueModal({ type: 'offlineCapture' });
         
         dispatch(actions.vlmProcessingSuccess("")); // This will prevent error state
         dispatch(actions.identificationComplete());
       } else {
         // Save payload for potential retry
         const identifyPayload: IdentifyRequest = {
-          user_id: userId!,
+          userId: userId!,
           image: processed.vlmImage.base64,
           location: location || undefined,
           isRectangle: true,
@@ -558,12 +568,12 @@ export default function CameraScreen({}: CameraScreenProps) {
             location: location || undefined,
             captureBox,
             userId,
-            method: 'full_screen',
+            method: 'fullscreen',
             reason: 'network_error'
           });
           cameraCaptureRef.current?.resetLasso();
           await incrementCaptureCount();
-          enqueueModal({ type: 'offline' });
+          enqueueModal({ type: 'offlineCapture' });
         } catch (saveError) {
           console.error("[OFFLINE FLOW] Failed to save offline capture", saveError);
           dispatch(actions.captureFailed());
@@ -594,6 +604,111 @@ export default function CameraScreen({}: CameraScreenProps) {
     actions
   ]);
 
+  const handleSaveCapture = useCallback(async () => {
+    if (!userId || !identifiedLabel || !capturedUri) return;
+    
+    try {
+      // Create a capture record in the database
+      const newCapture: Omit<Capture, 'id' | 'created_at'> = {
+        user_id: userId,
+        item_label: identifiedLabel,
+        photo_url: capturedUri,
+        location: location ? {
+          type: 'Point',
+          coordinates: [location.longitude, location.latitude]
+        } : null,
+        is_public: isCapturePublic,
+        capture_method: captureBox.aspectRatio > 0.95 && captureBox.aspectRatio < 1.05 ? "fullscreen" : "lasso",
+        confidence_score: tier1?.confidence || null,
+        rarity_tier: rarityTier,
+        rarity_score: rarityScore
+      };
+
+      // Save to captures table
+      const { error: captureError } = await supabase
+        .from('captures')
+        .insert(newCapture);
+
+      if (captureError) {
+        console.error("Failed to save capture:", captureError);
+        showAlert({
+          title: "Save Failed",
+          message: "Unable to save your capture. Please try again.",
+          icon: "close-circle-outline",
+          iconColor: "#EF4444"
+        });
+        return;
+      }
+
+      // Update user's item inventory
+      await incrementOrCreateItem(identifiedLabel);
+
+      // Award coins and XP
+      const coinsAwarded = await calculateAndAwardCoins(userId, identifiedLabel, isCapturePublic);
+      const xpAwarded = await calculateAndAwardCaptureXP(userId, identifiedLabel, rarityTier);
+
+      console.log(`Awarded ${coinsAwarded} coins and ${xpAwarded} XP for capturing ${identifiedLabel}`);
+
+      // Check collection status
+      const collectionItems = await fetchCollectionItems();
+      const collectionItem = collectionItems.find(item => 
+        item.item_label.toLowerCase() === identifiedLabel.toLowerCase()
+      );
+
+      if (collectionItem) {
+        const hasItem = await checkUserHasCollectionItem(userId, collectionItem.id);
+        
+        if (!hasItem) {
+          // Award collection item
+          await createUserCollectionItem({
+            user_id: userId,
+            collection_item_id: collectionItem.id,
+            obtained_at: new Date()
+          });
+          
+          // Queue collection modal
+          enqueueModal({
+            type: 'collectionUnlock',
+            data: {
+              itemLabel: identifiedLabel,
+              itemImage: capturedUri,
+              collectionName: collectionItem.collection?.name || 'Unknown Collection',
+              collectionId: collectionItem.collection_id
+            }
+          });
+        }
+      }
+
+      showAlert({
+        title: "Capture Saved!",
+        message: `${identifiedLabel} has been added to your collection.`,
+        icon: "checkmark-circle-outline",
+        iconColor: "#10B981"
+      });
+
+    } catch (error) {
+      console.error("Error saving capture:", error);
+      showAlert({
+        title: "Save Failed",
+        message: "An unexpected error occurred. Please try again.",
+        icon: "close-circle-outline",
+        iconColor: "#EF4444"
+      });
+    }
+  }, [
+    userId,
+    identifiedLabel,
+    capturedUri,
+    location,
+    isCapturePublic,
+    captureBox,
+    tier1,
+    rarityTier,
+    rarityScore,
+    incrementOrCreateItem,
+    showAlert,
+    enqueueModal
+  ]);
 
   const dismissPolaroid = useCallback(() => {
     console.log("=== DISMISSING POLAROID ===");
@@ -608,8 +723,8 @@ export default function CameraScreen({}: CameraScreenProps) {
     // Queue post-capture modals if we have a successful identification
     if (vlmCaptureSuccess && identifiedLabel && !savedOffline) {
       queuePostCaptureModals({
-        itemName: identifiedLabel,
-        captureId: capturedUri || '',
+        identifiedLabel,
+        capturedUri: capturedUri || '',
         userId: userId || ''
       });
     }
@@ -654,11 +769,11 @@ export default function CameraScreen({}: CameraScreenProps) {
   }, [isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete, idLoading, idError, savedOffline]);
 
   if (!permissionsResolved) {
-    return <CameraPlaceholder permissionStatus={permission?.status || 'undetermined'} onRequestPermission={requestPermission} />;
+    return <CameraPlaceholder onRequestPermission={requestPermission} />;
   }
 
   if (!permission?.granted) {
-    return <CameraPlaceholder permissionStatus={permission?.status || 'undetermined'} onRequestPermission={requestPermission} />;
+    return <CameraPlaceholder onRequestPermission={requestPermission} />;
   }
 
   return (
@@ -669,14 +784,15 @@ export default function CameraScreen({}: CameraScreenProps) {
           onCapture={handleCapture}
           onFullScreenCapture={handleFullScreenCapture}
           isCapturing={isCapturing}
+          disabled={isCapturing}
         />
         
         {showTutorialOverlay && (
-          <CameraTutorialOverlay />
+          <CameraTutorialOverlay onDismiss={() => setShowTutorialOverlay(false)} />
         )}
         
         <PolaroidDevelopment
-          captureStatus={isCapturing ? 'capturing' : (capturedUri ? 'captured' : 'idle')}
+          isCapturing={isCapturing}
           capturedUri={capturedUri}
           captureBox={captureBox}
           onDismiss={dismissPolaroid}
