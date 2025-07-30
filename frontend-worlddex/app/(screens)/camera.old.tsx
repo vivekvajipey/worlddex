@@ -1,8 +1,10 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
-import { View, Dimensions } from "react-native";
+import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Linking, PanResponder } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePostHog } from "posthog-react-native";
 import { usePathname } from "expo-router";
 import { useAlert } from "../../src/contexts/AlertContext";
@@ -18,39 +20,39 @@ import { useItems } from "../../database/hooks/useItems";
 import { incrementUserField, updateUserField } from "../../database/hooks/useUsers";
 import { useUser } from "../../database/hooks/useUsers";
 import type { Capture, CollectionItem } from "../../database/types";
+import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
+import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import {
   createUserCollectionItem,
   checkUserHasCollectionItem
 } from "../../database/hooks/useUserCollectionItems";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
+import { useImageProcessor } from "../../src/hooks/useImageProcessor";
 import { IdentifyRequest } from "../../../shared/types/identify";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
-import { useImageProcessor } from "../../src/hooks/useImageProcessor";
+import { supabase } from "../../database/supabase-client";
 import { useModalQueue } from "../../src/contexts/ModalQueueContext";
-import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
-import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
-
-// Import new custom hooks
-import { useCaptureLimits } from "../../src/hooks/useCaptureLimits";
-import { useTutorialFlow } from "../../src/hooks/useTutorialFlow";
-import { useOfflineCapture } from "../../src/hooks/useOfflineCapture";
-import { useCaptureProcessing } from "../../src/hooks/useCaptureProcessing";
-import { useModalSequence } from "../../src/hooks/useModalSequence";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const MAX_IMAGE_DIMENSION = 1024; // Max dimension for VLM input
+const IMAGE_COMPRESSION_LEVEL = 0.8; // JPEG compression level
 
-interface CameraScreenProps {}
+interface CameraScreenProps {
+  capturesButtonClicked?: boolean;
+}
 
-export default function CameraScreen({}: CameraScreenProps) {
+export default function CameraScreen({ 
+  capturesButtonClicked = false
+}: CameraScreenProps) {
   const posthog = usePostHog();
   const pathname = usePathname();
+  const { processImageForVLM } = useImageProcessor();
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
-  const [locationPermission] = Location.useForegroundPermissions();
+  const [locationPermission, requestLocationPermission] = Location.useForegroundPermissions();
   const cameraCaptureRef = useRef<CameraCaptureHandle>(null);
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
-  const { session } = useAuth();
-  const userId = session?.user?.id || null;
 
   // Photo capture state
   const [isCapturing, setIsCapturing] = useState(false);
@@ -61,6 +63,7 @@ export default function CameraScreen({}: CameraScreenProps) {
 
   // Location state
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // VLM
   const {
@@ -70,20 +73,34 @@ export default function CameraScreen({}: CameraScreenProps) {
     error: idError,
     reset
   } = useIdentify();
-  const { uploadCapturePhoto } = usePhotoUpload();
-  const { user, updateUser } = useUser(userId);
-  const { incrementOrCreateItem } = useItems();
+  const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
+  const { session } = useAuth();
+  const { user, updateUser } = useUser(session?.user?.id || null);
+  const { items, incrementOrCreateItem } = useItems();
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
   const [identifiedLabel, setIdentifiedLabel] = useState<string | null>(null);
   const isRejectedRef = useRef(false);
   // Add state to track whether identification is fully complete (both tiers if applicable)
   const [identificationComplete, setIdentificationComplete] = useState(false);
+  // Track if capture was saved offline
+  const [savedOffline, setSavedOffline] = useState(false);
+  // Add ref to prevent duplicate offline saves
+  const offlineSaveInProgressRef = useRef(false);
   
   // Derive permission resolution status - no useState needed
   const permissionsResolved = permission?.status != null;
 
+  // Tutorial overlay state
+  const [showTutorialOverlay, setShowTutorialOverlay] = useState(false);
+  const [idleTimerActive, setIdleTimerActive] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tutorialShownCountRef = useRef(0);
+
   // Add a state for tracking public/private status
   const [isCapturePublic, setIsCapturePublic] = useState(false);
+
+  // Modal queue system
+  const { enqueueModal } = useModalQueue();
   
   // Add state for rarity tier
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
@@ -92,20 +109,12 @@ export default function CameraScreen({}: CameraScreenProps) {
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
   
   
-  // Use styled alerts
-  const { showAlert } = useAlert();
-  
-  // Use our new custom hooks
-  const { checkCaptureLimit } = useCaptureLimits(userId);
-  const { showTutorialOverlay, setShowTutorialOverlay, panResponder, handleFirstCapture } = useTutorialFlow(userId);
-  const { savedOffline, setSavedOffline, saveOfflineCapture, initializeOfflineService } = useOfflineCapture();
-  const { processLassoCapture, processFullScreenCapture } = useCaptureProcessing();
-  const { queuePostCaptureModals } = useModalSequence();
-  const { enqueueModal } = useModalQueue();
-  
   // Don't show error in polaroid if we're saving offline
   // Don't pass network errors to polaroid - we handle them differently
   const polaroidError = (vlmCaptureSuccess === true || savedOffline || (idError && idError.message === 'Network request failed')) ? null : idError;
+  
+  // Use styled alerts
+  const { showAlert } = useAlert();
   
   const handleRetryIdentification = useCallback(async () => {
     if (!lastIdentifyPayloadRef.current) return;
@@ -138,15 +147,18 @@ export default function CameraScreen({}: CameraScreenProps) {
 
   // Initialize offline capture service
   useEffect(() => {
-    if (userId) {
-      initializeOfflineService(userId);
+    if (session?.user?.id) {
+      OfflineCaptureService.initialize(session.user.id).catch(console.error);
     }
-  }, [userId, initializeOfflineService]);
+  }, [session?.user?.id]);
   
   // Handle network errors from useIdentify
   useEffect(() => {
-    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline && userId) {
+    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline && !offlineSaveInProgressRef.current) {
       console.log("[OFFLINE FLOW] Detected network error from useIdentify");
+      
+      // Prevent duplicate saves
+      offlineSaveInProgressRef.current = true;
       
       // Set states to trigger offline save flow
       setSavedOffline(true);
@@ -154,21 +166,52 @@ export default function CameraScreen({}: CameraScreenProps) {
       setIdentificationComplete(false);
       
       // Save the capture locally
-      saveOfflineCapture({
-        capturedUri,
-        location: location || undefined,
-        captureBox,
-        userId,
-        method: 'auto_dismiss',
-        reason: 'network_error'
-      }).then(() => {
-        console.log("[OFFLINE FLOW] Successfully saved offline capture from network error handler");
-        cameraCaptureRef.current?.resetLasso();
-      }).catch(error => {
-        console.error("Failed to save offline capture from network error handler:", error);
-      });
+      (async () => {
+        if (!session?.user?.id) {
+          console.error("[OFFLINE FLOW] No user session for offline save");
+          offlineSaveInProgressRef.current = false;
+          return;
+        }
+        
+        try {
+          const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri, session.user.id);
+          
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: captureBox
+          }, session.user.id);
+          
+          console.log("[OFFLINE FLOW] Successfully saved offline capture from network error handler");
+          
+          // Reset lasso if available
+          cameraCaptureRef.current?.resetLasso();
+          
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "capture",
+              reason: "network_error"
+            });
+          }
+        } catch (saveError) {
+          console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
+        } finally {
+          offlineSaveInProgressRef.current = false;
+        }
+      })();
     }
-  }, [idError, isCapturing, capturedUri, savedOffline, location, captureBox, userId, setSavedOffline, saveOfflineCapture]);
+  }, [idError, isCapturing, capturedUri, savedOffline, location, captureBox, posthog, showAlert]);
 
   // Don't automatically request location permission anymore
   // It will be requested contextually after a successful capture
@@ -179,6 +222,7 @@ export default function CameraScreen({}: CameraScreenProps) {
       if (!locationPermission?.granted) return;
 
       try {
+        setLocationError(null);
         const currentLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced
         });
@@ -190,6 +234,7 @@ export default function CameraScreen({}: CameraScreenProps) {
         console.log("Location fetched successfully:", currentLocation.coords);
       } catch (error) {
         console.error("Error getting location:", error);
+        setLocationError("Could not get location");
         setLocation(null);
       }
     };
@@ -197,13 +242,138 @@ export default function CameraScreen({}: CameraScreenProps) {
     getLocation();
   }, [locationPermission?.granted]);
 
-  // All tutorial logic is now handled by useTutorialFlow hook
+  // Show tutorial overlay for new users
+  useEffect(() => {
+    if (user && !user.is_onboarded) {
+      setShowTutorialOverlay(true);
+      setIdleTimerActive(false); // Don't use idle timer for first-time users
+    } else if (user && user.is_onboarded) {
+      // For returning users, activate idle detection
+      setIdleTimerActive(true);
+    }
+  }, [user]);
+
+  // Idle detection for tutorial nudge
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    
+    // Only set new timer if:
+    // 1. Idle timer is active (user is onboarded)
+    // 2. Tutorial isn't currently showing
+    // 3. Haven't shown it too many times
+    if (idleTimerActive && !showTutorialOverlay && tutorialShownCountRef.current < 3) {
+      idleTimerRef.current = setTimeout(() => {
+        setShowTutorialOverlay(true);
+        tutorialShownCountRef.current += 1;
+      }, 8000); // 8 seconds of inactivity
+    }
+  }, [idleTimerActive, showTutorialOverlay]);
+  
+  // Disable idle timer after first capture
+  const disableIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    setIdleTimerActive(false);
+  }, []);
+
+  // PanResponder for idle detection - recreated when dependencies change
+  const panResponder = useMemo(
+    () => PanResponder.create({
+      onStartShouldSetPanResponderCapture: () => {
+        // This fires on any touch interaction
+        if (showTutorialOverlay && user?.is_onboarded) {
+          // Hide tutorial on any interaction if user is already onboarded
+          setShowTutorialOverlay(false);
+        }
+        resetIdleTimer();
+        return false; // Important: Don't capture the touch, let it pass through
+      },
+    }),
+    [showTutorialOverlay, user, resetIdleTimer]
+  );
+
+  // Set up initial timer when component mounts or dependencies change
+  useEffect(() => {
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, [resetIdleTimer]);
+
+  // Check for progressive onboarding modals (circle and swipe)
+  useEffect(() => {
+    if (!user) return;
+
+    // Show circle tutorial modal after 3 captures
+    if (user.total_captures && user.total_captures >= 3 && !user.onboarding_circle_shown) {
+      enqueueModal({
+        type: 'onboardingCircle',
+        data: {},
+        priority: 80,
+        persistent: false
+      });
+      updateUser({ onboarding_circle_shown: true }).catch(console.error);
+    }
+
+    // Show swipe tutorial modal after 10 captures
+    if (user.total_captures && user.total_captures >= 10 && !user.onboarding_swipe_shown) {
+      enqueueModal({
+        type: 'onboardingSwipe',
+        data: {},
+        priority: 80,
+        persistent: false
+      });
+      updateUser({ onboarding_swipe_shown: true }).catch(console.error);
+    }
+  }, [user, enqueueModal, updateUser]);
 
   // Removed automatic error handling - errors are now handled in the catch blocks
   // This prevents the polaroid from showing "Identification Failed" when we're saving offline
 
 
-  // Location prompt responses are now handled by the modal system
+  // Handle location prompt responses
+  const handleEnableLocation = useCallback(async () => {
+    console.log("=== USER ENABLING LOCATION ===");
+    
+    const { status } = await requestLocationPermission();
+    console.log("Location permission result:", status);
+    
+    if (status === 'granted') {
+      // Get location for future captures
+      try {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        
+        setLocation({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude
+        });
+        
+        console.log("Location obtained:", currentLocation.coords);
+        
+        showAlert({
+          title: "Location Enabled!",
+          message: "Your future captures will remember where you found them",
+          icon: "location",
+          iconColor: "#10B981"
+        });
+      } catch (error) {
+        console.error("Error getting location after permission:", error);
+      }
+    }
+  }, [requestLocationPermission, showAlert]);
+
+  const handleSkipLocation = useCallback(() => {
+    console.log("=== USER SKIPPED LOCATION ===");
+    // The modal coordinator handles dismissal automatically
+  }, []);
 
 
 
@@ -295,8 +465,13 @@ export default function CameraScreen({}: CameraScreenProps) {
     points: { x: number; y: number }[],
     cameraRef: React.RefObject<CameraView>
   ) => {
-    // Handle first capture tutorial flow
-    await handleFirstCapture();
+    // Disable idle timer permanently once they've initiated a capture
+    disableIdleTimer();
+    
+    // Hide tutorial for new users when they make their first capture attempt
+    if (showTutorialOverlay && !user?.is_onboarded) {
+      setShowTutorialOverlay(false);
+    }
     
     // Check camera permission first
     if (!permission?.granted) {
@@ -310,8 +485,14 @@ export default function CameraScreen({}: CameraScreenProps) {
     }
     if (!cameraRef.current || points.length < 3) return;
 
-    // Check capture limits
-    if (!checkCaptureLimit()) {
+    // Check if user has reached their daily capture limit (only count accepted captures)
+    if (user && user.daily_captures_used >= 10) {
+      showAlert({
+        title: "Daily Limit Reached",
+        message: "You have used all 10 daily captures! They will reset at midnight PST.",
+        icon: "timer-outline",
+        iconColor: "#EF4444"
+      });
       cameraCaptureRef.current?.resetLasso();
       return;
     }
@@ -339,19 +520,74 @@ export default function CameraScreen({}: CameraScreenProps) {
         throw new Error("Failed to capture photo");
       }
 
-      // Process the capture using our new hook
-      const processed = await processLassoCapture({
-        photoUri: photo.uri,
-        photoWidth: photo.width,
-        photoHeight: photo.height,
-        points
+      // Calculate the image scale factor (photo dimensions vs screen dimensions)
+      const scaleX = photo.width / SCREEN_WIDTH;
+      const scaleY = photo.height / SCREEN_HEIGHT;
+
+      // Calculate bounding box of the selection, scaling coordinates to match the photo
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+      for (const point of points) {
+        // Scale screen coordinates to photo coordinates
+        const scaledX = point.x * scaleX;
+        const scaledY = point.y * scaleY;
+
+        minX = Math.min(minX, scaledX);
+        minY = Math.min(minY, scaledY);
+        maxX = Math.max(maxX, scaledX);
+        maxY = Math.max(maxY, scaledY);
+      }
+
+      // Add padding
+      const padding = 10;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      maxX = Math.min(photo.width, maxX + padding);
+      maxY = Math.min(photo.height, maxY + padding);
+
+      // Calculate crop dimensions
+      const cropWidth = maxX - minX;
+      const cropHeight = maxY - minY;
+      const aspectRatio = cropWidth / cropHeight;
+
+      // Store the capture box info for animation
+      setCaptureBox({
+        x: minX / scaleX,
+        y: minY / scaleY,
+        width: cropWidth / scaleX,
+        height: cropHeight / scaleY,
+        aspectRatio
       });
 
-      // Store the captured URI and box for the animation
-      setCapturedUri(processed.croppedUri);
-      setCaptureBox(processed.captureBox);
+      if (cropWidth < 5 || cropHeight < 5) {
+        throw new Error("Selection area too small");
+      }
 
-      if (!processed.vlmImage || !processed.vlmImage.base64) {
+      // Crop the image
+      const cropResult = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [
+          {
+            crop: {
+              originX: minX,
+              originY: minY,
+              width: cropWidth,
+              height: cropHeight,
+            },
+          },
+        ],
+        // No need for base64 or high compression here yet, just get the cropped URI
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Store the captured URI for the animation (use the cropped one)
+      setCapturedUri(cropResult.uri);
+
+      // Always try to identify first
+      // Resize and compress the CROPPED image for VLM
+      const vlmImage = await processImageForVLM(cropResult.uri, cropResult.width, cropResult.height);
+
+      if (!vlmImage || !vlmImage.base64) {
         console.warn("Failed to process cropped image for VLM or missing base64 data.");
         setVlmCaptureSuccess(false);
         setIsCapturing(false); // Allow new capture
@@ -368,12 +604,12 @@ export default function CameraScreen({}: CameraScreenProps) {
         } : null;
         console.log("Sending location with capture:", gpsData);
         lastIdentifyPayloadRef.current = {
-          base64Data: processed.vlmImage.base64,
+          base64Data: vlmImage.base64,
           contentType: "image/jpeg",
           gps: gpsData,
         };
         await identify({
-          base64Data: processed.vlmImage.base64,
+          base64Data: vlmImage.base64,
           contentType: "image/jpeg",
           gps: gpsData
         });
@@ -392,27 +628,55 @@ export default function CameraScreen({}: CameraScreenProps) {
         console.log("[OFFLINE FLOW] States set, expecting PolaroidDevelopment to auto-dismiss")
         
         // Now save locally for later
-        if (!userId) {
-          console.error("[OFFLINE FLOW] No user session for offline save");
-          return;
-        }
-        
-        await saveOfflineCapture({
-          capturedUri: processed.croppedUri,
-          location: location || undefined,
-          captureBox: processed.captureBox,
-          userId,
-          method: 'lasso',
-          reason: 'identification_failed'
-        }).then(() => {
-          console.log("[OFFLINE FLOW] Successfully saved offline capture");
+        try {
+          if (!session?.user?.id) {
+            console.error("[OFFLINE FLOW] No user session for offline save");
+            return;
+          }
+          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri, session.user.id);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: {
+              x: minX / scaleX,
+              y: minY / scaleY,
+              width: cropWidth / scaleX,
+              height: cropHeight / scaleY,
+              aspectRatio
+            }
+          }, session.user.id);
+
+          // Reset lasso
           cameraCaptureRef.current?.resetLasso();
-        }).catch(saveError => {
+
+          // No need for manual dismiss - PolaroidDevelopment handles it
+
+          console.log("[OFFLINE FLOW] Successfully saved offline capture");
+          
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "lasso",
+              reason: "identification_failed"
+            });
+          }
+        } catch (saveError) {
           console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
           cameraCaptureRef.current?.resetLasso();
           setIsCapturing(false);
           setCapturedUri(null);
-        });
+          return;
+        }
       }
     } catch (error) {
       console.error("Error capturing selected area:", error);
@@ -422,12 +686,17 @@ export default function CameraScreen({}: CameraScreenProps) {
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, userId, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, processLassoCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
+  }, [identify, tier1, tier2, user, location, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay, posthog]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
-    // Handle first capture tutorial flow
-    await handleFirstCapture();
+    // Disable idle timer permanently once they've initiated a capture
+    disableIdleTimer();
+    
+    // Hide tutorial for new users when they make their first capture attempt
+    if (showTutorialOverlay && !user?.is_onboarded) {
+      setShowTutorialOverlay(false);
+    }
     
     // Check camera permission first
     if (!permission?.granted) {
@@ -441,8 +710,14 @@ export default function CameraScreen({}: CameraScreenProps) {
     }
     if (!cameraCaptureRef.current) return;
     
-    // Check capture limits
-    if (!checkCaptureLimit()) {
+    // Check if user has reached their daily capture limit (only count accepted captures)
+    if (user && user.daily_captures_used >= 10) {
+      showAlert({
+        title: "Daily Limit Reached",
+        message: "You have used all 10 daily captures! They will reset at midnight PST.",
+        icon: "timer-outline",
+        iconColor: "#EF4444"
+      });
       return;
     }
 
@@ -480,17 +755,21 @@ export default function CameraScreen({}: CameraScreenProps) {
       // Store the captured URI for the animation (use the original full res for polaroid preview)
       setCapturedUri(photo.uri);
 
-      // Process the capture using our new hook
-      const processed = await processFullScreenCapture({
-        photoUri: photo.uri,
-        photoWidth: photo.width,
-        photoHeight: photo.height
-      });
+      // Set full screen capture box dimensions for polaroid animation
+      const captureBoxDimensions = {
+        x: SCREEN_WIDTH * 0.1,
+        y: SCREEN_HEIGHT * 0.2,
+        width: SCREEN_WIDTH * 0.8,
+        height: SCREEN_WIDTH * 0.8,
+        aspectRatio: 1
+      };
+      setCaptureBox(captureBoxDimensions);
 
-      // Store the capture box for animation
-      setCaptureBox(processed.captureBox);
+      // Always try to identify first
+      // Resize and compress the FULL image for VLM
+      const vlmImage = await processImageForVLM(photo.uri, photo.width, photo.height);
 
-      if (!processed.vlmImage || !processed.vlmImage.base64) {
+      if (!vlmImage || !vlmImage.base64) {
         console.warn("Failed to process full screen image for VLM or missing base64 data.");
         setVlmCaptureSuccess(false);
         setIsCapturing(false); // Allow new capture
@@ -506,12 +785,12 @@ export default function CameraScreen({}: CameraScreenProps) {
         } : null;
         console.log("Sending location with full screen capture:", gpsData);
         lastIdentifyPayloadRef.current = {
-          base64Data: processed.vlmImage.base64,
+          base64Data: vlmImage.base64,
           contentType: "image/jpeg",
           gps: gpsData,
         };
         await identify({
-          base64Data: processed.vlmImage.base64,
+          base64Data: vlmImage.base64,
           contentType: "image/jpeg",
           gps: gpsData
         });
@@ -527,24 +806,44 @@ export default function CameraScreen({}: CameraScreenProps) {
         // Removed force re-render - not needed
         
         // Now save locally for later
-        if (!userId) {
-          console.error("[OFFLINE FLOW] No user session for offline save");
-          return;
-        }
-        
-        await saveOfflineCapture({
-          capturedUri: photo.uri,
-          location: location || undefined,
-          captureBox: processed.captureBox,
-          userId,
-          method: 'full_screen',
-          reason: 'identification_failed'
-        }).catch(saveError => {
+        try {
+          if (!session?.user?.id) {
+            console.error("[OFFLINE FLOW] No user session for offline save");
+            return;
+          }
+          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri, session.user.id);
+          await OfflineCaptureService.savePendingCapture({
+            imageUri: localImageUri,
+            capturedAt: new Date().toISOString(),
+            location: location ? { 
+              latitude: location.latitude, 
+              longitude: location.longitude 
+            } : undefined,
+            captureBox: captureBoxDimensions
+          }, session.user.id);
+
+          // No need for manual dismiss - PolaroidDevelopment handles it
+
+          // Track offline capture
+          if (posthog) {
+            posthog.capture("offline_capture_saved", {
+              method: "full_screen",
+              reason: "identification_failed"
+            });
+          }
+        } catch (saveError) {
           console.error("Failed to save offline capture:", saveError);
+          showAlert({
+            title: "Error",
+            message: "Failed to save capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
           setIsCapturing(false);
           setCapturedUri(null);
           setVlmCaptureSuccess(false);
-        });
+          return;
+        }
       }
     } catch (error) {
       console.error("Error capturing full screen:", error);
@@ -553,7 +852,7 @@ export default function CameraScreen({}: CameraScreenProps) {
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, userId, SCREEN_HEIGHT, SCREEN_WIDTH, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, processFullScreenCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
+  }, [identify, tier1, tier2, user, SCREEN_HEIGHT, SCREEN_WIDTH, location, reset, permission, requestPermission, disableIdleTimer, showAlert, showTutorialOverlay, posthog]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -569,7 +868,7 @@ export default function CameraScreen({}: CameraScreenProps) {
           console.error("Detected offline auto-dismiss but no user session");
           return;
         }
-        const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri, userId);
+        const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri, session.user.id);
         
         // For lasso captures, we need captureBox from state
         // For full screen, use default dimensions
@@ -589,7 +888,7 @@ export default function CameraScreen({}: CameraScreenProps) {
             longitude: location.longitude 
           } : undefined,
           captureBox: offlineCaptureBox
-        }, userId);
+        }, session.user.id);
 
         // Show the modal after a brief delay
         setTimeout(() => {
@@ -668,7 +967,6 @@ export default function CameraScreen({}: CameraScreenProps) {
       identifiedLabel &&
       capturedUri &&
       session &&
-      userId &&
       !isRejectedRef.current &&
       !savedOffline
     ) {
@@ -684,7 +982,7 @@ export default function CameraScreen({}: CameraScreenProps) {
           label: identifiedLabel,
           rarityTier: rarityTier,
           rarityScore: rarityScore
-        }, userId);
+        }, session.user.id);
         tempCaptureId = tempCapture.id;
       } catch (tempError) {
         console.error("Failed to create temporary capture:", tempError);
@@ -704,7 +1002,7 @@ export default function CameraScreen({}: CameraScreenProps) {
         } else {
           // Proceed with creating the capture record only if item was successfully obtained
           const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
-            user_id: userId,
+            user_id: session.user.id,
             item_id: item.id,
             item_name: item.name,
             capture_number: item.total_captures,
@@ -725,9 +1023,9 @@ export default function CameraScreen({}: CameraScreenProps) {
           
           
           // Clean up temporary capture now that database save is complete
-          if (tempCaptureId && userId) {
+          if (tempCaptureId) {
             try {
-              await OfflineCaptureService.deletePendingCapture(tempCaptureId, userId);
+              await OfflineCaptureService.deletePendingCapture(tempCaptureId, session.user.id);
             } catch (cleanupError) {
               console.error("Failed to clean up temporary capture:", cleanupError);
               // Non-critical error, continue
@@ -740,7 +1038,7 @@ export default function CameraScreen({}: CameraScreenProps) {
 
             try {
               // Get all user collections
-              const userCollections = await fetchUserCollectionsByUser(userId);
+              const userCollections = await fetchUserCollectionsByUser(session.user.id);
               console.log(`Found ${userCollections.length} user collections to check`);
 
               // For each collection, find matching items
@@ -762,11 +1060,11 @@ export default function CameraScreen({}: CameraScreenProps) {
                 for (const collectionItem of matchingItems) { // Renamed to avoid conflict
                   try {
                     // Check if the user already has this item to avoid duplicates
-                    const hasItem = await checkUserHasCollectionItem(userId, collectionItem.id);
+                    const hasItem = await checkUserHasCollectionItem(session.user.id, collectionItem.id);
 
                     if (!hasItem) {
                       await createUserCollectionItem({
-                        user_id: userId,
+                        user_id: session.user.id,
                         collection_item_id: collectionItem.id,
                         capture_id: captureRecord.id,
                         collection_id: collectionItem.collection_id,
@@ -787,8 +1085,8 @@ export default function CameraScreen({}: CameraScreenProps) {
           }
 
           // Increment daily_captures_used and total_captures for the user
-          await incrementUserField(userId, "daily_captures_used", 1);
-          await incrementUserField(userId, "total_captures", 1);
+          await incrementUserField(session.user.id, "daily_captures_used", 1);
+          await incrementUserField(session.user.id, "total_captures", 1);
           
           // Hide tutorial overlay and mark as onboarded on first capture
           if (showTutorialOverlay) {
@@ -800,7 +1098,7 @@ export default function CameraScreen({}: CameraScreenProps) {
           let xpData = null;
           if (captureRecord && item && rarityTier) {
             const xpResult = await calculateAndAwardCaptureXP(
-              userId,
+              session.user.id,
               captureRecord.id,
               item.name,
               rarityTier,
@@ -813,7 +1111,7 @@ export default function CameraScreen({}: CameraScreenProps) {
           }
 
           // Calculate and award coins
-          const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(userId);
+          const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(session.user.id);
           
           // Queue modals using the new system
           console.log("=== QUEUEING POST-CAPTURE MODALS ===");
@@ -929,11 +1227,11 @@ export default function CameraScreen({}: CameraScreenProps) {
     fetchCollectionItems,
     checkUserHasCollectionItem,
     createUserCollectionItem,
-    // Dependencies for user field updates
-    incrementUserField,
     // Dependencies for coin logic
     calculateAndAwardCoins,
-    // Modal queue  
+    // Dependencies for user field updates
+    incrementUserField,
+    // Modal queue
     enqueueModal,
     // Offline handling
     savedOffline,
