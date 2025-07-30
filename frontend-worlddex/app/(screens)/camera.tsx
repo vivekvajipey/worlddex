@@ -84,6 +84,8 @@ export default function CameraScreen({
   const [identificationComplete, setIdentificationComplete] = useState(false);
   // Track if capture was saved offline
   const [savedOffline, setSavedOffline] = useState(false);
+  // Add ref to prevent duplicate offline saves
+  const offlineSaveInProgressRef = useRef(false);
   
   // Derive permission resolution status - no useState needed
   const permissionsResolved = permission?.status != null;
@@ -152,8 +154,11 @@ export default function CameraScreen({
   
   // Handle network errors from useIdentify
   useEffect(() => {
-    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline) {
+    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline && !offlineSaveInProgressRef.current) {
       console.log("[OFFLINE FLOW] Detected network error from useIdentify");
+      
+      // Prevent duplicate saves
+      offlineSaveInProgressRef.current = true;
       
       // Set states to trigger offline save flow
       setSavedOffline(true);
@@ -164,6 +169,7 @@ export default function CameraScreen({
       (async () => {
         if (!session?.user?.id) {
           console.error("[OFFLINE FLOW] No user session for offline save");
+          offlineSaveInProgressRef.current = false;
           return;
         }
         
@@ -180,7 +186,7 @@ export default function CameraScreen({
             captureBox: captureBox
           }, session.user.id);
           
-          console.log("[OFFLINE FLOW] Successfully saved offline capture");
+          console.log("[OFFLINE FLOW] Successfully saved offline capture from network error handler");
           
           // Reset lasso if available
           cameraCaptureRef.current?.resetLasso();
@@ -200,6 +206,8 @@ export default function CameraScreen({
             icon: "alert-circle-outline",
             iconColor: "#EF4444"
           });
+        } finally {
+          offlineSaveInProgressRef.current = false;
         }
       })();
     }
