@@ -540,7 +540,7 @@ export default function PersonalCapturesScreen() {
             onPress={() => router.back()}
             className="absolute left-4 top-4 z-10 p-2"
           >
-            <Ionicons name="chevron-back" size={28} color="#fff" />
+            <Ionicons name="chevron-back" size={28} color="#9CA3AF" />
           </TouchableOpacity>
           
           {/* Header Tabs */}

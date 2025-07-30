@@ -339,20 +339,61 @@ export default function PendingCaptureIdentifier({
         });
       }
     } else {
-      // Either rejected or failed - update status and close
-      if (isRejectedRef.current || vlmCaptureSuccess === false) {
+      // Either rejected or failed
+      if (isRejectedRef.current) {
+        // Close the modal first
+        reset();
+        onClose();
+        
+        // Then show the alert after a brief delay to allow modal to close
+        setTimeout(() => {
+          showAlert({
+            title: "Remove Pending Capture?",
+            message: "Do you want to remove this capture from your pending list?",
+            icon: "trash-outline",
+            iconColor: "#EF4444",
+            buttons: [
+              {
+                text: "Keep",
+                style: "cancel",
+                onPress: () => {
+                  // Nothing to do - already closed and kept as pending
+                }
+              },
+              {
+                text: "Remove",
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await OfflineCaptureService.deletePendingCapture(pendingCapture.id, session.user.id);
+                    onSuccess(); // Refresh the list
+                    if (posthog) {
+                      posthog.capture("pending_capture_deleted", {
+                        reason: "user_rejected_after_identification"
+                      });
+                    }
+                  } catch (error) {
+                    console.error("Failed to delete pending capture:", error);
+                  }
+                }
+              }
+            ]
+          });
+        }, 300); // Give modal time to close
+        return;
+      } else if (vlmCaptureSuccess === false) {
+        // Identification failed - update status
         await OfflineCaptureService.updateCaptureStatus(
           pendingCapture.id, 
           'failed',
           session.user.id,
-          isRejectedRef.current ? 'User rejected' : 'Identification failed'
+          'Identification failed'
         );
+        // Reset states and close
+        reset();
+        onClose();
       }
     }
-    
-    // Reset states and close (for error/rejection cases)
-    reset();
-    onClose();
   }, [
     pendingCapture,
     session,
