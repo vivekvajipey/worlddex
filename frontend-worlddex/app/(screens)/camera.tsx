@@ -26,6 +26,14 @@ import { useOfflineCapture } from "../../src/hooks/useOfflineCapture";
 import { useCaptureProcessing } from "../../src/hooks/useCaptureProcessing";
 import { useModalSequence } from "../../src/hooks/useModalSequence";
 import { useCameraReducer } from "../../src/hooks/useCameraReducer";
+import { useItems } from "../../database/hooks/useItems";
+import { incrementUserField } from "../../database/hooks/useUsers";
+import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
+import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
+import { 
+  createUserCollectionItem, 
+  checkUserHasCollectionItem 
+} from "../../database/hooks/useUserCollectionItems";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -65,7 +73,7 @@ export default function CameraScreen({}: CameraScreenProps) {
     error: idError,
     reset
   } = useIdentify();
-  const { uploadPhoto } = usePhotoUpload();
+  const { uploadPhoto, uploadCapturePhoto } = usePhotoUpload();
   const isRejectedRef = useRef(false);
   
   // Derive permission resolution status - no useState needed
@@ -80,6 +88,7 @@ export default function CameraScreen({}: CameraScreenProps) {
   const { processLassoCapture, processFullScreenCapture } = useCaptureProcessing();
   const { queuePostCaptureModals } = useModalSequence();
   const { enqueueModal, isShowingModal, currentModal } = useModalQueue();
+  const { incrementOrCreateItem } = useItems();
   
   // Don't show error in polaroid if we're saving offline
   // Don't pass network errors to polaroid - we handle them differently
@@ -93,8 +102,17 @@ export default function CameraScreen({}: CameraScreenProps) {
     capturedUri,
     captureBox,
     rarityTier,
+    rarityScore,
+    isCapturePublic,
     identify,
     uploadPhoto,
+    uploadCapturePhoto,
+    incrementOrCreateItem,
+    incrementUserField,
+    fetchUserCollectionsByUser,
+    fetchCollectionItems,
+    checkUserHasCollectionItem,
+    createUserCollectionItem,
     checkCaptureLimit,
     incrementCaptureCount,
     processLassoCapture,
@@ -131,13 +149,18 @@ export default function CameraScreen({}: CameraScreenProps) {
 
 
   const dismissPolaroid = useCallback(
-    () => captureHandlers.dismissPolaroid(
-      isCapturing,
-      capturedUri,
-      vlmCaptureSuccess,
-      identifiedLabel,
-      identificationComplete
-    ),
+    async () => {
+      await captureHandlers.dismissPolaroid(
+        isCapturing,
+        capturedUri,
+        vlmCaptureSuccess,
+        identifiedLabel,
+        identificationComplete,
+        isRejectedRef.current
+      );
+      // Reset rejection flag after dismissal
+      isRejectedRef.current = false;
+    },
     [captureHandlers, isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete]
   );
 
@@ -211,6 +234,10 @@ export default function CameraScreen({}: CameraScreenProps) {
             onSetPublic={(value) => dispatch(actions.setPublicStatus(value))}
             isIdentifying={idLoading}
             rarityTier={rarityTier}
+            onReject={() => {
+              // Mark as rejected so dismissPolaroid won't save it
+              isRejectedRef.current = true;
+            }}
           />
         )}
       </View>

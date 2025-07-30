@@ -6,6 +6,7 @@ import { IdentifyRequest } from '../../../../shared/types/identify';
 import { UseIdentifyResult } from '../../../src/hooks/useIdentify';
 import { UsePhotoUploadResult } from '../../../src/hooks/usePhotoUpload';
 import { CameraCaptureHandle } from './CameraCapture';
+import type { Capture, CollectionItem } from '../../../database/types';
 
 interface CaptureHandlerDependencies {
   // State from reducer
@@ -15,10 +16,19 @@ interface CaptureHandlerDependencies {
   capturedUri: string | null;
   captureBox: { x: number; y: number; width: number; height: number } | null;
   rarityTier: string;
+  rarityScore?: number;
+  isCapturePublic: boolean;
   
   // External hooks
   identify: UseIdentifyResult['identify'];
   uploadPhoto: UsePhotoUploadResult['uploadPhoto'];
+  uploadCapturePhoto: UsePhotoUploadResult['uploadCapturePhoto'];
+  incrementOrCreateItem: (label: string) => Promise<any>;
+  incrementUserField: (userId: string, field: string, value?: number) => Promise<boolean>;
+  fetchUserCollectionsByUser: (userId: string) => Promise<any[]>;
+  fetchCollectionItems: (collectionId: string) => Promise<any[]>;
+  checkUserHasCollectionItem: (userId: string, collectionItemId: string) => Promise<boolean>;
+  createUserCollectionItem: (data: any) => Promise<any>;
   checkCaptureLimit: () => boolean;
   incrementCaptureCount: () => Promise<void>;
   processLassoCapture: (params: any) => Promise<any>;
@@ -48,8 +58,17 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     capturedUri,
     captureBox,
     rarityTier,
+    rarityScore,
+    isCapturePublic,
     identify,
     uploadPhoto,
+    uploadCapturePhoto,
+    incrementOrCreateItem,
+    incrementUserField,
+    fetchUserCollectionsByUser,
+    fetchCollectionItems,
+    checkUserHasCollectionItem,
+    createUserCollectionItem,
     checkCaptureLimit,
     incrementCaptureCount,
     processLassoCapture,
@@ -70,8 +89,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
   const handleCapture = async (
     points: { x: number; y: number }[],
     cameraRef: RefObject<CameraView>,
-    screenWidth: number,
-    screenHeight: number
+    viewWidth: number,
+    viewHeight: number
   ) => {
     // Handle first capture tutorial flow
     await handleFirstCapture();
@@ -114,12 +133,16 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         throw new Error("Failed to capture photo");
       }
 
-      // Process the capture
+      console.log("[CAPTURE] Photo dimensions:", { width: photo.width, height: photo.height });
+      console.log("[CAPTURE] Screen dimensions:", { width: viewWidth, height: viewHeight });
+      console.log("[CAPTURE] Lasso points:", points);
+
+      // Process the capture using actual photo dimensions
       const processed = await processLassoCapture({
         photoUri: photo.uri,
         points,
-        photoWidth: screenWidth,
-        photoHeight: screenHeight
+        photoWidth: photo.width,
+        photoHeight: photo.height
       });
 
       // Store the captured URI and box for the animation
@@ -132,18 +155,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         return;
       }
 
-      // Upload both full and cropped photos to S3
-      const [photoUrl, croppedUrl] = await Promise.all([
-        uploadPhoto(photo.uri, 'image/jpeg', `capture-${Date.now()}.jpg`),
-        uploadPhoto(processed.croppedUri, 'image/jpeg', `capture-cropped-${Date.now()}.jpg`)
-      ]);
-
-      if (!photoUrl) {
-        console.error("Photo not uploaded successfully");
-        dispatch(actions.vlmProcessingFailed());
-        dispatch(actions.resetCapture());
-        return;
-      }
+      // Note: We don't upload to S3 here anymore - that happens after successful identification
 
       // Save payload for potential retry
       const identifyPayload: IdentifyRequest = {
@@ -224,11 +236,11 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
 
       dispatch(actions.captureSuccess(photo.uri));
 
-      // Process the capture
+      // Process the capture using actual photo dimensions
       const processed = await processFullScreenCapture({
         photoUri: photo.uri,
-        photoWidth: screenWidth,
-        photoHeight: screenHeight
+        photoWidth: photo.width,
+        photoHeight: photo.height
       });
 
       // Update capture box with the processed dimensions
@@ -241,15 +253,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         return;
       }
 
-      // Upload the photo to S3
-      const photoUrl = await uploadPhoto(photo.uri, 'image/jpeg', `capture-fullscreen-${Date.now()}.jpg`);
-      
-      if (!photoUrl) {
-        console.error("Photo not uploaded successfully");
-        dispatch(actions.vlmProcessingFailed());
-        dispatch(actions.resetCapture());
-        return;
-      }
+      // Note: We don't upload to S3 here anymore - that happens after successful identification
 
       // Save payload for potential retry
       const identifyPayload: IdentifyRequest = {
@@ -317,12 +321,13 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     }
   };
 
-  const dismissPolaroid = (
+  const dismissPolaroid = async (
     isCapturing: boolean,
     capturedUri: string | null,
     vlmCaptureSuccess: boolean | null,
     identifiedLabel: string | null,
-    identificationComplete: boolean
+    identificationComplete: boolean,
+    isRejected: boolean
   ) => {
     console.log("=== DISMISSING POLAROID ===");
     console.log("Current state:", {
@@ -330,20 +335,137 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       capturedUri,
       vlmCaptureSuccess,
       identifiedLabel,
-      identificationComplete
+      identificationComplete,
+      isRejected
     });
 
-    // Queue post-capture modals if we have a successful identification
-    if (vlmCaptureSuccess && identifiedLabel && !savedOffline) {
-      queuePostCaptureModals({
-        itemName: identifiedLabel,
-        captureId: capturedUri || '',
-        userId: userId || '',
-        rarityTier: rarityTier
-      });
+    // Handle successful identification - save to database
+    if (
+      identificationComplete &&
+      vlmCaptureSuccess === true &&
+      identifiedLabel &&
+      capturedUri &&
+      userId &&
+      !isRejected &&
+      !savedOffline
+    ) {
+      try {
+        console.log("[CAPTURE] Getting/creating item for label:", identifiedLabel);
+        const { item, isGlobalFirst } = await incrementOrCreateItem(identifiedLabel);
+        
+        if (!item) {
+          console.error("[CAPTURE] Failed to create or increment item for label:", identifiedLabel);
+          return;
+        }
+
+        // Create capture payload
+        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key"> = {
+          user_id: userId,
+          item_id: item.id,
+          item_name: item.name,
+          capture_number: item.total_captures,
+          image_key: "", // This will be set by uploadCapturePhoto
+          is_public: isCapturePublic,
+          like_count: 0,
+          daily_upvotes: 0,
+          rarity_tier: rarityTier,
+          rarity_score: rarityScore
+        };
+
+        // Upload photo and create capture record
+        console.log("[CAPTURE] Uploading photo and creating capture record");
+        const captureRecord = await uploadCapturePhoto(
+          capturedUri,
+          "image/jpeg",
+          `${Date.now()}.jpg`,
+          capturePayload
+        );
+
+        if (!captureRecord) {
+          console.error("[CAPTURE] Failed to create capture record");
+          return;
+        }
+
+        // Handle collections
+        console.log("[CAPTURE] Checking if capture matches any collection items...");
+        try {
+          const userCollections = await fetchUserCollectionsByUser(userId);
+          console.log(`[CAPTURE] Found ${userCollections.length} user collections to check`);
+
+          for (const userCollection of userCollections) {
+            const collectionItems = await fetchCollectionItems(userCollection.collection_id);
+            
+            // Filter items that match the identified label
+            const matchingItems = collectionItems.filter((ci: any) => {
+              const itemNameMatch = ci.name?.toLowerCase() === identifiedLabel.toLowerCase();
+              const displayNameMatch = ci.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
+              return itemNameMatch || displayNameMatch;
+            });
+
+            console.log(`[CAPTURE] Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
+
+            // Add matching items to user's collection
+            for (const collectionItem of matchingItems) {
+              try {
+                const hasItem = await checkUserHasCollectionItem(userId, collectionItem.id);
+                
+                if (!hasItem) {
+                  await createUserCollectionItem({
+                    user_id: userId,
+                    collection_item_id: collectionItem.id,
+                    capture_id: captureRecord.id,
+                    collection_id: collectionItem.collection_id,
+                  });
+                  console.log(`[CAPTURE] Added ${identifiedLabel} to collection ${collectionItem.collection_id}`);
+                }
+              } catch (collectionErr) {
+                console.error('[CAPTURE] Error adding item to user collection:', collectionErr);
+                // Continue with next item even if this one fails
+              }
+            }
+          }
+        } catch (collectionErr) {
+          console.error('[CAPTURE] Error handling collections:', collectionErr);
+          // Non-critical error, continue
+        }
+
+        // Increment user stats
+        console.log('[CAPTURE] Incrementing user stats');
+        await incrementUserField(userId, "daily_captures_used", 1);
+        await incrementUserField(userId, "total_captures", 1);
+
+        console.log("[CAPTURE] Successfully saved to database, queueing modals...");
+        // Queue post-capture modals with the capture ID
+        await queuePostCaptureModals({
+          userId,
+          captureId: captureRecord.id,
+          itemName: identifiedLabel,
+          rarityTier,
+          xpValue: undefined, // Could be passed from tier1 response if available
+          isGlobalFirst
+        });
+      } catch (error) {
+        console.error("[CAPTURE] Error saving capture to database:", error);
+        // Could show an error alert here if needed
+      }
+    } else {
+      // Log why we're not saving
+      if (isRejected) {
+        console.log("[CAPTURE] Not saving: User rejected the capture");
+      } else if (!identificationComplete) {
+        console.log("[CAPTURE] Not saving: Identification not complete");
+      } else if (vlmCaptureSuccess !== true) {
+        console.log("[CAPTURE] Not saving: VLM capture was not successful");
+      } else if (!identifiedLabel) {
+        console.log("[CAPTURE] Not saving: No identified label");
+      } else if (!capturedUri) {
+        console.log("[CAPTURE] Not saving: No captured URI");
+      } else if (!userId) {
+        console.log("[CAPTURE] Not saving: No user ID");
+      }
     }
 
-    // Reset capture state after successful identification
+    // Reset capture state
     dispatch(actions.captureFailed());
     dispatch(actions.resetCapture());
     dispatch(actions.resetIdentification());
@@ -351,6 +473,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     
     cameraCaptureRef.current?.resetLasso();
     setSavedOffline(false);
+    
+    // Note: The caller should reset isRejectedRef after calling this function
   };
 
   return {
