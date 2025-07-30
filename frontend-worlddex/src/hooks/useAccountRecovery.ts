@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, restoreDeletedAccount } from '../../database/supabase';
+import { useAlert } from '../contexts/AlertContext';
 
 export function useAccountRecovery() {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     if (!userId) return;
@@ -25,11 +26,16 @@ export function useAccountRecovery() {
         }
 
         if (data?.deleted_at) {
-          // Account is soft deleted, ask if they want to restore
-          Alert.alert(
-            'Account Recovery',
-            'Your account was recently deleted. Would you like to restore it?',
-            [
+          console.log('Account recovery: Found deleted account, showing alert');
+          // Add a small delay to ensure AlertComponent is mounted
+          setTimeout(() => {
+            // Account is soft deleted, ask if they want to restore
+            showAlert({
+            title: 'Account Recovery',
+            message: 'Your account was recently deleted. Would you like to restore it?',
+            icon: 'refresh-circle-outline',
+            iconColor: '#3B82F6',
+            buttons: [
               {
                 text: 'Cancel',
                 style: 'cancel',
@@ -39,20 +45,30 @@ export function useAccountRecovery() {
                 }
               },
               {
-                text: 'Restore Account',
+                text: 'Restore',
                 onPress: async () => {
                   try {
                     await restoreDeletedAccount(userId);
-                    Alert.alert('Success', 'Your account has been restored!');
+                    showAlert({
+                      title: 'Success',
+                      message: 'Your account has been restored!',
+                      icon: 'checkmark-circle-outline',
+                      iconColor: '#10B981'
+                    });
                   } catch (error) {
                     console.error('Error restoring account:', error);
-                    Alert.alert('Error', 'Failed to restore account. Please try again.');
+                    showAlert({
+                      title: 'Error',
+                      message: 'Failed to restore account. Please try again.',
+                      icon: 'alert-circle-outline',
+                      iconColor: '#EF4444'
+                    });
                   }
                 }
               }
-            ],
-            { cancelable: false }
-          );
+            ]
+          });
+          }, 500); // 500ms delay to ensure component is mounted
         }
       } catch (error) {
         console.error('Error in account recovery check:', error);
@@ -60,5 +76,5 @@ export function useAccountRecovery() {
     };
 
     checkDeletedAccount();
-  }, [userId]);
+  }, [userId, showAlert]);
 }

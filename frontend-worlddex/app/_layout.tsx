@@ -14,6 +14,7 @@ import { NotificationService } from "../src/services/NotificationService";
 import { NotificationPermissionManager } from "./components/permissions/NotificationPermissionManager";
 import { ModalQueueProvider } from "../src/contexts/ModalQueueContext";
 import { ModalCoordinator } from "./components/modals/ModalCoordinator";
+import { AlertProvider } from "../src/contexts/AlertContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,13 +141,15 @@ export default function RootLayout() {
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
-          <QueryClientProvider client={queryClient}>
-            <ModalQueueProvider>
-              <Slot />
-              <NotificationPermissionManager />
-              <ModalCoordinator />
-            </ModalQueueProvider>
-          </QueryClientProvider>
+          <AlertProvider>
+            <QueryClientProvider client={queryClient}>
+              <ModalQueueProvider>
+                <Slot />
+                <NotificationPermissionManager />
+                <ModalCoordinator />
+              </ModalQueueProvider>
+            </QueryClientProvider>
+          </AlertProvider>
         </AuthProvider>
       </GestureHandlerRootView>
     </PostHogProvider>
