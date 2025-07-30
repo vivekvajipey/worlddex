@@ -80,17 +80,40 @@
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@expo/ngrok": "^4.1.3",
+    "@testing-library/jest-native": "^5.4.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~18.3.12",
     "@types/react-native-uuid": "^1.4.0",
     "@types/react-test-renderer": "^18.3.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "jest-expo": "^53.0.9",
     "react-test-renderer": "18.3.1",
+    "ts-jest": "^29.4.0",
     "typescript": "~5.8.3"
   },
   "overrides": {
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "react-native",
+    "testEnvironment": "node",
+    "setupFiles": ["<rootDir>/jest.setup.custom.js"],
+    "setupFilesAfterEnv": ["<rootDir>/src/hooks/__tests__/test-setup.ts"],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "transform": {
+      "^.+\\.(js|jsx|ts|tsx)$": "babel-jest"
+    },
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx"],
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|posthog-react-native)"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts",
+      "**/__tests__/**/*.test.tsx"
+    ]
+  }
 }
