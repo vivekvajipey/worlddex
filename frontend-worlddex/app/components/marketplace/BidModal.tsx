@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -17,6 +16,7 @@ import { supabase } from "../../../database/supabase-client";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { useBids } from "../../../database/hooks/useBids";
 import { usePostHog } from "posthog-react-native";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface BidModalProps {
   visible: boolean;
@@ -36,6 +36,7 @@ const BidModal: React.FC<BidModalProps> = ({
   const { session } = useAuth();
   const userId = session?.user?.id || null;
   const { user: currentUser, updateUser } = useUser(userId);
+  const { showAlert } = useAlert();
 
   // Add local balance state to ensure we always have the latest balance
   const [localBalance, setLocalBalance] = useState(currentUser?.balance ?? 0);
@@ -216,10 +217,12 @@ const BidModal: React.FC<BidModalProps> = ({
 
   const handleRetractBid = () => {
     if (!currentUser || !hasActiveBid) return;
-    Alert.alert(
-      "Retract Bid",
-      "Are you sure? Your balance will be refunded.",
-      [
+    showAlert({
+      title: "Retract Bid",
+      message: "Are you sure? Your balance will be refunded.",
+      icon: "arrow-undo-outline",
+      iconColor: "#F59E0B",
+      buttons: [
         { text: "Cancel", style: "cancel" },
         {
           text: "Retract",
@@ -246,7 +249,7 @@ const BidModal: React.FC<BidModalProps> = ({
           },
         },
       ]
-    );
+    });
   };
 
   const isAuctionExpired = listing.expires_at

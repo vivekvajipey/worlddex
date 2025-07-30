@@ -18,7 +18,7 @@ import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../databa
 import { Capture, Collection } from "../../database/types";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 import { usePostHog } from "posthog-react-native";
-import { useStyledAlert } from "../../src/hooks/useStyledAlert";
+import { useAlert } from "../../src/contexts/AlertContext";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { CombinedCapture } from "../../src/types/combinedCapture";
 
@@ -544,7 +544,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
   const posthog = usePostHog();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     // Track screen view only when modal becomes visible
@@ -711,8 +711,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
           newLevel={levelUpData.newLevel}
         />
         
-        {/* Styled Alert Component */}
-        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

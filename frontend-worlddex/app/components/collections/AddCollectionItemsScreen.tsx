@@ -26,7 +26,7 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { v4 as uuidv4 } from "uuid";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface AddCollectionItemsScreenProps {
   visible: boolean;
@@ -93,7 +93,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
   const userId = session?.user?.id;
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const navigation = useNavigation();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   // Form state for creating new item
   const [newItemForm, setNewItemForm] = useState<NewItemFormData>({
@@ -683,8 +683,6 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
           {activeTab === "existing" ? renderExistingCapturesTab() : renderNewItemTab()}
         </View>
         
-        {/* Styled Alert Component */}
-        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

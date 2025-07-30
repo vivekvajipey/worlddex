@@ -20,7 +20,7 @@ import type { Capture, CollectionItem } from "../../../database/types";
 import { IdentifyRequest } from "../../../../shared/types/identify";
 import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -46,7 +46,7 @@ export default function PendingCaptureIdentifier({
 }: PendingCaptureIdentifierProps) {
   const posthog = usePostHog();
   const { enqueueModal } = useModalQueue();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
   const { processImageForVLM } = useImageProcessor();
   const { identify, tier1, tier2, isLoading: idLoading, error: idError, reset } = useIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
@@ -452,8 +452,6 @@ export default function PendingCaptureIdentifier({
         )}
       </View>
       
-      {/* Styled Alert Component */}
-      <AlertComponent />
     </Modal>
   );
 }

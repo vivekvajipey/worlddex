@@ -19,7 +19,7 @@ import { createCollection, updateCollection } from "../../../database/hooks/useC
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import AddCollectionItemsScreen from "./AddCollectionItemsScreen";
 import { usePostHog } from "posthog-react-native";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface CreateCollectionScreenProps {
   visible: boolean;
@@ -41,7 +41,7 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
   const userId = session?.user?.id;
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const posthog = usePostHog();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   const isProcessing = isLoading || isUploading;
 
@@ -292,8 +292,6 @@ const CreateCollectionScreen: React.FC<CreateCollectionScreenProps> = ({
           </TouchableOpacity>
         </ScrollView>
         
-        {/* Styled Alert Component */}
-        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

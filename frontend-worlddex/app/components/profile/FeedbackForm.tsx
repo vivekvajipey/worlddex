@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as MailComposer from 'expo-mail-composer';
 import Colors from "../../../src/utils/colors";
 import { usePostHog } from "posthog-react-native";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface FeedbackFormProps {
   visible: boolean;
@@ -22,7 +22,7 @@ interface FeedbackFormProps {
 
 export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
   const posthog = usePostHog();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -154,8 +154,6 @@ export default function FeedbackForm({ visible, onClose }: FeedbackFormProps) {
           </View>
         </View>
         
-        {/* Styled Alert Component */}
-        <AlertComponent />
       </KeyboardAvoidingView>
     </Modal>
   );

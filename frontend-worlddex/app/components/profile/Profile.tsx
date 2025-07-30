@@ -14,7 +14,7 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { usePostHog } from "posthog-react-native";
 import { calculateLevelProgress, getXPRequiredForLevel, formatXP } from "../../../database/hooks/useXP";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -27,7 +27,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const posthog = usePostHog();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   // Add mounted state to prevent tracking on rerenders
   const [isMounted, setIsMounted] = useState(false);
@@ -526,8 +526,6 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
           </View>
         </KeyboardAvoidingView>
         
-        {/* Styled Alert Component - inside modal to appear on top */}
-        <AlertComponent />
       </Modal>
     </>
   );

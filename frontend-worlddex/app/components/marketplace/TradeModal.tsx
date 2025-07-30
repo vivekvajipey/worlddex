@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Alert,
   ScrollView,
   Pressable,
 } from "react-native";
@@ -23,6 +22,7 @@ import { useDownloadUrls } from "../../../src/hooks/useDownloadUrls";
 import { useListings } from "../../../database/hooks/useListings";
 import { fetchTradeOfferItemsByTradeOfferId } from "../../../database/hooks/useTradeOfferItems";
 import { usePostHog } from "posthog-react-native";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface TradeModalProps {
   visible: boolean;
@@ -49,6 +49,7 @@ const TradeModal: React.FC<TradeModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const posthog = usePostHog();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     // Track screen view when modal becomes visible
@@ -267,29 +268,40 @@ const TradeModal: React.FC<TradeModalProps> = ({
   // Retract offer
   const handleRetractTrade = () => {
     if (!existingOffer) return;
-    Alert.alert("Retract Offer", "Cancel your offer?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Retract",
-        style: "destructive",
-        onPress: async () => {
-          setIsProcessing(true);
-          try {
-            const { error } = await supabase.rpc("retract_trade_offer", {
-              p_trade_offer_id: existingOffer.id,
-              p_trader_id: userId,
-            });
-            if (error) throw error;
-            onTradePlaced?.();
-            onClose();
-          } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to retract");
-          } finally {
-            setIsProcessing(false);
-          }
+    showAlert({
+      title: "Retract Offer",
+      message: "Cancel your offer?",
+      icon: "arrow-undo-outline",
+      iconColor: "#F59E0B",
+      buttons: [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Retract",
+          style: "destructive",
+          onPress: async () => {
+            setIsProcessing(true);
+            try {
+              const { error } = await supabase.rpc("retract_trade_offer", {
+                p_trade_offer_id: existingOffer.id,
+                p_trader_id: userId,
+              });
+              if (error) throw error;
+              onTradePlaced?.();
+              onClose();
+            } catch (e: any) {
+              showAlert({
+                title: "Error",
+                message: e.message || "Failed to retract",
+                icon: "alert-circle-outline",
+                iconColor: "#EF4444"
+              });
+            } finally {
+              setIsProcessing(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    });
   };
 
   // Accept offer

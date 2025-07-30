@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePostHog } from "posthog-react-native";
 import { usePathname } from "expo-router";
-import { useStyledAlert } from "../../src/hooks/useStyledAlert";
+import { useAlert } from "../../src/contexts/AlertContext";
 
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
@@ -114,7 +114,7 @@ export default function CameraScreen({
   const polaroidError = (vlmCaptureSuccess === true || savedOffline || (idError && idError.message === 'Network request failed')) ? null : idError;
   
   // Use styled alerts
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
   
   const handleRetryIdentification = useCallback(async () => {
     if (!lastIdentifyPayloadRef.current) return;
@@ -1347,8 +1347,6 @@ export default function CameraScreen({
         )}
 
 
-        {/* Styled Alert Component */}
-        <AlertComponent />
 
       </View>
     </GestureHandlerRootView>

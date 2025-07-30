@@ -21,7 +21,7 @@ import CommentModal from "../social/CommentModal";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { supabase } from "../../../database/supabase-client";
 import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface ListingPostProps {
   listing: Listing;
@@ -60,7 +60,7 @@ const ListingPost: React.FC<ListingPostProps> = ({
 }) => {
   const { session } = useAuth();
   const userId = session?.user?.id;
-  const { showAlert } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   // seller & current user
   const { user: seller, loading: userLoading } = useUser(listing.seller_id);

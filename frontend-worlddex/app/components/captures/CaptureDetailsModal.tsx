@@ -8,7 +8,7 @@ import { fetchItem } from "../../../database/hooks/useItems";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
 import { usePostHog } from "posthog-react-native";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface CaptureDetailsModalProps {
   visible: boolean;
@@ -35,10 +35,10 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   const { user: currentUser } = useUser(session?.user?.id || null);
   const { user: previousOwner } = useUser(capture?.last_owner_id || null);
   const posthog = usePostHog();
-  const { showAlert: localShowAlert, AlertComponent } = useStyledAlert();
+  const { showAlert: globalShowAlert } = useAlert();
   
-  // Use parent's showAlert if provided, otherwise use local
-  const showAlert = parentShowAlert || localShowAlert;
+  // Use parent's showAlert if provided, otherwise use global
+  const showAlert = parentShowAlert || globalShowAlert;
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -296,8 +296,6 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
         </TouchableOpacity>
       </View>
       
-      {/* Styled Alert Component */}
-      <AlertComponent />
     </Modal>
   );
 };

@@ -5,7 +5,7 @@ import { PermissionPrimer } from './PermissionPrimer';
 import { useNotificationTrigger } from '../../../src/hooks/useNotificationTrigger';
 import { usePostHog } from 'posthog-react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
-import { useStyledAlert } from '../../../src/hooks/useStyledAlert';
+import { useAlert } from '../../../src/contexts/AlertContext';
 
 export const NotificationPermissionManager: React.FC = () => {
   const [showPrimer, setShowPrimer] = useState(false);
@@ -13,7 +13,7 @@ export const NotificationPermissionManager: React.FC = () => {
   const { shouldShowPrompt, markPromptShown, handlePermissionGranted, recheckTriggers } = useNotificationTrigger();
   const posthog = usePostHog();
   const { session } = useAuth();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   // Show primer when triggers are met
   useEffect(() => {
@@ -86,7 +86,5 @@ export const NotificationPermissionManager: React.FC = () => {
         onAllow={handleAllow}
         onDeny={handleDeny}
       />
-      <AlertComponent />
-    </>
   );
 };

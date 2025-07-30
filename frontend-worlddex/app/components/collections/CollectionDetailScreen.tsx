@@ -15,7 +15,7 @@ import { deleteCollection } from "../../../database/hooks/useCollections";
 import { calculateAndAwardCoins } from "../../../database/hooks/useCoins";
 import CoinRewardModal from "../CoinRewardModal";
 import { usePostHog } from "posthog-react-native";
-import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
+import { useAlert } from "../../../src/contexts/AlertContext";
 
 interface CollectionDetailScreenProps {
   collectionId: string;
@@ -47,7 +47,7 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   const [coinReward, setCoinReward] = useState<{ total: number; rewards: { amount: number; reason: string }[] }>({ total: 0, rewards: [] });
 
   const posthog = usePostHog();
-  const { showAlert, AlertComponent } = useStyledAlert();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     // Track screen view when component mounts
@@ -433,8 +433,6 @@ const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
         rewards={coinReward.rewards}
       />
       
-      {/* Styled Alert Component */}
-      <AlertComponent />
     </Modal>
   );
 };
