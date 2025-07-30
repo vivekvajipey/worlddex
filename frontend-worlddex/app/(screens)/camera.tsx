@@ -82,7 +82,7 @@ export default function CameraScreen({}: CameraScreenProps) {
   // Use styled alerts
   
   // Use our new custom hooks
-  const { checkCaptureLimit, incrementCaptureCount, syncWithDatabase } = useCaptureLimitsWithPersistence(userId);
+  const { checkCaptureLimit, incrementCaptureCount, syncWithDatabase, trackIdentifyAttempt } = useCaptureLimitsWithPersistence(userId);
   const { showTutorialOverlay, setShowTutorialOverlay, panResponder, handleFirstCapture } = useTutorialFlow(userId);
   const { savedOffline, setSavedOffline, saveOfflineCapture, initializeOfflineService } = useOfflineCapture();
   const { processLassoCapture, processFullScreenCapture } = useCaptureProcessing();
@@ -115,6 +115,7 @@ export default function CameraScreen({}: CameraScreenProps) {
     createUserCollectionItem,
     checkCaptureLimit,
     incrementCaptureCount,
+    trackIdentifyAttempt,
     processLassoCapture,
     processFullScreenCapture,
     handleFirstCapture,

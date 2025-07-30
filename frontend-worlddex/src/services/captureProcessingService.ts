@@ -121,7 +121,7 @@ export async function processCaptureAfterIdentification(
           rarityScore
         }, userId);
         temporaryCaptureId = tempCapture.id;
-        console.log("[CAPTURE] Temporary capture saved for immediate display:", temporaryCaptureId);
+        // console.log("[CAPTURE] Temporary capture saved for immediate display:", temporaryCaptureId);
       } catch (tempError) {
         // Non-critical - continue without temporary capture
         console.error("[CAPTURE] Failed to save temporary capture:", tempError);
@@ -129,7 +129,7 @@ export async function processCaptureAfterIdentification(
     }
     // 1. Create or increment item
     onProgress?.('Creating item record...');
-    console.log("[CAPTURE] Getting/creating item for label:", identifiedLabel);
+    // console.log("[CAPTURE] Getting/creating item for label:", identifiedLabel);
     const { item, isGlobalFirst } = await services.incrementOrCreateItem(identifiedLabel);
     
     if (!item) {
@@ -154,7 +154,7 @@ export async function processCaptureAfterIdentification(
 
     // 3. Upload photo and create capture record
     onProgress?.('Uploading capture...');
-    console.log("[CAPTURE] Uploading photo and creating capture record");
+    // console.log("[CAPTURE] Uploading photo and creating capture record");
     const captureRecord = await services.uploadCapturePhoto(
       capturedUri,
       "image/jpeg",
@@ -169,7 +169,7 @@ export async function processCaptureAfterIdentification(
 
     // 4. Handle collections
     onProgress?.('Updating collections...');
-    console.log("[CAPTURE] Checking if capture matches any collection items...");
+    // console.log("[CAPTURE] Checking if capture matches any collection items...");
     await updateUserCollections(
       userId,
       identifiedLabel,
@@ -182,7 +182,7 @@ export async function processCaptureAfterIdentification(
     await services.incrementCaptureCount();
     console.log('[CAPTURE] Incremented capture count');
 
-    console.log("[CAPTURE] Successfully saved to database");
+    // console.log("[CAPTURE] Successfully saved to database");
     
     // 6. Clean up temporary capture after successful DB save
     if (temporaryCaptureId) {

@@ -123,14 +123,14 @@ export default function PersonalCapturesScreen() {
       setPendingCaptures(combined);
       
       // Log temporary captures
-      const tempCaptures = combined.filter(c => c.pendingStatus === 'temporary');
-      if (tempCaptures.length > 0) {
-        console.log("[CAPTURE FLOW] Temporary captures found in WorldDex", {
-          timestamp: new Date().toISOString(),
-          count: tempCaptures.length,
-          captures: tempCaptures.map(c => ({ id: c.id, label: c.item_name }))
-        });
-      }
+      // const tempCaptures = combined.filter(c => c.pendingStatus === 'temporary');
+      // if (tempCaptures.length > 0) {
+      //   console.log("[CAPTURE FLOW] Temporary captures found in WorldDex", {
+      //     timestamp: new Date().toISOString(),
+      //     count: tempCaptures.length,
+      //     captures: tempCaptures.map(c => ({ id: c.id, label: c.item_name }))
+      //   });
+      // }
     } catch (error) {
       console.error("Failed to fetch pending captures:", error);
     }

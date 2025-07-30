@@ -300,9 +300,9 @@ export function useCameraReducer(): UseCameraReducerReturn {
   
   // Log actions in development
   const dispatchWithLogging = useCallback((action: CameraAction) => {
-    if (__DEV__) {
-      console.log('[CameraReducer] Action:', action.type, action);
-    }
+    // if (__DEV__) {
+    //   console.log('[CameraReducer] Action:', action.type, action);
+    // }
     dispatch(action);
   }, []);
   

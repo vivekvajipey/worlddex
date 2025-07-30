@@ -78,7 +78,7 @@ async function awardXP(
       return null;
     }
 
-    console.log("award_xp RPC response:", data);
+    // console.log("award_xp RPC response:", data);
     
     // The RPC function returns an array with one object
     if (data && data.length > 0) {
@@ -166,12 +166,12 @@ export async function calculateAndAwardCaptureXP(
       }
     }
 
-    console.log("XP Award Summary:", {
-      totalXP,
-      rewards,
-      levelUp,
-      newLevel
-    });
+    // console.log("XP Award Summary:", {
+    //   totalXP,
+    //   rewards,
+    //   levelUp,
+    //   newLevel
+    // });
 
     return { total: totalXP, rewards, levelUp, newLevel };
   } catch (error) {

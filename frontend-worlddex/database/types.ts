@@ -18,6 +18,8 @@ export type User = {
   xp: number;
   level: number;
   is_admin?: boolean;
+  daily_identify_attempts?: number;
+  total_identify_attempts?: number;
 };
 
 export type Collection = {

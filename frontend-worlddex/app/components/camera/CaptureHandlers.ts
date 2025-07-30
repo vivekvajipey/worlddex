@@ -32,6 +32,7 @@ interface CaptureHandlerDependencies {
   createUserCollectionItem: (data: any) => Promise<any>;
   checkCaptureLimit: () => boolean;
   incrementCaptureCount: () => Promise<void>;
+  trackIdentifyAttempt: () => boolean;
   processLassoCapture: (params: any) => Promise<any>;
   processFullScreenCapture: (params: any) => Promise<any>;
   handleFirstCapture: () => Promise<void>;
@@ -72,6 +73,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     createUserCollectionItem,
     checkCaptureLimit,
     incrementCaptureCount,
+    trackIdentifyAttempt,
     processLassoCapture,
     processFullScreenCapture,
     handleFirstCapture,
@@ -115,6 +117,14 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       return;
     }
 
+    // Check identify API limits
+    if (!trackIdentifyAttempt()) {
+      console.log("[CAPTURE] Identify limit reached");
+      dispatch(actions.captureFailed());
+      cameraCaptureRef.current?.resetLasso();
+      return;
+    }
+
     // Reset VLM state for new capture
     dispatch(actions.resetIdentification());
 
@@ -134,9 +144,9 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         throw new Error("Failed to capture photo");
       }
 
-      console.log("[CAPTURE] Photo dimensions:", { width: photo.width, height: photo.height });
-      console.log("[CAPTURE] Screen dimensions:", { width: viewWidth, height: viewHeight });
-      console.log("[CAPTURE] Lasso points:", points);
+      // console.log("[CAPTURE] Photo dimensions:", { width: photo.width, height: photo.height });
+      // console.log("[CAPTURE] Screen dimensions:", { width: viewWidth, height: viewHeight });
+      // console.log("[CAPTURE] Lasso points:", points);
 
       // Process the capture using actual photo dimensions
       const processed = await processLassoCapture({
@@ -214,6 +224,13 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     dispatch(actions.resetIdentification());
 
     if (!checkCaptureLimit()) return;
+
+    // Check identify API limits
+    if (!trackIdentifyAttempt()) {
+      console.log("[CAPTURE] Identify limit reached");
+      dispatch(actions.captureFailed());
+      return;
+    }
 
     dispatch(actions.startCapture());
     dispatch(actions.vlmProcessingStart());
@@ -330,15 +347,15 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     isRejected: boolean,
     tier1Response?: any
   ) => {
-    console.log("=== DISMISSING POLAROID ===");
-    console.log("Current state:", {
-      isCapturing,
-      capturedUri,
-      vlmCaptureSuccess,
-      identifiedLabel,
-      identificationComplete,
-      isRejected
-    });
+    // console.log("=== DISMISSING POLAROID ===");
+    // console.log("Current state:", {
+    //   isCapturing,
+    //   capturedUri,
+    //   vlmCaptureSuccess,
+    //   identifiedLabel,
+    //   identificationComplete,
+    //   isRejected
+    // });
 
     // Handle successful identification - save to database
     if (
@@ -372,7 +389,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         });
 
         if (result.success && result.captureRecord) {
-          console.log("[CAPTURE] Successfully saved to database, queueing modals...");
+          // console.log("[CAPTURE] Successfully saved to database, queueing modals...");
           // Queue post-capture modals with the capture ID
           await queuePostCaptureModals({
             userId,

@@ -29,19 +29,19 @@ export default function CoinRewardModal({
 }: CoinRewardModalProps) {
   const posthog = usePostHog();
   
-  console.log("=== COIN REWARD MODAL RENDER ===");
-  console.log("visible:", visible);
-  console.log("total:", total);
-  console.log("rewards:", rewards);
-  console.log("xpTotal:", xpTotal);
-  console.log("xpRewards:", xpRewards);
+  // console.log("=== COIN REWARD MODAL RENDER ===");
+  // console.log("visible:", visible);
+  // console.log("total:", total);
+  // console.log("rewards:", rewards);
+  // console.log("xpTotal:", xpTotal);
+  // console.log("xpRewards:", xpRewards);
   
-  useEffect(() => {
-    console.log("COIN REWARD MODAL MOUNTED/UPDATED");
-    return () => {
-      console.log("COIN REWARD MODAL UNMOUNTING");
-    };
-  }, []);
+  // useEffect(() => {
+  //   console.log("COIN REWARD MODAL MOUNTED/UPDATED");
+  //   return () => {
+  //     console.log("COIN REWARD MODAL UNMOUNTING");
+  //   };
+  // }, []);
   
   useEffect(() => {
     // Track screen view when modal becomes visible

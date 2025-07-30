@@ -40,12 +40,12 @@ export const useModalSequence = (): UseModalSequenceReturn => {
     xpValue?: number;
     isGlobalFirst?: boolean;
   }) => {
-    console.log("=== QUEUEING POST-CAPTURE MODALS ===");
+    // console.log("=== QUEUEING POST-CAPTURE MODALS ===");
 
     let xpData: XPData | null = null;
 
     // Calculate and award XP
-    console.log("[ModalSequence] Calculating XP for capture:", { userId, captureId, itemName, rarityTier, xpValue, isGlobalFirst });
+    // console.log("[ModalSequence] Calculating XP for capture:", { userId, captureId, itemName, rarityTier, xpValue, isGlobalFirst });
     const xpResult = await calculateAndAwardCaptureXP(
       userId,
       captureId,
