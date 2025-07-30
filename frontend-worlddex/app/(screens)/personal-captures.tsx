@@ -248,6 +248,35 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       
       // Also refresh pending captures
       await fetchPendingCaptures();
+      
+      // Clean up any temporary captures that now exist in the database
+      const tempCaptures = pendingCaptures.filter(c => c.pendingStatus === 'temporary');
+      if (tempCaptures.length > 0 && freshCaptures.length > 0) {
+        for (const temp of tempCaptures) {
+          // Check if this temporary capture now exists in the database
+          // by matching label and approximate time (within 5 minutes)
+          const tempTime = new Date(temp.capturedAt || '').getTime();
+          const matchingCapture = freshCaptures.find(c => {
+            const captureTime = new Date(c.captured_at || '').getTime();
+            const timeDiff = Math.abs(captureTime - tempTime);
+            return c.item_name === temp.item_name && timeDiff < 5 * 60 * 1000; // 5 minutes
+          });
+          
+          if (matchingCapture) {
+            console.log("[CAPTURE FLOW] Cleaning up temporary capture - now in database", {
+              timestamp: new Date().toISOString(),
+              tempId: temp.id,
+              dbId: matchingCapture.id,
+              label: temp.item_name
+            });
+            try {
+              await OfflineCaptureService.deletePendingCapture(temp.id);
+            } catch (cleanupError) {
+              console.error("Failed to clean up temporary capture:", cleanupError);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
@@ -320,13 +349,28 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       return;
     }
     
-    // For temporary captures, show a simple message since they're being saved
+    // For temporary captures, show a message and refresh to check if it's saved
     if (capture.pendingStatus === 'temporary') {
       showAlert({
         title: "Saving Capture",
-        message: `Your ${capture.item_name} capture is being saved. It will be available shortly.`,
+        message: `Your ${capture.item_name} capture is being saved.`,
         icon: "time-outline",
-        iconColor: "#3B82F6"
+        iconColor: "#3B82F6",
+        buttons: [
+          {
+            text: "Refresh",
+            style: "default",
+            onPress: () => {
+              console.log("[CAPTURE FLOW] User triggered refresh for temporary capture", {
+                timestamp: new Date().toISOString(),
+                tempId: capture.id,
+                label: capture.item_name
+              });
+              // Refresh data to check if the capture has been saved
+              refreshData();
+            }
+          }
+        ]
       });
       return;
     }
