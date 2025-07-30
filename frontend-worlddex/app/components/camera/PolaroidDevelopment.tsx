@@ -518,6 +518,12 @@ export default function PolaroidDevelopment({
 
   // Handle background press
   const handleBackgroundPress = () => {
+    console.log("[CAPTURE FLOW] Capture accepted - Starting minimize animation", {
+      timestamp: new Date().toISOString(),
+      label: label || "unknown",
+      isPublic
+    });
+    
     if (posthog) {
       posthog.capture("capture_accepted", {
         objectType: label || "unknown",
@@ -1013,7 +1019,7 @@ export default function PolaroidDevelopment({
           {!(captureSuccess === true && label) && !(captureSuccess === null && isIdentifying) && !isOfflineSave && (
             <View className="px-4 items-center justify-center">
               <Text className="font-shadows text-black text-center text-2xl">
-                Saving...
+                ...
               </Text>
             </View>
           )}

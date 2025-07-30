@@ -9,7 +9,6 @@ import {
   ScrollView,
   SafeAreaView,
   Text,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -19,6 +18,7 @@ import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../databa
 import { Capture, Collection } from "../../database/types";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 import { usePostHog } from "posthog-react-native";
+import { useStyledAlert } from "../../src/hooks/useStyledAlert";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { CombinedCapture } from "../../src/types/combinedCapture";
 
@@ -71,6 +71,18 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const userId = session?.user?.id || null;
 
   const { captures, loading: capturesLoading } = useUserCaptures(userId);
+  
+  // Log when captures are loaded from hook
+  useEffect(() => {
+    if (!capturesLoading && captures.length > 0) {
+      console.log("[CAPTURE FLOW] WorldDex loaded captures from hook", {
+        timestamp: new Date().toISOString(),
+        captureCount: captures.length,
+        latestCapture: captures[0]?.captured_at,
+        isUsingCache: true
+      });
+    }
+  }, [capturesLoading, captures]);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
   // Fetch pending captures on mount and when modal becomes visible
@@ -97,9 +109,13 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   useEffect(() => {
     if (visible) {
+      console.log("[CAPTURE FLOW] WorldDex modal opened", {
+        timestamp: new Date().toISOString(),
+        cachedCaptureCount: captures.length
+      });
       fetchPendingCaptures();
     }
-  }, [visible, fetchPendingCaptures]);
+  }, [visible, fetchPendingCaptures, captures.length]);
 
   // Merge server captures with pending captures
   const combinedCaptures = useMemo(() => {
@@ -169,6 +185,11 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const refreshData = useCallback(async (showLoadingIndicator = true) => {
     if (!userId) return;
 
+    console.log("[CAPTURE FLOW] WorldDex manual refresh triggered", {
+      timestamp: new Date().toISOString(),
+      userId
+    });
+
     if (showLoadingIndicator) {
       setIsRefreshing(true);
     }
@@ -190,6 +211,13 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       // Update state with the fresh data
       setRefreshedCaptures(freshCaptures);
       setUserCollectionsData(userAddedCollections);
+      
+      console.log("[CAPTURE FLOW] WorldDex refresh complete", {
+        timestamp: new Date().toISOString(),
+        freshCaptureCount: freshCaptures.length,
+        latestCapture: freshCaptures[0]?.captured_at,
+        collectionsCount: userAddedCollections.length
+      });
       
       // Also refresh pending captures
       await fetchPendingCaptures();
@@ -313,10 +341,12 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const handleDeleteCapture = (capture: Capture) => {
     // Show confirmation alert every time
-    Alert.alert(
-      "Delete Capture",
-      "Are you sure you want to delete this capture? This action can not be undone.",
-      [
+    showAlert({
+      title: "Delete Capture",
+      message: "Are you sure you want to delete this capture? This action can not be undone.",
+      icon: "trash-outline",
+      iconColor: "#EF4444",
+      buttons: [
         {
           text: "Cancel",
           style: "cancel"
@@ -327,7 +357,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
           onPress: () => performDeleteCapture(capture)
         }
       ]
-    );
+    });
   };
 
   const performDeleteCapture = async (capture: Capture) => {
@@ -346,7 +376,12 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       }
     } catch (error) {
       console.error("Error deleting capture:", error);
-      Alert.alert("Error", "Failed to delete capture. Please try again.");
+      showAlert({
+        title: "Error",
+        message: "Failed to delete capture. Please try again.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     }
   };
 
@@ -364,7 +399,12 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
       }
     } catch (error) {
       console.error("Error updating capture:", error);
-      Alert.alert("Error", "Failed to update capture. Please try again.");
+      showAlert({
+        title: "Error",
+        message: "Failed to update capture. Please try again.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     }
   };
 
@@ -389,6 +429,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const displayCollections = userCollectionsData.length > 0 ? userCollectionsData : [];
 
   const posthog = usePostHog();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   useEffect(() => {
     // Track screen view only when modal becomes visible
@@ -554,6 +595,9 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
           }}
           newLevel={levelUpData.newLevel}
         />
+        
+        {/* Styled Alert Component */}
+        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

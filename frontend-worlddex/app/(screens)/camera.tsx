@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from "react";
-import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Alert, Linking, PanResponder } from "react-native";
+import { View, Button, Text, Dimensions, ActivityIndicator, TouchableOpacity, Linking, PanResponder } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Location from "expo-location";
@@ -945,7 +945,11 @@ export default function CameraScreen({
       !isRejectedRef.current &&
       !savedOffline
     ) {
-      console.log("Proceeding with capture save logic.");
+      console.log("[CAPTURE FLOW] Starting database save", {
+        timestamp: new Date().toISOString(),
+        label: identifiedLabel,
+        isPublic: isCapturePublic
+      });
       try {
         const label = identifiedLabel; // Already checked it's not null
 
@@ -977,6 +981,13 @@ export default function CameraScreen({
             `${Date.now()}.jpg`,
             capturePayload
           );
+          
+          console.log("[CAPTURE FLOW] Database save complete", {
+            timestamp: new Date().toISOString(),
+            captureId: captureRecord?.id,
+            itemId: item.id,
+            label: identifiedLabel
+          });
 
           // Auto-add to user collections based on the identified label
           if (captureRecord && identifiedLabel) { // Re-check identifiedLabel for safety, though it should be set
@@ -1135,7 +1146,10 @@ export default function CameraScreen({
     }
 
     // Reset all states regardless of whether it was accepted or rejected, or if processing happened
-    console.log("Resetting states in handleDismissPreview.");
+    console.log("[CAPTURE FLOW] Dismissal complete - Resetting camera states", {
+      timestamp: new Date().toISOString(),
+      wasAccepted: !isRejectedRef.current && identificationComplete && vlmCaptureSuccess === true
+    });
     console.log("=== SETTING isCapturing = false (handleDismissPreview) ===");
     setIsCapturing(false);
     setCapturedUri(null);
