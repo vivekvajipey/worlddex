@@ -64,37 +64,32 @@ export default function PolaroidDevelopment({
   onRetry,
   isOfflineSave = false
 }: PolaroidDevelopmentProps) {
-  // Add logging for props
-  console.log("==== POLAROID DEVELOPMENT PROPS ====");
-  console.log("captureSuccess:", captureSuccess);
-  console.log("isIdentifying:", isIdentifying);
-  console.log("label:", label);
-  console.log("rarityTier:", rarityTier);
-  console.log("identificationComplete:", identificationComplete);
-  console.log("error:", error?.message);
 
   // Get user settings
   const { session } = useAuth();
   const userId = session?.user?.id || null;
   const { user } = useUser(userId);
   
+  // State tracking - moved to top before any useEffects
+  const [isMinimizing, setIsMinimizing] = useState(false);
+  const [isRipping, setIsRipping] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [initialAnimationDone, setInitialAnimationDone] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+  
   // Detect offline state (when showing "Saving...") and trigger proper flow
   useEffect(() => {
-    console.log("[POLAROID] useEffect - captureSuccess:", captureSuccess, "isIdentifying:", isIdentifying, "error:", error);
     
     // This state only happens when offline - captureSuccess null and isIdentifying false
     // Also handle network errors specifically
     const isNetworkError = error && error.message === 'Network request failed';
     if (captureSuccess === null && isIdentifying === false && (!error || isNetworkError)) {
-      console.log("[POLAROID] Detected offline state - setting up auto-dismiss timer");
       // Auto-dismiss after showing "Saving..." briefly
       const timer = setTimeout(() => {
-        console.log("[POLAROID] Auto-dismiss timer fired, setting completed state");
         // Set completed state to trigger the minimize animation
         setIsCompleted(true);
       }, 1500); // Same timing as our other auto-dismiss
       return () => {
-        console.log("[POLAROID] Cleanup - clearing auto-dismiss timer");
         clearTimeout(timer);
       };
     }
@@ -106,7 +101,6 @@ export default function PolaroidDevelopment({
   // Trigger minimize animation when completed in offline state
   useEffect(() => {
     if (isCompleted && captureSuccess === null && !isMinimizing) {
-      console.log("[POLAROID] Offline save completed, will trigger minimize animation");
       shouldTriggerMinimize.current = true;
     }
   }, [isCompleted, captureSuccess, isMinimizing]);
@@ -143,15 +137,6 @@ export default function PolaroidDevelopment({
   // Rarity effect animations
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0.5)).current;
-
-  // State tracking
-  const [isMinimizing, setIsMinimizing] = useState(false);
-  const [isRipping, setIsRipping] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [initialAnimationDone, setInitialAnimationDone] = useState(false);
-
-  // Public/private toggle state - initialize with user's default preference
-  const [isPublic, setIsPublic] = useState(false);
 
   // Set the initial public/private setting based on user's default preference
   useEffect(() => {
@@ -406,7 +391,6 @@ export default function PolaroidDevelopment({
   // Check if we need to trigger minimize animation from offline state
   useEffect(() => {
     if (shouldTriggerMinimize.current && !isMinimizing) {
-      console.log("[POLAROID] Executing deferred minimize animation");
       runMinimizeAnimation();
       shouldTriggerMinimize.current = false;
     }
@@ -518,11 +502,6 @@ export default function PolaroidDevelopment({
 
   // Handle background press
   const handleBackgroundPress = () => {
-    console.log("[CAPTURE FLOW] Capture accepted - Starting minimize animation", {
-      timestamp: new Date().toISOString(),
-      label: label || "unknown",
-      isPublic
-    });
     
     if (posthog) {
       posthog.capture("capture_accepted", {
@@ -654,8 +633,6 @@ export default function PolaroidDevelopment({
   // Add logging whenever the label is rendered
   useEffect(() => {
     if (captureSuccess === true && label) {
-      console.log("==== POLAROID RENDERING LABEL ====");
-      console.log("Label being rendered:", label);
     }
   }, [captureSuccess, label]);
 

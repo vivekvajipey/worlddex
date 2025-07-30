@@ -23,7 +23,7 @@ export default function StyledAlert({
   icon,
   iconColor = '#F59E0B' // Default to amber color
 }: StyledAlertProps) {
-  const [modalVisible, setModalVisible] = useState(visible);
+  const [modalVisible, setModalVisible] = useState(false);
   const [scaleValue] = useState(new Animated.Value(0));
 
   useEffect(() => {

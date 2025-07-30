@@ -394,7 +394,6 @@ export default function CameraScreen({
 
   // Update useEffect that watches for tier1 and tier2 changes
   useEffect(() => {
-    console.log("==== TIER RESULTS UPDATED (camera.tsx hook) ====");
     
     // Reset on each run if we don't have any tiers yet
     if (!tier1 && !tier2) {
@@ -804,8 +803,7 @@ export default function CameraScreen({
         setIdentifiedLabel(""); // Keep label empty for offline saves
         setIdentificationComplete(true);
         
-        // Force a re-render by updating a counter
-        setResetCounter(prev => prev + 1);
+        // Removed force re-render - not needed
         
         // Now save locally for later
         try {
@@ -972,11 +970,6 @@ export default function CameraScreen({
       !isRejectedRef.current &&
       !savedOffline
     ) {
-      console.log("[CAPTURE FLOW] Starting database save", {
-        timestamp: new Date().toISOString(),
-        label: identifiedLabel,
-        isPublic: isCapturePublic
-      });
       
       // Create temporary capture for immediate display
       let tempCaptureId: string | null = null;
@@ -991,10 +984,6 @@ export default function CameraScreen({
           rarityScore: rarityScore
         }, session.user.id);
         tempCaptureId = tempCapture.id;
-        console.log("[CAPTURE FLOW] Temporary capture created for immediate display", {
-          timestamp: new Date().toISOString(),
-          tempId: tempCaptureId
-        });
       } catch (tempError) {
         console.error("Failed to create temporary capture:", tempError);
         // Continue with normal flow even if temp capture fails
@@ -1032,21 +1021,11 @@ export default function CameraScreen({
             capturePayload
           );
           
-          console.log("[CAPTURE FLOW] Database save complete", {
-            timestamp: new Date().toISOString(),
-            captureId: captureRecord?.id,
-            itemId: item.id,
-            label: identifiedLabel
-          });
           
           // Clean up temporary capture now that database save is complete
           if (tempCaptureId) {
             try {
               await OfflineCaptureService.deletePendingCapture(tempCaptureId, session.user.id);
-              console.log("[CAPTURE FLOW] Temporary capture cleaned up", {
-                timestamp: new Date().toISOString(),
-                tempId: tempCaptureId
-              });
             } catch (cleanupError) {
               console.error("Failed to clean up temporary capture:", cleanupError);
               // Non-critical error, continue
@@ -1210,10 +1189,6 @@ export default function CameraScreen({
     }
 
     // Reset all states regardless of whether it was accepted or rejected, or if processing happened
-    console.log("[CAPTURE FLOW] Dismissal complete - Resetting camera states", {
-      timestamp: new Date().toISOString(),
-      wasAccepted: !isRejectedRef.current && identificationComplete && vlmCaptureSuccess === true
-    });
     console.log("=== SETTING isCapturing = false (handleDismissPreview) ===");
     setIsCapturing(false);
     setCapturedUri(null);
@@ -1315,17 +1290,7 @@ export default function CameraScreen({
         )}
 
         {/* Polaroid development and animation overlay */}
-        {isCapturing && capturedUri && (() => {
-          console.log("[CAMERA] Rendering PolaroidDevelopment with:", {
-            vlmCaptureSuccess,
-            savedOffline,
-            idLoading,
-            isIdentifying: savedOffline ? false : idLoading,
-            identifiedLabel,
-            identificationComplete
-          });
-          return true;
-        })() && (
+        {isCapturing && capturedUri && (
           <PolaroidDevelopment
             photoUri={capturedUri}
             captureBox={captureBox}

@@ -42,21 +42,10 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Modal Queue State:', {
-      queueLength: queue.length,
-      isShowingModal,
-      isProcessing,
-      currentModal: currentModal?.type || 'none',
-      queue: queue.map(m => ({ type: m.type, priority: m.priority }))
-    });
-  }, [queue, isShowingModal, isProcessing, currentModal]);
 
   // Clean up non-persistent modals on navigation
   useEffect(() => {
     if (pathname !== previousPathname.current) {
-      console.log('Navigation detected, cleaning up modals');
       
       // Remove non-persistent modals from queue
       setQueue(prev => prev.filter(modal => modal.persistent));
@@ -74,7 +63,6 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   // Process queue when not showing modal and not processing
   useEffect(() => {
     if (!isShowingModal && !isProcessing && queue.length > 0) {
-      console.log('Processing modal queue...');
       setIsProcessing(true);
       
       // Brief delay to allow UI to settle between modals
@@ -83,7 +71,6 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
         const sorted = [...queue].sort((a, b) => b.priority - a.priority);
         const next = sorted[0];
         
-        console.log('Showing modal:', next.type, 'with priority:', next.priority);
         setCurrentModal(next);
         setIsShowingModal(true);
         
@@ -96,18 +83,15 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
 
   const enqueueModal = useCallback((modal: Omit<QueuedModal, 'id'>) => {
     const id = `${modal.type}-${Date.now()}-${Math.random()}`;
-    console.log('Enqueuing modal:', modal.type, 'with priority:', modal.priority);
     setQueue(prev => [...prev, { ...modal, id }]);
   }, []);
 
   const dismissCurrentModal = useCallback(() => {
-    console.log('Dismissing current modal:', currentModal?.type);
     setCurrentModal(null);
     setIsShowingModal(false);
   }, [currentModal]);
 
   const clearQueue = useCallback(() => {
-    console.log('Clearing modal queue');
     setQueue([]);
     setCurrentModal(null);
     setIsShowingModal(false);
