@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Switch } from "react-native";
+import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Switch } from "react-native";
 import { Image } from "expo-image";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,7 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { usePostHog } from "posthog-react-native";
 import { calculateLevelProgress, getXPRequiredForLevel, formatXP } from "../../../database/hooks/useXP";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface ProfileProps {
   onOpenFeedback: () => void;
@@ -26,6 +27,7 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   const { totalCaptures, refreshCaptureCount } = useCaptureCount(userId);
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const posthog = usePostHog();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   // Add mounted state to prevent tracking on rerenders
   const [isMounted, setIsMounted] = useState(false);
@@ -220,10 +222,12 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "Your account will be deactivated and hidden from the app. You'll have 30 days to restore it by signing in again. After 30 days, your account and all data will be permanently deleted.",
-      [
+    showAlert({
+      title: "Delete Account",
+      message: "Your account will be deactivated and hidden from the app. You'll have 30 days to restore it by signing in again. After 30 days, your account and all data will be permanently deleted.",
+      icon: "trash-outline",
+      iconColor: "#EF4444",
+      buttons: [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
@@ -240,12 +244,17 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
               setModalVisible(false);
             } catch (error) {
               console.error("Error deleting account:", error);
-              Alert.alert("Error", "Failed to delete account. Please try again.");
+              showAlert({
+                title: "Error",
+                message: "Failed to delete account. Please try again.",
+                icon: "alert-circle-outline",
+                iconColor: "#EF4444"
+              });
             }
           }
         }
       ]
-    );
+    });
   };
 
   // Toggle default public/private setting
@@ -516,6 +525,9 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
             </View>
           </View>
         </KeyboardAvoidingView>
+        
+        {/* Styled Alert Component - inside modal to appear on top */}
+        <AlertComponent />
       </Modal>
     </>
   );

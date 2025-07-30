@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
-  Alert,
   Modal,
   TextInput
 } from "react-native";
@@ -22,6 +21,7 @@ import CommentModal from "../social/CommentModal";
 import retroCoin from "../../../assets/images/retro_coin.png";
 import { supabase } from "../../../database/supabase-client";
 import { useTradeOffers } from "../../../database/hooks/useTradeOffers";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface ListingPostProps {
   listing: Listing;
@@ -60,6 +60,7 @@ const ListingPost: React.FC<ListingPostProps> = ({
 }) => {
   const { session } = useAuth();
   const userId = session?.user?.id;
+  const { showAlert } = useStyledAlert();
 
   // seller & current user
   const { user: seller, loading: userLoading } = useUser(listing.seller_id);
@@ -155,12 +156,14 @@ const ListingPost: React.FC<ListingPostProps> = ({
 
   // delete listing
   const handleDelete = async () => {
-    Alert.alert(
-      "Delete Listing",
-      listing.listing_type === "auction"
+    showAlert({
+      title: "Delete Listing",
+      message: listing.listing_type === "auction"
         ? "Are you sure you want to delete this listing? All current bidders will be refunded."
         : "Are you sure you want to delete this listing?",
-      [
+      icon: "trash-outline",
+      iconColor: "#EF4444",
+      buttons: [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
@@ -177,12 +180,17 @@ const ListingPost: React.FC<ListingPostProps> = ({
               if (error) throw error;
               onListingChanged?.();
             } catch {
-              Alert.alert("Error", "Failed to delete listing.");
+              showAlert({
+                title: "Error",
+                message: "Failed to delete listing.",
+                icon: "alert-circle-outline",
+                iconColor: "#EF4444"
+              });
             }
           }
         }
       ]
-    );
+    });
   };
 
   const formatTimeAgo = (dateString?: string) => {

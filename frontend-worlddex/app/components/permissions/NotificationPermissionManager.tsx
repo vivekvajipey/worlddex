@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { PermissionPrimer } from './PermissionPrimer';
 import { useNotificationTrigger } from '../../../src/hooks/useNotificationTrigger';
 import { usePostHog } from 'posthog-react-native';
 import { useAuth } from '../../../src/contexts/AuthContext';
+import { useStyledAlert } from '../../../src/hooks/useStyledAlert';
 
 export const NotificationPermissionManager: React.FC = () => {
   const [showPrimer, setShowPrimer] = useState(false);
@@ -12,6 +13,7 @@ export const NotificationPermissionManager: React.FC = () => {
   const { shouldShowPrompt, markPromptShown, handlePermissionGranted, recheckTriggers } = useNotificationTrigger();
   const posthog = usePostHog();
   const { session } = useAuth();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   // Show primer when triggers are met
   useEffect(() => {
@@ -49,14 +51,16 @@ export const NotificationPermissionManager: React.FC = () => {
         await handlePermissionGranted();
       } else if (status === 'denied') {
         // Show settings prompt
-        Alert.alert(
-          'Enable Notifications',
-          'To get daily reminders, please enable notifications in your device settings.',
-          [
+        showAlert({
+          title: 'Enable Notifications',
+          message: 'To get daily reminders, please enable notifications in your device settings.',
+          icon: 'notifications-outline',
+          iconColor: '#F59E0B',
+          buttons: [
             { text: 'Maybe Later', style: 'cancel' },
             { text: 'Open Settings', onPress: () => Linking.openSettings() }
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
@@ -75,11 +79,14 @@ export const NotificationPermissionManager: React.FC = () => {
   }, [posthog]);
 
   return (
-    <PermissionPrimer
-      visible={showPrimer}
-      type="notification"
-      onAllow={handleAllow}
-      onDeny={handleDeny}
-    />
+    <>
+      <PermissionPrimer
+        visible={showPrimer}
+        type="notification"
+        onAllow={handleAllow}
+        onDeny={handleDeny}
+      />
+      <AlertComponent />
+    </>
   );
 };

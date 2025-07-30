@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { View, Alert, Modal, ActivityIndicator, Text, TouchableOpacity } from "react-native";
+import { View, Modal, ActivityIndicator, Text, TouchableOpacity } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import { useIdentify } from "../../../src/hooks/useIdentify";
@@ -20,6 +20,7 @@ import type { Capture, CollectionItem } from "../../../database/types";
 import { IdentifyRequest } from "../../../../shared/types/identify";
 import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -45,6 +46,7 @@ export default function PendingCaptureIdentifier({
 }: PendingCaptureIdentifierProps) {
   const posthog = usePostHog();
   const { enqueueModal } = useModalQueue();
+  const { showAlert, AlertComponent } = useStyledAlert();
   const { processImageForVLM } = useImageProcessor();
   const { identify, tier1, tier2, isLoading: idLoading, error: idError, reset } = useIdentify();
   const { uploadCapturePhoto, isUploading: isUploadingPhoto, error: uploadError } = usePhotoUpload();
@@ -231,7 +233,12 @@ export default function PendingCaptureIdentifier({
         
         if (!item) {
           console.error("Critical: No matching item found or created for label:", label);
-          Alert.alert("Error", "Failed to process capture. Please try again.");
+          showAlert({
+            title: "Error",
+            message: "Failed to process capture. Please try again.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
+          });
           onClose();
           return;
         }
@@ -360,7 +367,12 @@ export default function PendingCaptureIdentifier({
         return;
       } catch (err) {
         console.error("Error during capture processing:", err);
-        Alert.alert("Error", "Failed to save capture. Please try again.");
+        showAlert({
+          title: "Error",
+          message: "Failed to save capture. Please try again.",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
       }
     } else {
       // Either rejected or failed - update status and close
@@ -439,6 +451,9 @@ export default function PendingCaptureIdentifier({
           />
         )}
       </View>
+      
+      {/* Styled Alert Component */}
+      <AlertComponent />
     </Modal>
   );
 }
