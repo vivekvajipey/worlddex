@@ -32,7 +32,7 @@ import { calculateAndAwardCoins } from "../../database/hooks/useCoins";
 import { calculateAndAwardCaptureXP } from "../../database/hooks/useXP";
 
 // Import new custom hooks
-import { useCaptureLimits } from "../../src/hooks/useCaptureLimits";
+import { useCaptureLimitsWithPersistence } from "../../src/hooks/useCaptureLimitsWithPersistence";
 import { useTutorialFlow } from "../../src/hooks/useTutorialFlow";
 import { useOfflineCapture } from "../../src/hooks/useOfflineCapture";
 import { useCaptureProcessing } from "../../src/hooks/useCaptureProcessing";
@@ -96,7 +96,7 @@ export default function CameraScreen({}: CameraScreenProps) {
   const { showAlert } = useAlert();
   
   // Use our new custom hooks
-  const { checkCaptureLimit } = useCaptureLimits(userId);
+  const { checkCaptureLimit, incrementCaptureCount, syncWithDatabase } = useCaptureLimitsWithPersistence(userId);
   const { showTutorialOverlay, setShowTutorialOverlay, panResponder, handleFirstCapture } = useTutorialFlow(userId);
   const { savedOffline, setSavedOffline, saveOfflineCapture, initializeOfflineService } = useOfflineCapture();
   const { processLassoCapture, processFullScreenCapture } = useCaptureProcessing();
@@ -140,8 +140,10 @@ export default function CameraScreen({}: CameraScreenProps) {
   useEffect(() => {
     if (userId) {
       initializeOfflineService(userId);
+      // Also sync any pending capture count updates
+      syncWithDatabase();
     }
-  }, [userId, initializeOfflineService]);
+  }, [userId, initializeOfflineService, syncWithDatabase]);
 
   // Debug modal queue state
   useEffect(() => {
@@ -436,7 +438,7 @@ export default function CameraScreen({}: CameraScreenProps) {
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, userId, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, processLassoCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
+  }, [identify, tier1, tier2, userId, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, incrementCaptureCount, syncWithDatabase, processLassoCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
 
   // Handle full screen capture
   const handleFullScreenCapture = useCallback(async () => {
@@ -567,7 +569,7 @@ export default function CameraScreen({}: CameraScreenProps) {
       setVlmCaptureSuccess(null);
       setIdentifiedLabel(null);
     }
-  }, [identify, tier1, tier2, userId, SCREEN_HEIGHT, SCREEN_WIDTH, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, processFullScreenCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
+  }, [identify, tier1, tier2, userId, SCREEN_HEIGHT, SCREEN_WIDTH, location, reset, permission, requestPermission, handleFirstCapture, checkCaptureLimit, incrementCaptureCount, syncWithDatabase, processFullScreenCapture, saveOfflineCapture, setSavedOffline, showAlert, showTutorialOverlay, posthog]);
 
   // Handle dismiss of the preview
   const handleDismissPreview = useCallback(async () => {
@@ -800,9 +802,8 @@ export default function CameraScreen({}: CameraScreenProps) {
             }
           }
 
-          // Increment daily_captures_used and total_captures for the user
-          await incrementUserField(userId, "daily_captures_used", 1);
-          await incrementUserField(userId, "total_captures", 1);
+          // Increment capture count (updates both local state and database)
+          await incrementCaptureCount();
           
           // Hide tutorial overlay and mark as onboarded on first capture
           if (showTutorialOverlay) {
