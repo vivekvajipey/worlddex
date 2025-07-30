@@ -150,6 +150,11 @@ export default function CameraScreen({}: CameraScreenProps) {
     console.log("currentModal:", currentModal);
     console.log("isCapturing:", isCapturing);
     console.log("Camera screen pathname:", pathname);
+    
+    // Log warning if modal is showing but camera is on wrong path
+    if (isShowingModal && pathname !== '/') {
+      console.warn("WARNING: Modal showing but camera not on root path!");
+    }
   }, [isShowingModal, currentModal, isCapturing, pathname]);
   
   // Handle network errors from useIdentify

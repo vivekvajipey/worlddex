@@ -42,7 +42,7 @@ export default function LevelUpModal({ visible, onClose, newLevel, rewards = [] 
   }, [visible, newLevel, posthog, scaleAnim]);
   
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center items-center bg-black/60">
         <Animated.View 
           className="bg-background rounded-2xl p-6 w-80 items-center"

@@ -46,6 +46,7 @@ export const ModalCoordinator: React.FC = () => {
   console.log("=== MODAL COORDINATOR ===");
   console.log("isShowingModal:", isShowingModal);
   console.log("currentModal type:", currentModal?.type);
+  console.log("currentModal id:", currentModal?.id);
   console.log("pathname:", pathname);
 
   if (!isShowingModal || !currentModal) {
@@ -56,6 +57,7 @@ export const ModalCoordinator: React.FC = () => {
     case 'coinReward':
       return (
         <CoinRewardModal
+          key={currentModal.id}
           visible={true}
           onClose={dismissCurrentModal}
           total={currentModal.data.total}
@@ -70,6 +72,7 @@ export const ModalCoordinator: React.FC = () => {
     case 'levelUp':
       return (
         <LevelUpModal
+          key={currentModal.id}
           visible={true}
           onClose={dismissCurrentModal}
           newLevel={currentModal.data.newLevel}
@@ -79,6 +82,7 @@ export const ModalCoordinator: React.FC = () => {
     case 'locationPrompt':
       return (
         <LocationPrompt
+          key={currentModal.id}
           visible={true}
           itemName={currentModal.data.itemName}
           onEnableLocation={handleLocationEnable}
@@ -89,6 +93,7 @@ export const ModalCoordinator: React.FC = () => {
     case 'onboardingCircle':
       return (
         <OnboardingCircleModal
+          key={currentModal.id}
           visible={true}
           onClose={dismissCurrentModal}
         />
@@ -97,6 +102,7 @@ export const ModalCoordinator: React.FC = () => {
     case 'onboardingSwipe':
       return (
         <OnboardingSwipeModal
+          key={currentModal.id}
           visible={true}
           onClose={dismissCurrentModal}
         />

@@ -78,7 +78,19 @@ export default function CoinRewardModal({
   // Check if we have both rewards or just one
   const hasBothRewards = total > 0 && xpTotal > 0;
   const hasSingleReward = (total > 0 && xpTotal === 0) || (total === 0 && xpTotal > 0);
+  
+  // Debug: Log modal state
+  console.log("=== COIN REWARD MODAL STATE ===");
+  console.log("hasBothRewards:", hasBothRewards);
+  console.log("hasSingleReward:", hasSingleReward);
+  console.log("Should show coins:", total > 0);
+  console.log("Should show XP:", xpTotal > 0);
 
+  // Debug: Add a test view to see if modal is rendering at all
+  if (visible && total === 0 && xpTotal > 0) {
+    console.log("RENDERING XP-ONLY MODAL");
+  }
+  
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 justify-center items-center bg-black/60" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
