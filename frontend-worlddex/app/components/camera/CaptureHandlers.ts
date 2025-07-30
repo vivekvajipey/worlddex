@@ -153,33 +153,12 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       };
       lastIdentifyPayloadRef.current = identifyPayload;
 
-      // Check offline status before making network request
-      if (!navigator.onLine) {
-        console.log("[OFFLINE] No internet connection, saving capture for later");
-        
-        setSavedOffline(true);
-        await saveOfflineCapture({
-          capturedUri: processed.croppedUri,
-          location: location || undefined,
-          captureBox: processed.captureBox,
-          userId: userId!,
-          method: 'lasso',
-          reason: 'offline_detected'
-        });
-        
-        cameraCaptureRef.current?.resetLasso();
-        await incrementCaptureCount();
-        console.log('[OFFLINE] Capture saved for later');
-        
-        dispatch(actions.vlmProcessingStart());
-      } else {
-        // Make the identification request
-        console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
-        await identify(identifyPayload);
-        
-        await incrementCaptureCount();
-        console.log("[CAPTURE] Incremented capture count");
-      }
+      // Make the identification request
+      console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
+      await identify(identifyPayload);
+      
+      await incrementCaptureCount();
+      console.log("[CAPTURE] Incremented capture count");
     } catch (error: any) {
       console.error("[CAPTURE] === CAPTURE ERROR ===", error);
       console.log("[CAPTURE] Error details:", {
@@ -272,38 +251,16 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         return;
       }
 
-      // Check offline status before making network request
-      if (!navigator.onLine && userId) {
-        console.log("[OFFLINE] No internet connection, saving full screen capture for later");
-        
-        setSavedOffline(true);
-        await saveOfflineCapture({
-          capturedUri: photo.uri,
-          location: location || undefined,
-          captureBox: processed.captureBox,
-          userId,
-          method: 'full_screen',
-          reason: 'offline_detected'
-        });
-        
-        cameraCaptureRef.current?.resetLasso();
-        await incrementCaptureCount();
-        console.log('[OFFLINE] Capture saved for later');
-        
-        dispatch(actions.vlmProcessingSuccess(""));
-        dispatch(actions.identificationComplete());
-      } else {
-        // Save payload for potential retry
-        const identifyPayload: IdentifyRequest = {
-          base64Data: processed.vlmImage.base64,
-          contentType: 'image/jpeg',
-          gps: location ? { lat: location.latitude, lng: location.longitude } : null
-        };
-        lastIdentifyPayloadRef.current = identifyPayload;
+      // Save payload for potential retry
+      const identifyPayload: IdentifyRequest = {
+        base64Data: processed.vlmImage.base64,
+        contentType: 'image/jpeg',
+        gps: location ? { lat: location.latitude, lng: location.longitude } : null
+      };
+      lastIdentifyPayloadRef.current = identifyPayload;
 
-        await identify(identifyPayload);
-        await incrementCaptureCount();
-      }
+      await identify(identifyPayload);
+      await incrementCaptureCount();
     } catch (error: any) {
       console.error("Full screen capture failed:", error);
       

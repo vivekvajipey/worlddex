@@ -75,7 +75,7 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
 
   // Watch for network errors during capture to trigger offline save
   useEffect(() => {
-    if (idError && idError.message === 'Network request failed' && isCapturing && capturedUri && !savedOffline && userId) {
+    if (idError && idError.message === 'Network request failed' && capturedUri && !savedOffline && userId) {
       console.log("[OFFLINE FLOW] Detected network error from useIdentify");
       
       // Set states to trigger offline save flow
@@ -97,7 +97,7 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
         console.error("[OFFLINE FLOW] Failed to save offline capture:", error);
       });
     }
-  }, [idError, isCapturing, capturedUri, savedOffline, userId, location, captureBox, saveOfflineCapture, dispatch, actions, cameraCaptureRef, setSavedOffline]);
+  }, [idError, capturedUri, savedOffline, userId, location, captureBox, saveOfflineCapture, dispatch, actions, cameraCaptureRef, setSavedOffline]);
 
   // Get user location
   useEffect(() => {
@@ -176,7 +176,9 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
         }
       } else {
         console.log("Tier1 identification failed - no label.");
-        // Don't set failure state - this will be handled by offline save logic
+        // Set failure state to trigger ripping animation for unidentified objects
+        dispatch(actions.vlmProcessingFailed());
+        dispatch(actions.identificationComplete());
       }
     }
 
