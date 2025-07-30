@@ -101,7 +101,7 @@ export default function CameraScreen({}: CameraScreenProps) {
   const { savedOffline, setSavedOffline, saveOfflineCapture, initializeOfflineService } = useOfflineCapture();
   const { processLassoCapture, processFullScreenCapture } = useCaptureProcessing();
   const { queuePostCaptureModals } = useModalSequence();
-  const { enqueueModal } = useModalQueue();
+  const { enqueueModal, isShowingModal, currentModal } = useModalQueue();
   
   // Don't show error in polaroid if we're saving offline
   // Don't pass network errors to polaroid - we handle them differently
@@ -142,6 +142,15 @@ export default function CameraScreen({}: CameraScreenProps) {
       initializeOfflineService(userId);
     }
   }, [userId, initializeOfflineService]);
+
+  // Debug modal queue state
+  useEffect(() => {
+    console.log("=== MODAL QUEUE STATE ===");
+    console.log("isShowingModal:", isShowingModal);
+    console.log("currentModal:", currentModal);
+    console.log("isCapturing:", isCapturing);
+    console.log("Camera screen pathname:", pathname);
+  }, [isShowingModal, currentModal, isCapturing, pathname]);
   
   // Handle network errors from useIdentify
   useEffect(() => {

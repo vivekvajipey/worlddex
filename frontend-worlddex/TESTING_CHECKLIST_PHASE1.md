@@ -1,7 +1,7 @@
 # Phase 1 Testing Checklist
 
 ## Prerequisites
-- [ ] Ensure the app builds successfully
+- [x] Ensure the app builds successfully
 - [ ] Have a test account ready
 - [ ] Clear app data/cache for fresh testing
 - [ ] Enable airplane mode for offline testing

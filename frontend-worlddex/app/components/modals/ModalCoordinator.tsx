@@ -43,6 +43,11 @@ export const ModalCoordinator: React.FC = () => {
     dismissCurrentModal();
   }, [dismissCurrentModal]);
 
+  console.log("=== MODAL COORDINATOR ===");
+  console.log("isShowingModal:", isShowingModal);
+  console.log("currentModal type:", currentModal?.type);
+  console.log("pathname:", pathname);
+
   if (!isShowingModal || !currentModal) {
     return null;
   }

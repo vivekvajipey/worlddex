@@ -29,6 +29,20 @@ export default function CoinRewardModal({
 }: CoinRewardModalProps) {
   const posthog = usePostHog();
   
+  console.log("=== COIN REWARD MODAL RENDER ===");
+  console.log("visible:", visible);
+  console.log("total:", total);
+  console.log("rewards:", rewards);
+  console.log("xpTotal:", xpTotal);
+  console.log("xpRewards:", xpRewards);
+  
+  useEffect(() => {
+    console.log("COIN REWARD MODAL MOUNTED/UPDATED");
+    return () => {
+      console.log("COIN REWARD MODAL UNMOUNTING");
+    };
+  }, []);
+  
   useEffect(() => {
     // Track screen view when modal becomes visible
     if (visible && (total !== undefined || xpTotal !== undefined) && posthog) {
@@ -66,9 +80,9 @@ export default function CoinRewardModal({
   const hasSingleReward = (total > 0 && xpTotal === 0) || (total === 0 && xpTotal > 0);
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View className="flex-1 justify-center items-center bg-black/60">
-        <View className="bg-surface rounded-3xl p-6 w-80 items-center shadow-lg">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 justify-center items-center bg-black/60" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <View className="bg-surface rounded-3xl p-6 w-80 items-center shadow-lg" style={{ backgroundColor: 'white' }}>
           {/* Header */}
           <Text className="text-text-primary font-lexend-bold text-2xl mb-6">
             REWARDS EARNED!
