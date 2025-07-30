@@ -950,6 +950,29 @@ export default function CameraScreen({
         label: identifiedLabel,
         isPublic: isCapturePublic
       });
+      
+      // Create temporary capture for immediate display
+      let tempCaptureId: string | null = null;
+      try {
+        const tempCapture = await OfflineCaptureService.saveTemporaryCapture({
+          imageUri: capturedUri,
+          capturedAt: new Date().toISOString(),
+          location: location || undefined,
+          captureBox: captureBox,
+          label: identifiedLabel,
+          rarityTier: rarityTier,
+          rarityScore: rarityScore
+        });
+        tempCaptureId = tempCapture.id;
+        console.log("[CAPTURE FLOW] Temporary capture created for immediate display", {
+          timestamp: new Date().toISOString(),
+          tempId: tempCaptureId
+        });
+      } catch (tempError) {
+        console.error("Failed to create temporary capture:", tempError);
+        // Continue with normal flow even if temp capture fails
+      }
+      
       try {
         const label = identifiedLabel; // Already checked it's not null
 
@@ -988,6 +1011,20 @@ export default function CameraScreen({
             itemId: item.id,
             label: identifiedLabel
           });
+          
+          // Clean up temporary capture now that database save is complete
+          if (tempCaptureId) {
+            try {
+              await OfflineCaptureService.deletePendingCapture(tempCaptureId);
+              console.log("[CAPTURE FLOW] Temporary capture cleaned up", {
+                timestamp: new Date().toISOString(),
+                tempId: tempCaptureId
+              });
+            } catch (cleanupError) {
+              console.error("Failed to clean up temporary capture:", cleanupError);
+              // Non-critical error, continue
+            }
+          }
 
           // Auto-add to user collections based on the identified label
           if (captureRecord && identifiedLabel) { // Re-check identifiedLabel for safety, though it should be set

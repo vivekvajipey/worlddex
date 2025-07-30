@@ -8,6 +8,7 @@ import { fetchItem } from "../../../database/hooks/useItems";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { useUser } from "../../../database/hooks/useUsers";
 import { usePostHog } from "posthog-react-native";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface CaptureDetailsModalProps {
   visible: boolean;
@@ -15,6 +16,7 @@ interface CaptureDetailsModalProps {
   onClose: () => void;
   onDelete?: (capture: Capture) => void;
   onUpdate?: (capture: Capture, updates: Partial<Capture>) => void;
+  showAlert?: (options: any) => void;
 }
 
 const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
@@ -23,6 +25,7 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   onClose,
   onDelete,
   onUpdate,
+  showAlert: parentShowAlert,
 }) => {
   const { downloadUrl, loading } = useDownloadUrl(capture?.image_key || "");
   const [totalCaptures, setTotalCaptures] = useState<number | null>(null);
@@ -32,6 +35,10 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   const { user: currentUser } = useUser(session?.user?.id || null);
   const { user: previousOwner } = useUser(capture?.last_owner_id || null);
   const posthog = usePostHog();
+  const { showAlert: localShowAlert, AlertComponent } = useStyledAlert();
+  
+  // Use parent's showAlert if provided, otherwise use local
+  const showAlert = parentShowAlert || localShowAlert;
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -268,6 +275,9 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
           <Ionicons name="close" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
+      
+      {/* Styled Alert Component */}
+      <AlertComponent />
     </Modal>
   );
 };

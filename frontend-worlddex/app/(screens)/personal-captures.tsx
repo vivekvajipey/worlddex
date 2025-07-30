@@ -95,13 +95,27 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         imageUri: p.imageUri,
         captured_at: p.capturedAt,
         capturedAt: p.capturedAt,
-        isPending: true,
+        isPending: p.status !== 'temporary', // Temporary captures are not "pending"
         pendingStatus: p.status,
         pendingError: p.error,
         location: p.location,
+        // Add fields for temporary captures
+        item_name: p.label,
+        rarity_tier: p.rarityTier,
+        rarity_score: p.rarityScore,
         _pendingData: p // Store original pending capture data
       }));
       setPendingCaptures(combined);
+      
+      // Log temporary captures
+      const tempCaptures = combined.filter(c => c.pendingStatus === 'temporary');
+      if (tempCaptures.length > 0) {
+        console.log("[CAPTURE FLOW] Temporary captures found in WorldDex", {
+          timestamp: new Date().toISOString(),
+          count: tempCaptures.length,
+          captures: tempCaptures.map(c => ({ id: c.id, label: c.item_name }))
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch pending captures:", error);
     }
@@ -145,6 +159,19 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         urlMap[capture.id] = capture.imageUri; // Use capture ID as key for pending
       }
     });
+    
+    // Debug log for temporary captures
+    const tempCaptures = pendingCaptures.filter(c => c.pendingStatus === 'temporary');
+    if (tempCaptures.length > 0) {
+      console.log("[CAPTURE FLOW] Image URL mapping for temp captures", {
+        timestamp: new Date().toISOString(),
+        mappings: tempCaptures.map(c => ({ 
+          id: c.id, 
+          hasImageUri: !!c.imageUri,
+          imageUri: c.imageUri?.substring(0, 50) + '...'
+        }))
+      });
+    }
     
     return urlMap;
   }, [imageUrlItems, pendingCaptures]);
@@ -284,12 +311,23 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   const handleCapturePress = (capture: CombinedCapture) => {
     // Check if this is a pending capture that needs identification
-    if (capture.isPending) {
+    if (capture.isPending && capture.pendingStatus !== 'temporary') {
       // Get the original pending capture data
       const pendingData = (capture as any)._pendingData;
       if (pendingData) {
         setSelectedPendingCapture(pendingData);
       }
+      return;
+    }
+    
+    // For temporary captures, show a simple message since they're being saved
+    if (capture.pendingStatus === 'temporary') {
+      showAlert({
+        title: "Saving Capture",
+        message: `Your ${capture.item_name} capture is being saved. It will be available shortly.`,
+        icon: "time-outline",
+        iconColor: "#3B82F6"
+      });
       return;
     }
     

@@ -17,9 +17,13 @@ export interface PendingCapture {
   capturedAt: string;
   location?: { latitude: number; longitude: number };
   captureBox?: { x: number; y: number; width: number; height: number; aspectRatio: number };
-  status: 'pending' | 'identifying' | 'failed';
+  status: 'pending' | 'identifying' | 'failed' | 'temporary';
   error?: string;
   dailyCaptureDate: string; // YYYY-MM-DD in PST
+  // Fields for temporary captures (already identified)
+  label?: string;
+  rarityTier?: string;
+  rarityScore?: number;
 }
 
 export class OfflineCaptureService {
@@ -225,5 +229,52 @@ export class OfflineCaptureService {
       console.error('Failed to clear pending captures:', error);
       throw error;
     }
+  }
+
+  // Save a temporary capture (already identified, waiting for DB save)
+  static async saveTemporaryCapture(capture: Omit<PendingCapture, 'id' | 'dailyCaptureDate' | 'status'> & {
+    label: string;
+    rarityTier: string;
+    rarityScore?: number;
+  }): Promise<PendingCapture> {
+    try {
+      // Save image locally to ensure it persists
+      const localImageUri = await this.saveImageLocally(capture.imageUri);
+      
+      const tempCapture: PendingCapture = {
+        ...capture,
+        imageUri: localImageUri, // Use the local copy
+        id: `temp_${Date.now()}_${uuid.v4()}`, // Unique temp ID
+        dailyCaptureDate: this.getTodayPST(),
+        status: 'temporary'
+      };
+
+      // Get existing captures
+      const existing = await this.getAllPendingCaptures();
+      
+      // Add new temporary capture
+      existing.push(tempCapture);
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      
+      console.log('[CAPTURE FLOW] Temporary capture saved', {
+        timestamp: new Date().toISOString(),
+        tempId: tempCapture.id,
+        label: tempCapture.label,
+        localImageUri: localImageUri
+      });
+      
+      return tempCapture;
+    } catch (error) {
+      console.error('Failed to save temporary capture:', error);
+      throw error;
+    }
+  }
+
+  // Get only temporary captures
+  static async getTemporaryCaptures(): Promise<PendingCapture[]> {
+    const allCaptures = await this.getAllPendingCaptures();
+    return allCaptures.filter(c => c.status === 'temporary');
   }
 }

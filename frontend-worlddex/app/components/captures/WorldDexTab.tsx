@@ -57,7 +57,7 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
           <CaptureThumbnail
             capture={item}
             onPress={() => onCapturePress(item)}
-            downloadUrl={item.isPending ? urlMap[item.id] : urlMap[item.thumb_key || item.image_key]}
+            downloadUrl={item.isPending || item.pendingStatus === 'temporary' ? urlMap[item.id] : urlMap[item.thumb_key || item.image_key]}
             loading={urlsLoading}
             isPending={item.isPending}
           />
