@@ -7,6 +7,7 @@ import { UseIdentifyResult } from '../../../src/hooks/useIdentify';
 import { UsePhotoUploadResult } from '../../../src/hooks/usePhotoUpload';
 import { CameraCaptureHandle } from './CameraCapture';
 import type { Capture, CollectionItem } from '../../../database/types';
+import { processCaptureAfterIdentification } from '../../../src/services/captureProcessingService';
 
 interface CaptureHandlerDependencies {
   // State from reducer
@@ -326,7 +327,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     vlmCaptureSuccess: boolean | null,
     identifiedLabel: string | null,
     identificationComplete: boolean,
-    isRejected: boolean
+    isRejected: boolean,
+    tier1Response?: any
   ) => {
     console.log("=== DISMISSING POLAROID ===");
     console.log("Current state:", {
@@ -349,100 +351,39 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       !savedOffline
     ) {
       try {
-        console.log("[CAPTURE] Getting/creating item for label:", identifiedLabel);
-        const { item, isGlobalFirst } = await incrementOrCreateItem(identifiedLabel);
-        
-        if (!item) {
-          console.error("[CAPTURE] Failed to create or increment item for label:", identifiedLabel);
-          return;
-        }
-
-        // Create capture payload
-        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key"> = {
-          user_id: userId,
-          item_id: item.id,
-          item_name: item.name,
-          capture_number: item.total_captures,
-          image_key: "", // This will be set by uploadCapturePhoto
-          is_public: isCapturePublic,
-          like_count: 0,
-          daily_upvotes: 0,
-          rarity_tier: rarityTier,
-          rarity_score: rarityScore
-        };
-
-        // Upload photo and create capture record
-        console.log("[CAPTURE] Uploading photo and creating capture record");
-        const captureRecord = await uploadCapturePhoto(
-          capturedUri,
-          "image/jpeg",
-          `${Date.now()}.jpg`,
-          capturePayload
-        );
-
-        if (!captureRecord) {
-          console.error("[CAPTURE] Failed to create capture record");
-          return;
-        }
-
-        // Handle collections
-        console.log("[CAPTURE] Checking if capture matches any collection items...");
-        try {
-          const userCollections = await fetchUserCollectionsByUser(userId);
-          console.log(`[CAPTURE] Found ${userCollections.length} user collections to check`);
-
-          for (const userCollection of userCollections) {
-            const collectionItems = await fetchCollectionItems(userCollection.collection_id);
-            
-            // Filter items that match the identified label
-            const matchingItems = collectionItems.filter((ci: any) => {
-              const itemNameMatch = ci.name?.toLowerCase() === identifiedLabel.toLowerCase();
-              const displayNameMatch = ci.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
-              return itemNameMatch || displayNameMatch;
-            });
-
-            console.log(`[CAPTURE] Found ${matchingItems.length} matching items in collection ${userCollection.collection_id}`);
-
-            // Add matching items to user's collection
-            for (const collectionItem of matchingItems) {
-              try {
-                const hasItem = await checkUserHasCollectionItem(userId, collectionItem.id);
-                
-                if (!hasItem) {
-                  await createUserCollectionItem({
-                    user_id: userId,
-                    collection_item_id: collectionItem.id,
-                    capture_id: captureRecord.id,
-                    collection_id: collectionItem.collection_id,
-                  });
-                  console.log(`[CAPTURE] Added ${identifiedLabel} to collection ${collectionItem.collection_id}`);
-                }
-              } catch (collectionErr) {
-                console.error('[CAPTURE] Error adding item to user collection:', collectionErr);
-                // Continue with next item even if this one fails
-              }
-            }
-          }
-        } catch (collectionErr) {
-          console.error('[CAPTURE] Error handling collections:', collectionErr);
-          // Non-critical error, continue
-        }
-
-        // Increment user stats
-        console.log('[CAPTURE] Incrementing user stats');
-        await incrementCaptureCount();
-        console.log('[CAPTURE] Incremented capture count');
-
-        console.log("[CAPTURE] Successfully saved to database, queueing modals...");
-        // Queue post-capture modals with the capture ID
-        await queuePostCaptureModals({
+        const result = await processCaptureAfterIdentification({
           userId,
-          captureId: captureRecord.id,
-          itemName: identifiedLabel,
+          identifiedLabel,
+          capturedUri,
+          isCapturePublic,
           rarityTier,
-          xpValue: undefined, // Could be passed from tier1 response if available
-          isGlobalFirst
+          rarityScore,
+          tier1Response,
+          services: {
+            incrementOrCreateItem,
+            uploadCapturePhoto,
+            incrementCaptureCount,
+            fetchUserCollectionsByUser,
+            fetchCollectionItems,
+            checkUserHasCollectionItem,
+            createUserCollectionItem
+          }
         });
+
+        if (result.success && result.captureRecord) {
+          console.log("[CAPTURE] Successfully saved to database, queueing modals...");
+          // Queue post-capture modals with the capture ID
+          await queuePostCaptureModals({
+            userId,
+            captureId: result.captureRecord.id,
+            itemName: identifiedLabel,
+            rarityTier,
+            xpValue: result.xpAwarded,
+            isGlobalFirst: result.isGlobalFirst
+          });
+        } else {
+          console.error("[CAPTURE] Failed to process capture:", result.error);
+        }
       } catch (error) {
         console.error("[CAPTURE] Error saving capture to database:", error);
         // Could show an error alert here if needed

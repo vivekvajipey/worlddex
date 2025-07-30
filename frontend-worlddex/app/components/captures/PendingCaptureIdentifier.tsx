@@ -21,6 +21,7 @@ import { IdentifyRequest } from "../../../../shared/types/identify";
 import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
 import { useAlert } from "../../../src/contexts/AlertContext";
+import { processCaptureAfterIdentification } from "../../../src/services/captureProcessingService";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -227,87 +228,51 @@ export default function PendingCaptureIdentifier({
       !isRejectedRef.current
     ) {
       try {
-        const label = identifiedLabel;
-        const { item, isGlobalFirst } = await incrementOrCreateItem(label);
-        
-        if (!item) {
-          console.error("Critical: No matching item found or created for label:", label);
+        // Use the shared service to process the capture
+        const result = await processCaptureAfterIdentification({
+          userId: session.user.id,
+          identifiedLabel,
+          capturedUri: pendingCapture.imageUri,
+          isCapturePublic,
+          rarityTier,
+          rarityScore,
+          tier1Response: tier1,
+          services: {
+            incrementOrCreateItem,
+            uploadCapturePhoto,
+            incrementCaptureCount: () => incrementUserField(session.user.id, "daily_captures_used", 1),
+            fetchUserCollectionsByUser,
+            fetchCollectionItems,
+            checkUserHasCollectionItem,
+            createUserCollectionItem
+          },
+          onProgress: (status) => console.log(`[PendingCapture] ${status}`)
+        });
+
+        if (!result.success) {
+          console.error("[PendingCapture] Failed to process capture:", result.error);
           showAlert({
             title: "Error",
-            message: "Failed to process capture. Please try again.",
+            message: result.error || "Failed to process capture. Please try again.",
             icon: "alert-circle-outline",
             iconColor: "#EF4444"
           });
           onClose();
           return;
         }
-        
-        // Create the capture record
-        const capturePayload: Omit<Capture, "id" | "captured_at" | "segmented_image_key"> = {
-          user_id: session.user.id,
-          item_id: item.id,
-          item_name: item.name,
-          capture_number: item.total_captures,
-          image_key: "", // Will be set by uploadCapturePhoto
-          is_public: isCapturePublic,
-          like_count: 0,
-          daily_upvotes: 0,
-          rarity_tier: rarityTier,
-          rarity_score: rarityScore,
-          // Don't include location in the payload - it's causing PostGIS errors
-          // location: pendingCapture.location
-        };
-        
-        const captureRecord = await uploadCapturePhoto(
-          pendingCapture.imageUri,
-          "image/jpeg",
-          `${Date.now()}.jpg`,
-          capturePayload
-        );
-        
-        // Auto-add to user collections
-        if (captureRecord && identifiedLabel) {
-          try {
-            const userCollections = await fetchUserCollectionsByUser(session.user.id);
-            
-            for (const userCollection of userCollections) {
-              const collectionItems = await fetchCollectionItems(userCollection.collection_id);
-              const matchingItems = collectionItems.filter((ci: CollectionItem) => {
-                const itemNameMatch = ci.name?.toLowerCase() === identifiedLabel.toLowerCase();
-                const displayNameMatch = ci.display_name?.toLowerCase() === identifiedLabel.toLowerCase();
-                return itemNameMatch || displayNameMatch;
-              });
-              
-              for (const collectionItem of matchingItems) {
-                const hasItem = await checkUserHasCollectionItem(session.user.id, collectionItem.id);
-                
-                if (!hasItem) {
-                  await createUserCollectionItem({
-                    user_id: session.user.id,
-                    collection_item_id: collectionItem.id,
-                    capture_id: captureRecord.id,
-                    collection_id: collectionItem.collection_id,
-                  });
-                }
-              }
-            }
-          } catch (collectionErr) {
-            console.error("Error handling collections:", collectionErr);
-          }
-        }
-        
-        // Increment daily captures used
-        await incrementUserField(session.user.id, "daily_captures_used", 1);
+
+        const captureRecord = result.captureRecord;
+        const isGlobalFirst = result.isGlobalFirst || false;
         
         // Calculate and award XP
         let xpData = null;
-        if (captureRecord && item && rarityTier) {
+        if (captureRecord && rarityTier) {
           const xpResult = await calculateAndAwardCaptureXP(
             session.user.id,
             captureRecord.id,
-            item.name,
+            identifiedLabel,
             rarityTier,
-            (tier1 as any)?.xpValue,
+            result.xpAwarded,
             isGlobalFirst
           );
           if (xpResult.total > 0) {
@@ -351,7 +316,7 @@ export default function PendingCaptureIdentifier({
         // Track successful identification
         if (posthog) {
           posthog.capture("pending_capture_identified", {
-            item_name: item.name,
+            item_name: identifiedLabel,
             rarity_tier: rarityTier,
             had_location: !!pendingCapture.location
           });

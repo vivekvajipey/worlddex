@@ -156,12 +156,13 @@ export default function CameraScreen({}: CameraScreenProps) {
         vlmCaptureSuccess,
         identifiedLabel,
         identificationComplete,
-        isRejectedRef.current
+        isRejectedRef.current,
+        tier1
       );
       // Reset rejection flag after dismissal
       isRejectedRef.current = false;
     },
-    [captureHandlers, isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete]
+    [captureHandlers, isCapturing, capturedUri, vlmCaptureSuccess, identifiedLabel, identificationComplete, tier1]
   );
 
 
