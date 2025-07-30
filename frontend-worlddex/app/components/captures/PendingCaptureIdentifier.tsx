@@ -26,23 +26,12 @@ interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
   onClose: () => void;
   onSuccess: () => void;
-  onCoinReward?: (data: { 
-    total: number; 
-    rewards: { amount: number; reason: string }[];
-    xpTotal?: number;
-    xpRewards?: { amount: number; reason: string }[];
-    levelUp?: boolean;
-    newLevel?: number;
-  }) => void;
-  onLevelUp?: (newLevel: number) => void;
 }
 
 export default function PendingCaptureIdentifier({ 
   pendingCapture, 
   onClose, 
-  onSuccess,
-  onCoinReward,
-  onLevelUp
+  onSuccess
 }: PendingCaptureIdentifierProps) {
   const posthog = usePostHog();
   const { enqueueModal } = useModalQueue();
@@ -335,7 +324,7 @@ export default function PendingCaptureIdentifier({
             type: 'levelUp',
             data: { newLevel: xpData.newLevel },
             priority: 100,
-            persistent: false
+            persistent: true
           });
         }
         
@@ -352,7 +341,7 @@ export default function PendingCaptureIdentifier({
               newLevel: xpData?.newLevel
             },
             priority: 90,
-            persistent: false
+            persistent: true
           });
         }
         
@@ -413,8 +402,6 @@ export default function PendingCaptureIdentifier({
     reset,
     onClose,
     onSuccess,
-    onCoinReward,
-    onLevelUp,
     posthog,
     tier1
   ]);

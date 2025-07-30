@@ -17,6 +17,7 @@ export type User = {
   balance: number;
   xp: number;
   level: number;
+  is_admin?: boolean;
 };
 
 export type Collection = {

@@ -623,12 +623,8 @@ export default function PolaroidDevelopment({
     };
   };
 
-  // Update parent component when isPublic changes
-  useEffect(() => {
-    if (onSetPublic) {
-      onSetPublic(isPublic);
-    }
-  }, [isPublic, onSetPublic]);
+  // Removed useEffect that was causing infinite loop
+  // The parent component is already updated through togglePrivacy function
 
   // Add logging whenever the label is rendered
   useEffect(() => {

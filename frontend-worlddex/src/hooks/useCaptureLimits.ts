@@ -21,6 +21,11 @@ export const useCaptureLimits = (userId: string | null): UseCaptureLimitsReturn 
       return true;
     }
 
+    // Admins have unlimited captures
+    if (user.is_admin) {
+      return true;
+    }
+
     if (dailyCapturesUsed >= dailyCaptureLimit) {
       showAlert({
         title: "Daily Limit Reached",

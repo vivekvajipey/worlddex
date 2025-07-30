@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import * as Location from 'expo-location';
-import { useModalQueue } from './useModalQueue';
+import { useModalQueue } from '../contexts/ModalQueueContext';
 import { calculateAndAwardCoins } from '../../database/hooks/useCoins';
 import { calculateAndAwardCaptureXP } from '../../database/hooks/useXP';
 
@@ -45,6 +45,7 @@ export const useModalSequence = (): UseModalSequenceReturn => {
     let xpData: XPData | null = null;
 
     // Calculate and award XP
+    console.log("[ModalSequence] Calculating XP for capture:", { userId, captureId, itemName, rarityTier, xpValue, isGlobalFirst });
     const xpResult = await calculateAndAwardCaptureXP(
       userId,
       captureId,
@@ -53,13 +54,16 @@ export const useModalSequence = (): UseModalSequenceReturn => {
       xpValue,
       isGlobalFirst
     );
+    console.log("[ModalSequence] XP calculation result:", xpResult);
     
     if (xpResult.total > 0) {
       xpData = xpResult;
     }
 
     // Calculate and award coins
+    console.log("[ModalSequence] Calculating coins for user:", userId);
     const { total: coinsAwarded, rewards } = await calculateAndAwardCoins(userId);
+    console.log("[ModalSequence] Coin calculation result:", { coinsAwarded, rewards });
 
     // 1. Level up modal (highest priority)
     if (xpData?.levelUp && xpData?.newLevel) {
@@ -68,7 +72,7 @@ export const useModalSequence = (): UseModalSequenceReturn => {
         type: 'levelUp',
         data: { newLevel: xpData.newLevel },
         priority: 100,
-        persistent: false
+        persistent: true
       });
     }
 
@@ -86,7 +90,13 @@ export const useModalSequence = (): UseModalSequenceReturn => {
           newLevel: xpData?.newLevel
         },
         priority: 50,
-        persistent: false
+        persistent: true
+      });
+    } else {
+      console.log("[ModalSequence] NOT queueing coin reward modal - no rewards to show", {
+        coinsAwarded,
+        hasXpData: !!xpData,
+        xpTotal: xpData?.total || 0
       });
     }
 

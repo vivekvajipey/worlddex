@@ -51,6 +51,8 @@ export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptu
           const dbCount = user?.daily_captures_used || 0;
           const actualCount = Math.max(localCount, dbCount);
           
+          console.log(`[CaptureLimit] Initialized for user ${user?.username || userId} - Admin: ${user?.is_admin || false}, Captures: ${actualCount}/10`);
+          
           setLocalCapturesUsed(actualCount);
           await AsyncStorage.setItem(CAPTURE_COUNT_KEY, actualCount.toString());
         }
@@ -97,8 +99,17 @@ export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptu
       return true;
     }
     
+    // Admins have unlimited captures
+    if (user.is_admin) {
+      console.log('[CaptureLimit] Admin user detected - unlimited captures allowed');
+      return true;
+    }
+    
+    console.log(`[CaptureLimit] User ${user.username || user.id} - Captures used: ${localCapturesUsed}/${dailyCaptureLimit}`);
+    
     // Use local state for immediate checking
     if (localCapturesUsed >= dailyCaptureLimit) {
+      console.log(`[CaptureLimit] Daily limit reached for user ${user.username || user.id}`);
       showAlert({
         title: "Daily Limit Reached",
         message: `You have used all ${dailyCaptureLimit} daily captures! They will reset at midnight PST.`,
@@ -113,6 +124,9 @@ export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptu
   
   const incrementCaptureCount = useCallback(async (): Promise<void> => {
     if (!userId) return;
+    
+    // Log capture increment
+    console.log(`[CaptureLimit] Incrementing capture count for user ${user?.username || userId} (admin: ${user?.is_admin || false})`);
     
     // Immediately update local state and persist
     const newCount = localCapturesUsed + 1;
