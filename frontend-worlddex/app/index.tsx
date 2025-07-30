@@ -2,14 +2,13 @@ import 'react-native-get-random-values';
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { Image } from 'expo-image';
-import { Redirect, usePathname } from 'expo-router';
+import { Redirect, usePathname, useRouter } from 'expo-router';
 import { usePostHog } from 'posthog-react-native';
 import CameraScreen from './(screens)/camera';
 import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useAccountRecovery } from '../src/hooks/useAccountRecovery';
-import CapturesModal from './(screens)/personal-captures';
 import SocialModal from './(screens)/social';
 
 // This is the home route component at "/"
@@ -17,8 +16,8 @@ export default function HomeScreen() {
   const { session, isLoading: authLoading } = useAuth();
   const posthog = usePostHog();
   const pathname = usePathname();
+  const router = useRouter();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
-  const [capturesModalVisible, setCapturesModalVisible] = useState(false);
   const [socialModalVisible, setSocialModalVisible] = useState(false);
   const [capturesButtonClicked, setCapturesButtonClicked] = useState(false);
 
@@ -28,8 +27,8 @@ export default function HomeScreen() {
   // Handler for when the captures button is clicked
   const handleCapturesButtonClick = useCallback(() => {
     setCapturesButtonClicked(true);
-    setCapturesModalVisible(true);
-  }, []);
+    router.push('/personal-captures');
+  }, [router]);
 
   // Effect to track the home screen view
   useEffect(() => {
@@ -95,11 +94,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Captures Modal */}
-      <CapturesModal
-        visible={capturesModalVisible}
-        onClose={() => setCapturesModalVisible(false)}
-      />
 
       {/* Social Modal */}
       <SocialModal

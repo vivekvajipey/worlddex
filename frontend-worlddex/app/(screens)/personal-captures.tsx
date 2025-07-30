@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
-  Modal,
   TouchableOpacity,
   Dimensions,
   Animated,
@@ -11,6 +10,7 @@ import {
   Text,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from "../../database/hooks/useCaptures";
 import { fetchAllCollections } from "../../database/hooks/useCollections";
@@ -31,12 +31,8 @@ import PendingCaptureIdentifier from "../components/captures/PendingCaptureIdent
 
 const { width } = Dimensions.get("window");
 
-interface CapturesModalProps {
-  visible: boolean;
-  onClose: () => void;
-}
-
-const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
+export default function PersonalCapturesScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("WorldDex");
   const [selectedCapture, setSelectedCapture] = useState<CombinedCapture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
@@ -71,7 +67,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   }, [capturesLoading, captures]);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
-  // Fetch pending captures on mount and when modal becomes visible
+  // Fetch pending captures on mount
   const fetchPendingCaptures = useCallback(async () => {
     if (!userId) {
       setPendingCaptures([]);
@@ -141,14 +137,12 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   }, []);
 
   useEffect(() => {
-    if (visible) {
-      console.log("[CAPTURE FLOW] WorldDex modal opened", {
-        timestamp: new Date().toISOString(),
-        cachedCaptureCount: captures.length
-      });
-      fetchPendingCaptures();
-    }
-  }, [visible, fetchPendingCaptures, captures.length]);
+    console.log("[CAPTURE FLOW] WorldDex screen opened", {
+      timestamp: new Date().toISOString(),
+      cachedCaptureCount: captures.length
+    });
+    fetchPendingCaptures();
+  }, [fetchPendingCaptures, captures.length]);
 
   // Merge server captures with pending captures
   const combinedCaptures = useMemo(() => {
@@ -305,20 +299,18 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
     }
   }, [userId, fetchPendingCaptures]);
 
-  // Reset to WorldDex tab and refresh data when modal opens
+  // Reset to WorldDex tab and refresh data when screen mounts
   useEffect(() => {
-    if (visible) {
-      setActiveTab("WorldDex");
-      scrollX.setValue(0);
-      // Ensure the scroll view is at position 0
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: 0, animated: false });
-      }, 100);
+    setActiveTab("WorldDex");
+    scrollX.setValue(0);
+    // Ensure the scroll view is at position 0
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ x: 0, animated: false });
+    }, 100);
 
-      // Refresh data from Supabase
-      refreshData();
-    }
-  }, [visible, refreshData]);
+    // Refresh data from Supabase
+    refreshData();
+  }, [refreshData]);
 
   // Load user collections when they change
   useEffect(() => {
@@ -533,17 +525,26 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
   const { showAlert } = useAlert();
 
   useEffect(() => {
-    // Track screen view only when modal becomes visible
-    if (visible && posthog) {
+    // Track screen view when component mounts
+    if (posthog) {
       posthog.screen("Personal-Captures");
     }
-  }, [visible, posthog]);
+  }, [posthog]);
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-background">
-        {/* Header Tabs */}
-        <View className="flex-row justify-center pt-4 pb-2">
+    <SafeAreaView className="flex-1 bg-background">
+        {/* Header with back button and tabs */}
+        <View className="relative">
+          {/* Back button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="absolute left-4 top-4 z-10 p-2"
+          >
+            <Ionicons name="chevron-back" size={28} color="#fff" />
+          </TouchableOpacity>
+          
+          {/* Header Tabs */}
+          <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-12">
             <TouchableOpacity onPress={() => handleTabPress("WorldDex")}>
               <Text
@@ -571,6 +572,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
               <View className="h-[3px] w-12 bg-primary mt-1 rounded-full" />
             )}
           </View>
+        </View>
         </View>
 
         {/* Scrollable content */}
@@ -614,13 +616,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
           </Animated.ScrollView>
         </View>
 
-        {/* Close Button */}
-        <TouchableOpacity
-          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={24} color="#FFF" />
-        </TouchableOpacity>
 
         {/* Capture Details Modal - shown on top of everything else when visible */}
         {captureModalVisible && selectedCapture && (
@@ -659,9 +654,6 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         )}
         
         
-      </SafeAreaView>
-    </Modal>
+    </SafeAreaView>
   );
-};
-
-export default CapturesModal;
+}
