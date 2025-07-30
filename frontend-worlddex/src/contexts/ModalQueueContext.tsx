@@ -63,6 +63,7 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   // Process queue when not showing modal and not processing
   useEffect(() => {
     if (!isShowingModal && !isProcessing && queue.length > 0) {
+      console.log("[ModalQueue] Processing queue, length:", queue.length);
       setIsProcessing(true);
       
       // Brief delay to allow UI to settle between modals
@@ -71,6 +72,7 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
         const sorted = [...queue].sort((a, b) => b.priority - a.priority);
         const next = sorted[0];
         
+        console.log("[ModalQueue] Showing modal:", next.type, next.id);
         setCurrentModal(next);
         setIsShowingModal(true);
         
@@ -83,10 +85,12 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
 
   const enqueueModal = useCallback((modal: Omit<QueuedModal, 'id'>) => {
     const id = `${modal.type}-${Date.now()}-${Math.random()}`;
+    console.log("[ModalQueue] Enqueuing modal:", modal.type, id);
     setQueue(prev => [...prev, { ...modal, id }]);
   }, []);
 
   const dismissCurrentModal = useCallback(() => {
+    console.log("[ModalQueue] Dismissing modal:", currentModal?.type);
     setCurrentModal(null);
     setIsShowingModal(false);
   }, [currentModal]);
