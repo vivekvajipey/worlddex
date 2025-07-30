@@ -242,7 +242,9 @@ export default function PendingCaptureIdentifier({
             incrementOrCreateItem,
             uploadCapturePhoto,
             incrementCaptureCount: async () => {
+              // Increment the count - this capture is now being added to the collection
               await incrementUserField(session.user.id, "daily_captures_used", 1);
+              console.log('[PendingCapture] Incremented capture count for offline capture');
             },
             fetchUserCollectionsByUser,
             fetchCollectionItems,

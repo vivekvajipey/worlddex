@@ -196,8 +196,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
           });
           console.log("[OFFLINE FLOW] Successfully saved offline capture");
           cameraCaptureRef.current?.resetLasso();
-          await incrementCaptureCount();
-          console.log('[OFFLINE] Capture saved for later');
+          // Don't increment count here - will be incremented when identified later
+          console.log('[OFFLINE] Capture saved for later - count will increment when identified');
         } catch (saveError) {
           console.error("[OFFLINE FLOW] Failed to save offline capture", saveError);
           dispatch(actions.resetCapture());
@@ -283,8 +283,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
             reason: 'network_error'
           });
           cameraCaptureRef.current?.resetLasso();
-          await incrementCaptureCount();
-          console.log('[OFFLINE] Capture saved for later');
+          // Don't increment count here - will be incremented when identified later
+          console.log('[OFFLINE] Capture saved for later - count will increment when identified');
         } catch (saveError) {
           console.error("[OFFLINE FLOW] Failed to save offline capture", saveError);
           dispatch(actions.captureFailed());
