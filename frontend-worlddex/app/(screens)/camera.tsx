@@ -145,8 +145,10 @@ export default function CameraScreen({
 
   // Initialize offline capture service
   useEffect(() => {
-    OfflineCaptureService.initialize().catch(console.error);
-  }, []);
+    if (session?.user?.id) {
+      OfflineCaptureService.initialize(session.user.id).catch(console.error);
+    }
+  }, [session?.user?.id]);
   
   // Handle network errors from useIdentify
   useEffect(() => {
@@ -160,8 +162,13 @@ export default function CameraScreen({
       
       // Save the capture locally
       (async () => {
+        if (!session?.user?.id) {
+          console.error("[OFFLINE FLOW] No user session for offline save");
+          return;
+        }
+        
         try {
-          const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri);
+          const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri, session.user.id);
           
           await OfflineCaptureService.savePendingCapture({
             imageUri: localImageUri,
@@ -171,7 +178,7 @@ export default function CameraScreen({
               longitude: location.longitude 
             } : undefined,
             captureBox: captureBox
-          });
+          }, session.user.id);
           
           console.log("[OFFLINE FLOW] Successfully saved offline capture");
           
@@ -615,7 +622,11 @@ export default function CameraScreen({
         
         // Now save locally for later
         try {
-          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri);
+          if (!session?.user?.id) {
+            console.error("[OFFLINE FLOW] No user session for offline save");
+            return;
+          }
+          const localImageUri = await OfflineCaptureService.saveImageLocally(cropResult.uri, session.user.id);
           await OfflineCaptureService.savePendingCapture({
             imageUri: localImageUri,
             capturedAt: new Date().toISOString(),
@@ -630,7 +641,7 @@ export default function CameraScreen({
               height: cropHeight / scaleY,
               aspectRatio
             }
-          });
+          }, session.user.id);
 
           // Reset lasso
           cameraCaptureRef.current?.resetLasso();
@@ -790,7 +801,11 @@ export default function CameraScreen({
         
         // Now save locally for later
         try {
-          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri);
+          if (!session?.user?.id) {
+            console.error("[OFFLINE FLOW] No user session for offline save");
+            return;
+          }
+          const localImageUri = await OfflineCaptureService.saveImageLocally(photo.uri, session.user.id);
           await OfflineCaptureService.savePendingCapture({
             imageUri: localImageUri,
             capturedAt: new Date().toISOString(),
@@ -799,7 +814,7 @@ export default function CameraScreen({
               longitude: location.longitude 
             } : undefined,
             captureBox: captureBoxDimensions
-          });
+          }, session.user.id);
 
           // No need for manual dismiss - PolaroidDevelopment handles it
 
@@ -843,7 +858,11 @@ export default function CameraScreen({
       console.log("Detected offline auto-dismiss - saving locally");
       
       try {
-        const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri);
+        if (!session?.user?.id) {
+          console.error("Detected offline auto-dismiss but no user session");
+          return;
+        }
+        const localImageUri = await OfflineCaptureService.saveImageLocally(capturedUri, session.user.id);
         
         // For lasso captures, we need captureBox from state
         // For full screen, use default dimensions
@@ -863,7 +882,7 @@ export default function CameraScreen({
             longitude: location.longitude 
           } : undefined,
           captureBox: offlineCaptureBox
-        });
+        }, session.user.id);
 
         // Show the modal after a brief delay
         setTimeout(() => {
@@ -962,7 +981,7 @@ export default function CameraScreen({
           label: identifiedLabel,
           rarityTier: rarityTier,
           rarityScore: rarityScore
-        });
+        }, session.user.id);
         tempCaptureId = tempCapture.id;
         console.log("[CAPTURE FLOW] Temporary capture created for immediate display", {
           timestamp: new Date().toISOString(),
@@ -1015,7 +1034,7 @@ export default function CameraScreen({
           // Clean up temporary capture now that database save is complete
           if (tempCaptureId) {
             try {
-              await OfflineCaptureService.deletePendingCapture(tempCaptureId);
+              await OfflineCaptureService.deletePendingCapture(tempCaptureId, session.user.id);
               console.log("[CAPTURE FLOW] Temporary capture cleaned up", {
                 timestamp: new Date().toISOString(),
                 tempId: tempCaptureId

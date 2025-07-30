@@ -8,7 +8,6 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
-  Alert,
   ActivityIndicator,
   Platform,
 } from "react-native";
@@ -27,6 +26,7 @@ import { useDownloadUrl } from "../../../src/hooks/useDownloadUrl";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { v4 as uuidv4 } from "uuid";
+import { useStyledAlert } from "../../../src/hooks/useStyledAlert";
 
 interface AddCollectionItemsScreenProps {
   visible: boolean;
@@ -93,6 +93,7 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
   const userId = session?.user?.id;
   const { uploadPhoto, isUploading } = usePhotoUpload();
   const navigation = useNavigation();
+  const { showAlert, AlertComponent } = useStyledAlert();
 
   // Form state for creating new item
   const [newItemForm, setNewItemForm] = useState<NewItemFormData>({
@@ -132,7 +133,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       setFilteredCaptures(captures);
     } catch (error) {
       console.error("Error loading user captures:", error);
-      Alert.alert("Error", "Failed to load captures");
+      showAlert({
+        title: "Error",
+        message: "Failed to load captures",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     } finally {
       setLoadingCaptures(false);
     }
@@ -150,12 +156,22 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
   const handleAddSelectedCaptures = async () => {
     if (selectedCaptures.length === 0) {
-      Alert.alert("No Captures Selected", "Please select at least one capture");
+      showAlert({
+        title: "No Captures Selected",
+        message: "Please select at least one capture",
+        icon: "alert-circle-outline",
+        iconColor: "#F59E0B"
+      });
       return;
     }
 
     if (!userId) {
-      Alert.alert("Error", "You must be logged in to add captures");
+      showAlert({
+        title: "Error",
+        message: "You must be logged in to add captures",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
       return;
     }
 
@@ -205,10 +221,20 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       // Clear selection
       setSelectedCaptures([]);
 
-      Alert.alert("Success", `Added ${newCollectionItems.length} items to the collection and marked them as collected`);
+      showAlert({
+        title: "Success",
+        message: `Added ${newCollectionItems.length} items to the collection and marked them as collected`,
+        icon: "checkmark-circle-outline",
+        iconColor: "#10B981"
+      });
     } catch (error) {
       console.error("Error adding captures to collection:", error);
-      Alert.alert("Error", "Failed to add captures to the collection");
+      showAlert({
+        title: "Error",
+        message: "Failed to add captures to the collection",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -218,7 +244,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert("Permission Required", "You need to grant permission to access your photos");
+      showAlert({
+        title: "Permission Required",
+        message: "You need to grant permission to access your photos",
+        icon: "images-outline",
+        iconColor: "#F59E0B"
+      });
       return;
     }
 
@@ -263,7 +294,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
   const handleCreateNewItem = async () => {
     if (!newItemForm.name.trim()) {
-      Alert.alert("Missing Information", "Please enter an item name");
+      showAlert({
+        title: "Missing Information",
+        message: "Please enter an item name",
+        icon: "information-circle-outline",
+        iconColor: "#F59E0B"
+      });
       return;
     }
 
@@ -323,11 +359,21 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         setAddedItems(prev => [...prev, newCollectionItem]);
         handleResetNewItemForm();
       } else {
-        Alert.alert("Error", "Failed to add item to the collection");
+        showAlert({
+          title: "Error",
+          message: "Failed to add item to the collection",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
       }
     } catch (error) {
       console.error("Error creating new item:", error);
-      Alert.alert("Error", "An error occurred while creating the item");
+      showAlert({
+        title: "Error",
+        message: "An error occurred while creating the item",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -335,7 +381,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
 
   const handleFinish = async () => {
     if (!userId) {
-      Alert.alert("Error", "You must be logged in to create collections");
+      showAlert({
+        title: "Error",
+        message: "You must be logged in to create collections",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
       return;
     }
 
@@ -346,7 +397,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
       const result = await addCollectionToUser(userId, collection.id);
 
       if (!result) {
-        Alert.alert("Error", "Failed to add collection to your personal list");
+        showAlert({
+          title: "Error",
+          message: "Failed to add collection to your personal list",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
         setIsSubmitting(false);
         return;
       }
@@ -358,7 +414,12 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
     } catch (error) {
       console.error("Error adding collection to user's personal list:", error);
       setIsSubmitting(false);
-      Alert.alert("Error", "An error occurred. Please try again.");
+      showAlert({
+        title: "Error",
+        message: "An error occurred. Please try again.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444"
+      });
     }
   };
 
@@ -621,6 +682,9 @@ const AddCollectionItemsScreen: React.FC<AddCollectionItemsScreenProps> = ({
         <View className="flex-1 px-4">
           {activeTab === "existing" ? renderExistingCapturesTab() : renderNewItemTab()}
         </View>
+        
+        {/* Styled Alert Component */}
+        <AlertComponent />
       </SafeAreaView>
     </Modal>
   );

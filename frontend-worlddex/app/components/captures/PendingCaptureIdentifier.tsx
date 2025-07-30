@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { View, Alert, Modal, ActivityIndicator, Text, TouchableOpacity } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system";
 import { useIdentify } from "../../../src/hooks/useIdentify";
 import { useImageProcessor } from "../../../src/hooks/useImageProcessor";
 import { OfflineCaptureService, PendingCapture } from "../../../src/services/offlineCaptureService";
@@ -127,8 +128,18 @@ export default function PendingCaptureIdentifier({
     setIdentificationComplete(false);
     
     try {
+      // Check if image file exists before processing
+      const fileInfo = await FileSystem.getInfoAsync(pendingCapture.imageUri);
+      
+      if (!fileInfo.exists) {
+        throw new Error("Image file no longer exists. This capture may be from a previous session.");
+      }
+      
       // Update pending capture status
-      await OfflineCaptureService.updateCaptureStatus(pendingCapture.id, 'identifying');
+      if (!session?.user?.id) {
+        throw new Error("No user session available");
+      }
+      await OfflineCaptureService.updateCaptureStatus(pendingCapture.id, 'identifying', session.user.id);
       
       // Get image info for processing
       const imageInfo = await ImageManipulator.manipulateAsync(
@@ -170,11 +181,14 @@ export default function PendingCaptureIdentifier({
     } catch (error) {
       console.error("Failed to start identification:", error);
       setVlmCaptureSuccess(false);
-      await OfflineCaptureService.updateCaptureStatus(
-        pendingCapture.id, 
-        'failed', 
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+      if (session?.user?.id) {
+        await OfflineCaptureService.updateCaptureStatus(
+          pendingCapture.id, 
+          'failed', 
+          session.user.id,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -326,7 +340,7 @@ export default function PendingCaptureIdentifier({
         }
         
         // Delete the pending capture
-        await OfflineCaptureService.deletePendingCapture(pendingCapture.id);
+        await OfflineCaptureService.deletePendingCapture(pendingCapture.id, session.user.id);
         
         // Track successful identification
         if (posthog) {
@@ -354,6 +368,7 @@ export default function PendingCaptureIdentifier({
         await OfflineCaptureService.updateCaptureStatus(
           pendingCapture.id, 
           'failed',
+          session.user.id,
           isRejectedRef.current ? 'User rejected' : 'Identification failed'
         );
       }

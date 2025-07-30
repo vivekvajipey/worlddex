@@ -5,8 +5,8 @@ import { toZonedTime } from 'date-fns-tz';
 import uuid from 'react-native-uuid';
 
 // Constants
-const STORAGE_KEY = '@worlddex_pending_captures';
-const IMAGE_DIR = `${FileSystem.documentDirectory}pending_captures/`;
+const STORAGE_KEY_PREFIX = '@worlddex_pending_captures_';
+const IMAGE_DIR_PREFIX = `${FileSystem.documentDirectory}pending_captures/`;
 const MAX_PENDING_CAPTURES = 50;
 const MAX_AGE_DAYS = 30;
 
@@ -27,12 +27,23 @@ export interface PendingCapture {
 }
 
 export class OfflineCaptureService {
+  // Get user-specific storage key
+  private static getStorageKey(userId: string): string {
+    return `${STORAGE_KEY_PREFIX}${userId}`;
+  }
+
+  // Get user-specific image directory
+  private static getImageDir(userId: string): string {
+    return `${IMAGE_DIR_PREFIX}${userId}/`;
+  }
+
   // Initialize the service and ensure directory exists
-  static async initialize(): Promise<void> {
+  static async initialize(userId: string): Promise<void> {
     try {
-      const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIR);
+      const userDir = this.getImageDir(userId);
+      const dirInfo = await FileSystem.getInfoAsync(userDir);
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+        await FileSystem.makeDirectoryAsync(userDir, { intermediates: true });
       }
     } catch (error) {
       console.error('Failed to initialize offline capture directory:', error);
@@ -48,10 +59,14 @@ export class OfflineCaptureService {
   }
 
   // Save an image locally and return the new URI
-  static async saveImageLocally(sourceUri: string): Promise<string> {
+  static async saveImageLocally(sourceUri: string, userId: string): Promise<string> {
     try {
       const filename = `${uuid.v4()}.jpg`;
-      const destUri = `${IMAGE_DIR}${filename}`;
+      const userDir = this.getImageDir(userId);
+      const destUri = `${userDir}${filename}`;
+      
+      // Ensure user directory exists
+      await this.initialize(userId);
       
       await FileSystem.copyAsync({
         from: sourceUri,
@@ -66,7 +81,7 @@ export class OfflineCaptureService {
   }
 
   // Save a pending capture
-  static async savePendingCapture(capture: Omit<PendingCapture, 'id' | 'dailyCaptureDate' | 'status'>): Promise<PendingCapture> {
+  static async savePendingCapture(capture: Omit<PendingCapture, 'id' | 'dailyCaptureDate' | 'status'>, userId: string): Promise<PendingCapture> {
     try {
       // Create the full pending capture object
       const pendingCapture: PendingCapture = {
@@ -77,7 +92,7 @@ export class OfflineCaptureService {
       };
 
       // Get existing captures
-      const existing = await this.getAllPendingCaptures();
+      const existing = await this.getAllPendingCaptures(userId);
       
       // Check if we've hit the limit
       if (existing.length >= MAX_PENDING_CAPTURES) {
@@ -88,7 +103,7 @@ export class OfflineCaptureService {
       existing.push(pendingCapture);
       
       // Save to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      await AsyncStorage.setItem(this.getStorageKey(userId), JSON.stringify(existing));
       
       return pendingCapture;
     } catch (error) {
@@ -98,9 +113,9 @@ export class OfflineCaptureService {
   }
 
   // Get all pending captures
-  static async getAllPendingCaptures(): Promise<PendingCapture[]> {
+  static async getAllPendingCaptures(userId: string): Promise<PendingCapture[]> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
+      const data = await AsyncStorage.getItem(this.getStorageKey(userId));
       if (!data) return [];
       
       const captures: PendingCapture[] = JSON.parse(data);
@@ -121,7 +136,7 @@ export class OfflineCaptureService {
       
       // Update storage if we filtered any out
       if (validCaptures.length !== captures.length) {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validCaptures));
+        await AsyncStorage.setItem(this.getStorageKey(userId), JSON.stringify(validCaptures));
       }
       
       return validCaptures;
@@ -132,8 +147,8 @@ export class OfflineCaptureService {
   }
 
   // Get pending captures for today (PST)
-  static async getTodaysPendingCaptures(): Promise<PendingCapture[]> {
-    const allCaptures = await this.getAllPendingCaptures();
+  static async getTodaysPendingCaptures(userId: string): Promise<PendingCapture[]> {
+    const allCaptures = await this.getAllPendingCaptures(userId);
     const todayPST = this.getTodayPST();
     
     return allCaptures.filter(capture => capture.dailyCaptureDate === todayPST);
@@ -143,10 +158,11 @@ export class OfflineCaptureService {
   static async updateCaptureStatus(
     captureId: string, 
     status: PendingCapture['status'], 
+    userId: string,
     error?: string
   ): Promise<void> {
     try {
-      const captures = await this.getAllPendingCaptures();
+      const captures = await this.getAllPendingCaptures(userId);
       const index = captures.findIndex(c => c.id === captureId);
       
       if (index === -1) {
@@ -159,7 +175,7 @@ export class OfflineCaptureService {
         error
       };
       
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(captures));
+      await AsyncStorage.setItem(this.getStorageKey(userId), JSON.stringify(captures));
     } catch (error) {
       console.error('Failed to update capture status:', error);
       throw error;
@@ -167,9 +183,9 @@ export class OfflineCaptureService {
   }
 
   // Delete a pending capture (after successful identification)
-  static async deletePendingCapture(captureId: string): Promise<void> {
+  static async deletePendingCapture(captureId: string, userId: string): Promise<void> {
     try {
-      const captures = await this.getAllPendingCaptures();
+      const captures = await this.getAllPendingCaptures(userId);
       const capture = captures.find(c => c.id === captureId);
       
       if (!capture) {
@@ -183,7 +199,7 @@ export class OfflineCaptureService {
       const updatedCaptures = captures.filter(c => c.id !== captureId);
       
       // Update storage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCaptures));
+      await AsyncStorage.setItem(this.getStorageKey(userId), JSON.stringify(updatedCaptures));
     } catch (error) {
       console.error('Failed to delete pending capture:', error);
       throw error;
@@ -204,15 +220,15 @@ export class OfflineCaptureService {
   }
 
   // Get count of pending captures for a specific date
-  static async getPendingCountForDate(date: string): Promise<number> {
-    const captures = await this.getAllPendingCaptures();
+  static async getPendingCountForDate(date: string, userId: string): Promise<number> {
+    const captures = await this.getAllPendingCaptures(userId);
     return captures.filter(c => c.dailyCaptureDate === date).length;
   }
 
   // Clear all pending captures (for debugging/testing)
-  static async clearAllPendingCaptures(): Promise<void> {
+  static async clearAllPendingCaptures(userId: string): Promise<void> {
     try {
-      const captures = await this.getAllPendingCaptures();
+      const captures = await this.getAllPendingCaptures(userId);
       
       // Delete all image files
       await Promise.all(
@@ -220,11 +236,12 @@ export class OfflineCaptureService {
       );
       
       // Clear storage
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem(this.getStorageKey(userId));
       
       // Remove directory and recreate
-      await FileSystem.deleteAsync(IMAGE_DIR, { idempotent: true });
-      await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+      const userDir = this.getImageDir(userId);
+      await FileSystem.deleteAsync(userDir, { idempotent: true });
+      await FileSystem.makeDirectoryAsync(userDir, { intermediates: true });
     } catch (error) {
       console.error('Failed to clear pending captures:', error);
       throw error;
@@ -236,10 +253,10 @@ export class OfflineCaptureService {
     label: string;
     rarityTier: string;
     rarityScore?: number;
-  }): Promise<PendingCapture> {
+  }, userId: string): Promise<PendingCapture> {
     try {
       // Save image locally to ensure it persists
-      const localImageUri = await this.saveImageLocally(capture.imageUri);
+      const localImageUri = await this.saveImageLocally(capture.imageUri, userId);
       
       const tempCapture: PendingCapture = {
         ...capture,
@@ -250,13 +267,13 @@ export class OfflineCaptureService {
       };
 
       // Get existing captures
-      const existing = await this.getAllPendingCaptures();
+      const existing = await this.getAllPendingCaptures(userId);
       
       // Add new temporary capture
       existing.push(tempCapture);
       
       // Save to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      await AsyncStorage.setItem(this.getStorageKey(userId), JSON.stringify(existing));
       
       console.log('[CAPTURE FLOW] Temporary capture saved', {
         timestamp: new Date().toISOString(),
@@ -273,8 +290,8 @@ export class OfflineCaptureService {
   }
 
   // Get only temporary captures
-  static async getTemporaryCaptures(): Promise<PendingCapture[]> {
-    const allCaptures = await this.getAllPendingCaptures();
+  static async getTemporaryCaptures(userId: string): Promise<PendingCapture[]> {
+    const allCaptures = await this.getAllPendingCaptures(userId);
     return allCaptures.filter(c => c.status === 'temporary');
   }
 }

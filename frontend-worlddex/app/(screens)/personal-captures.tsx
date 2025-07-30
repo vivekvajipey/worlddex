@@ -87,9 +87,42 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
 
   // Fetch pending captures on mount and when modal becomes visible
   const fetchPendingCaptures = useCallback(async () => {
+    if (!userId) {
+      setPendingCaptures([]);
+      return;
+    }
+    
     try {
-      const pending = await OfflineCaptureService.getAllPendingCaptures();
-      const combined: CombinedCapture[] = pending.map(p => ({
+      const pending = await OfflineCaptureService.getAllPendingCaptures(userId);
+      
+      // Filter out pending captures with missing images and clean them up
+      const validPending: typeof pending = [];
+      for (const p of pending) {
+        if (p.imageUri) {
+          // Check if this is a file URI and if the file exists
+          if (p.imageUri.startsWith('file://')) {
+            try {
+              const FileSystem = await import('expo-file-system');
+              const fileInfo = await FileSystem.getInfoAsync(p.imageUri);
+              if (!fileInfo.exists) {
+                console.log("[CAPTURE FLOW] Cleaning up pending capture with missing image", {
+                  id: p.id,
+                  imageUri: p.imageUri
+                });
+                // Clean up this invalid pending capture
+                await OfflineCaptureService.deletePendingCapture(p.id, userId);
+                continue; // Skip this capture
+              }
+            } catch (error) {
+              console.error("Error checking file existence:", error);
+              // If we can't check, keep it for now
+            }
+          }
+          validPending.push(p);
+        }
+      }
+      
+      const combined: CombinedCapture[] = validPending.map(p => ({
         id: p.id,
         image_key: '', // Will use imageUri instead
         imageUri: p.imageUri,
@@ -270,7 +303,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
               label: temp.item_name
             });
             try {
-              await OfflineCaptureService.deletePendingCapture(temp.id);
+              await OfflineCaptureService.deletePendingCapture(temp.id, userId);
             } catch (cleanupError) {
               console.error("Failed to clean up temporary capture:", cleanupError);
             }
@@ -284,7 +317,7 @@ const CapturesModal: React.FC<CapturesModalProps> = ({ visible, onClose }) => {
         setIsRefreshing(false);
       }
     }
-  }, [userId, fetchPendingCaptures]);
+  }, [userId, fetchPendingCaptures, pendingCaptures]);
 
   // Reset to WorldDex tab and refresh data when modal opens
   useEffect(() => {
