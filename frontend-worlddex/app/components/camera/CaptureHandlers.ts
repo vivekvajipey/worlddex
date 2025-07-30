@@ -169,8 +169,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       // console.log("[CAPTURE] Making identification request with payload:", identifyPayload);
       await identify(identifyPayload);
       
-      await incrementCaptureCount();
-      console.log("[CAPTURE] Incremented capture count");
+      // Note: incrementCaptureCount is called in dismissPolaroid after user accepts
     } catch (error: any) {
       console.error("[CAPTURE] === CAPTURE ERROR ===", error);
       console.log("[CAPTURE] Error details:", {
@@ -264,7 +263,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       lastIdentifyPayloadRef.current = identifyPayload;
 
       await identify(identifyPayload);
-      await incrementCaptureCount();
+      // Note: incrementCaptureCount is called in dismissPolaroid after user accepts
     } catch (error: any) {
       console.error("Full screen capture failed:", error);
       
@@ -431,8 +430,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
 
         // Increment user stats
         console.log('[CAPTURE] Incrementing user stats');
-        await incrementUserField(userId, "daily_captures_used", 1);
-        await incrementUserField(userId, "total_captures", 1);
+        await incrementCaptureCount();
+        console.log('[CAPTURE] Incremented capture count');
 
         console.log("[CAPTURE] Successfully saved to database, queueing modals...");
         // Queue post-capture modals with the capture ID
