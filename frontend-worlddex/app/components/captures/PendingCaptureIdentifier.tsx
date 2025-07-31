@@ -22,6 +22,7 @@ import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
 import { useAlert } from "../../../src/contexts/AlertContext";
 import { processCaptureAfterIdentification } from "../../../src/services/captureProcessingService";
+import { checkServerConnection } from "../../../src/utils/networkUtils";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -106,7 +107,11 @@ export default function PendingCaptureIdentifier({
 
   useEffect(() => {
     if (idError) {
-      setVlmCaptureSuccess(false);
+      // Don't set vlmCaptureSuccess to false for network errors
+      // This prevents the "No Object Detected" alert
+      if (idError.message !== 'Network request failed') {
+        setVlmCaptureSuccess(false);
+      }
       setIdentificationComplete(true);
     }
   }, [idError]);
@@ -120,6 +125,19 @@ export default function PendingCaptureIdentifier({
     setIdentificationComplete(false);
     
     try {
+      // Check server connection first
+      const isConnected = await checkServerConnection();
+      if (!isConnected) {
+        setIsProcessing(false);
+        showAlert({
+          title: "No Connection",
+          message: "Unable to reach the server. Please check your internet connection and try again.",
+          icon: "wifi-outline",
+          iconColor: "#EF4444"
+        });
+        onClose();
+        return;
+      }
       // Check if image file exists before processing
       const fileInfo = await FileSystem.getInfoAsync(pendingCapture.imageUri);
       
@@ -193,6 +211,12 @@ export default function PendingCaptureIdentifier({
         icon: "wifi-outline",
         iconColor: "#EF4444"
       });
+      
+      // Close the modal after showing the alert
+      setTimeout(() => {
+        reset();
+        onClose();
+      }, 100);
     }
   };
 
@@ -402,7 +426,7 @@ export default function PendingCaptureIdentifier({
         });
       }
     } else {
-      // Either rejected or failed
+      // Either rejected, failed, or network error
       if (isRejectedRef.current) {
         // Close the modal first
         reset();
@@ -414,8 +438,14 @@ export default function PendingCaptureIdentifier({
           "Do you want to remove this capture from your pending list?"
         );
         return;
+      } else if (idError && idError.message === 'Network request failed') {
+        // Network error - don't show Keep/Delete alert, just close
+        // The error alert was already shown in startIdentification
+        reset();
+        onClose();
+        return;
       } else if (vlmCaptureSuccess === false) {
-        // Identification failed - show Keep/Delete alert
+        // Identification failed (no object detected) - show Keep/Delete alert
         reset();
         onClose();
         
@@ -444,7 +474,8 @@ export default function PendingCaptureIdentifier({
     tier1
   ]);
 
-  const polaroidError = vlmCaptureSuccess === true ? null : idError;
+  // Don't show error in polaroid for network errors (prevents break animation)
+  const polaroidError = vlmCaptureSuccess === true || (idError && idError.message === 'Network request failed') ? null : idError;
 
   if (!pendingCapture) return null;
 
