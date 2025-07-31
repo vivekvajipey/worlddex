@@ -39,6 +39,8 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   
   // Use parent's showAlert if provided, otherwise use global
   const showAlert = parentShowAlert || globalShowAlert;
+  
+  console.log("CaptureDetailsModal render", { visible, hasCapture: !!capture });
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -86,28 +88,9 @@ const CaptureDetailsModal: React.FC<CaptureDetailsModalProps> = ({
   if (!capture) return null;
 
   const handleDelete = () => {
-    if (capture) {
-      showAlert({
-        title: "Delete Capture",
-        message: "Are you sure you want to delete this capture? This action can not be undone.",
-        icon: "trash-outline",
-        iconColor: "#EF4444",
-        buttons: [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => {
-              if (onDelete) {
-                onDelete(capture);
-              }
-            }
-          }
-        ]
-      });
+    console.log("Delete button pressed", { capture, onDelete: !!onDelete });
+    if (capture && onDelete) {
+      onDelete(capture);
     }
   };
 

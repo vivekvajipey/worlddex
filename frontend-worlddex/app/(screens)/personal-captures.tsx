@@ -28,6 +28,7 @@ import CollectionsTab from "../components/collections/CollectionsTab";
 import CaptureDetailsModal from "../components/captures/CaptureDetailsModal";
 import CollectionDetailScreen from "../components/collections/CollectionDetailScreen";
 import PendingCaptureIdentifier from "../components/captures/PendingCaptureIdentifier";
+import DeleteConfirmationModal from "../components/modals/DeleteConfirmationModal";
 
 const { width } = Dimensions.get("window");
 
@@ -43,6 +44,8 @@ export default function PersonalCapturesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pendingCaptures, setPendingCaptures] = useState<CombinedCapture[]>([]);
   const [selectedPendingCapture, setSelectedPendingCapture] = useState<any>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [captureToDelete, setCaptureToDelete] = useState<Capture | null>(null);
   
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -430,6 +433,10 @@ export default function PersonalCapturesScreen() {
 
   const handleCaptureDetailsClose = () => {
     setCaptureModalVisible(false);
+    // Clear selected capture after a delay to allow modal animation
+    setTimeout(() => {
+      setSelectedCapture(null);
+    }, 300);
   };
 
   const handleDeleteCapture = (capture: Capture) => {
@@ -453,28 +460,55 @@ export default function PersonalCapturesScreen() {
     });
   };
 
-  const performDeleteCapture = async (capture: Capture) => {
+  const performDeleteCapture = (capture: Capture) => {
     if (!capture.id) return;
 
-    try {
-      const success = await deleteCapture(capture.id);
-      if (success) {
-        // Close modal if we're deleting currently viewed capture
-        if (selectedCapture?.id === capture.id) {
-          setCaptureModalVisible(false);
-        }
+    // Close the details modal first
+    setCaptureModalVisible(false);
+    
+    // Set the capture to delete and show confirmation modal after a delay
+    setTimeout(() => {
+      setCaptureToDelete(capture);
+      setDeleteModalVisible(true);
+    }, 300); // Wait for modal close animation
+  };
 
+  const confirmDelete = async () => {
+    if (!captureToDelete?.id) return;
+
+    try {
+      const success = await deleteCapture(captureToDelete.id);
+      if (success) {
         // Update the captures list
-        setRefreshedCaptures(prev => prev.filter(c => c.id !== capture.id));
+        setRefreshedCaptures(prev => prev.filter(c => c.id !== captureToDelete.id));
+        
+        // Close the delete modal
+        setDeleteModalVisible(false);
+        setCaptureToDelete(null);
+        
+        // Show success message
+        setTimeout(() => {
+          showAlert({
+            title: "Success",
+            message: "Capture deleted successfully.",
+            icon: "checkmark-circle",
+            iconColor: "#10B981"
+          });
+        }, 300);
       }
     } catch (error) {
       console.error("Error deleting capture:", error);
-      showAlert({
-        title: "Error",
-        message: "Failed to delete capture. Please try again.",
-        icon: "alert-circle-outline",
-        iconColor: "#EF4444"
-      });
+      setDeleteModalVisible(false);
+      setCaptureToDelete(null);
+      
+      setTimeout(() => {
+        showAlert({
+          title: "Error",
+          message: "Failed to delete capture. Please try again.",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444"
+        });
+      }, 300);
     }
   };
 
@@ -625,6 +659,7 @@ export default function PersonalCapturesScreen() {
             onClose={handleCaptureDetailsClose}
             onDelete={performDeleteCapture}
             onUpdate={handleUpdateCapture}
+            showAlert={showAlert}
           />
         )}
 
@@ -653,6 +688,17 @@ export default function PersonalCapturesScreen() {
           />
         )}
         
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmationModal
+          visible={deleteModalVisible}
+          itemName={captureToDelete?.item_name || ''}
+          imageUrl={captureToDelete ? imageUrlMap[captureToDelete.thumb_key || captureToDelete.image_key] : undefined}
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            setDeleteModalVisible(false);
+            setCaptureToDelete(null);
+          }}
+        />
         
     </SafeAreaView>
   );

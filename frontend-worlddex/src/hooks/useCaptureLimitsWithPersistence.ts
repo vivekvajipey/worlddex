@@ -14,8 +14,8 @@ interface UseCaptureLimitsReturn {
   checkIdentifyLimit: () => boolean;
 }
 
-// const DAILY_IDENTIFY_LIMIT = 50; // Adjust as needed
-const DAILY_IDENTIFY_LIMIT = 3; // For testing
+const DAILY_IDENTIFY_LIMIT = 50; // Adjust as needed
+// const DAILY_IDENTIFY_LIMIT = 3; // For testing
 
 export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptureLimitsReturn => {
   const { user } = useUser(userId);
