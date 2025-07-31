@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { View, Modal, ActivityIndicator, Text, TouchableOpacity } from "react-native";
+import { View, Modal, ActivityIndicator, Text } from "react-native";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import { useIdentify } from "../../../src/hooks/useIdentify";
@@ -15,7 +15,6 @@ import { calculateAndAwardCaptureXP } from "../../../database/hooks/useXP";
 import { fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
 import { createUserCollectionItem, checkUserHasCollectionItem } from "../../../database/hooks/useUserCollectionItems";
 import { fetchUserCollectionsByUser } from "../../../database/hooks/useUserCollections";
-import type { Capture, CollectionItem } from "../../../database/types";
 import { IdentifyRequest } from "../../../../shared/types/identify";
 import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
@@ -496,7 +495,6 @@ export default function PendingCaptureIdentifier({
             onReject={() => {
               isRejectedRef.current = true;
             }}
-            onSetPublic={setIsCapturePublic}
             identificationComplete={identificationComplete}
             rarityTier={rarityTier}
             error={polaroidError}
