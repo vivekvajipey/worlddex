@@ -75,7 +75,8 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     fileUri: string,
     contentType: string,
     fileName: string,
-    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key">
+    captureData: Omit<Capture, "id" | "captured_at" | "segmented_image_key" | "thumb_key">,
+    capturedAt?: string // Optional timestamp for offline captures
   ): Promise<Capture> => {
     try {
       setIsUploading(true);
@@ -141,7 +142,7 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
         image_key: key,
         segmented_image_key: "",
         thumb_key: thumbSuccess ? thumbKey : undefined,
-      });
+      }, capturedAt); // Pass the optional timestamp
       
       if (!created) throw new Error("Failed to create capture row");
       return created;

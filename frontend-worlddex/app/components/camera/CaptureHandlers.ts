@@ -379,7 +379,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
           enableTemporaryCapture: true, // Enable for immediate display in WorldDex
           services: {
             incrementOrCreateItem,
-            uploadCapturePhoto,
+            uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any) => 
+              uploadCapturePhoto(uri, type, filename, payload), // No timestamp for online captures
             incrementCaptureCount,
             fetchUserCollectionsByUser,
             fetchCollectionItems,

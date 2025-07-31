@@ -214,6 +214,62 @@ export default function PendingCaptureIdentifier({
     }
   }, [identify, reset]);
 
+  // Helper function to show Keep/Delete alert
+  const showKeepDeleteAlert = useCallback((reason: string, message: string) => {
+    setTimeout(() => {
+      showAlert({
+        title: reason === "user_rejected" ? "Keep or Delete?" : "No Object Detected",
+        message,
+        icon: reason === "user_rejected" ? "trash-outline" : "help-circle-outline",
+        iconColor: reason === "user_rejected" ? "#EF4444" : "#F59E0B",
+        buttons: [
+          {
+            text: "Keep",
+            style: "default",
+            onPress: async () => {
+              if (reason === "user_rejected") {
+                // Just close - capture stays as pending
+                if (posthog) {
+                  posthog.capture("pending_capture_kept_after_rejection");
+                }
+              } else {
+                // Update status for failed identification
+                await OfflineCaptureService.updateCaptureStatus(
+                  pendingCapture!.id, 
+                  'failed',
+                  session!.user.id,
+                  'No object detected - kept by user'
+                );
+                if (posthog) {
+                  posthog.capture("pending_capture_kept_after_failure", {
+                    reason: "no_object_detected"
+                  });
+                }
+              }
+            }
+          },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await OfflineCaptureService.deletePendingCapture(pendingCapture!.id, session!.user.id);
+                onSuccess(); // Refresh the list
+                if (posthog) {
+                  posthog.capture("pending_capture_deleted", {
+                    reason: reason === "user_rejected" ? "user_rejected_after_identification" : "no_object_detected"
+                  });
+                }
+              } catch (error) {
+                console.error("Failed to delete pending capture:", error);
+              }
+            }
+          }
+        ]
+      });
+    }, 300); // Give modal time to close
+  }, [pendingCapture, session, showAlert, onSuccess, posthog]);
+
   const handleDismissPreview = useCallback(async () => {
     if (!pendingCapture || !session) {
       onClose();
@@ -237,10 +293,12 @@ export default function PendingCaptureIdentifier({
           rarityTier,
           rarityScore,
           tier1Response: tier1,
+          originalCapturedAt: pendingCapture.capturedAt, // Pass the original timestamp!
           enableTemporaryCapture: true, // Enable for immediate display in WorldDex
           services: {
             incrementOrCreateItem,
-            uploadCapturePhoto,
+            uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any, capturedAt?: string) => 
+              uploadCapturePhoto(uri, type, filename, payload, capturedAt), // Pass through the timestamp
             incrementCaptureCount: async () => {
               // Increment the count - this capture is now being added to the collection
               await incrementUserField(session.user.id, "daily_captures_used", 1);
@@ -350,53 +408,22 @@ export default function PendingCaptureIdentifier({
         reset();
         onClose();
         
-        // Then show the alert after a brief delay to allow modal to close
-        setTimeout(() => {
-          showAlert({
-            title: "Remove Pending Capture?",
-            message: "Do you want to remove this capture from your pending list?",
-            icon: "trash-outline",
-            iconColor: "#EF4444",
-            buttons: [
-              {
-                text: "Keep",
-                style: "cancel",
-                onPress: () => {
-                  // Nothing to do - already closed and kept as pending
-                }
-              },
-              {
-                text: "Remove",
-                style: "destructive",
-                onPress: async () => {
-                  try {
-                    await OfflineCaptureService.deletePendingCapture(pendingCapture.id, session.user.id);
-                    onSuccess(); // Refresh the list
-                    if (posthog) {
-                      posthog.capture("pending_capture_deleted", {
-                        reason: "user_rejected_after_identification"
-                      });
-                    }
-                  } catch (error) {
-                    console.error("Failed to delete pending capture:", error);
-                  }
-                }
-              }
-            ]
-          });
-        }, 300); // Give modal time to close
+        // Show Keep/Delete alert
+        showKeepDeleteAlert(
+          "user_rejected",
+          "Do you want to remove this capture from your pending list?"
+        );
         return;
       } else if (vlmCaptureSuccess === false) {
-        // Identification failed - update status
-        await OfflineCaptureService.updateCaptureStatus(
-          pendingCapture.id, 
-          'failed',
-          session.user.id,
-          'Identification failed'
-        );
-        // Reset states and close
+        // Identification failed - show Keep/Delete alert
         reset();
         onClose();
+        
+        // Show Keep/Delete alert
+        showKeepDeleteAlert(
+          "no_object_detected",
+          "We couldn't identify an object in this capture. Would you like to keep it for later or remove it?"
+        );
       }
     }
   }, [

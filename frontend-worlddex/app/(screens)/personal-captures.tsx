@@ -107,22 +107,29 @@ export default function PersonalCapturesScreen() {
         }
       }
       
-      const combined: CombinedCapture[] = validPending.map(p => ({
-        id: p.id,
-        image_key: '', // Will use imageUri instead
-        imageUri: p.imageUri,
-        captured_at: p.capturedAt,
-        capturedAt: p.capturedAt,
-        isPending: p.status !== 'temporary', // Temporary captures are not "pending"
-        pendingStatus: p.status,
-        pendingError: p.error,
-        location: p.location,
-        // Add fields for temporary captures
-        item_name: p.label,
-        rarity_tier: p.rarityTier,
-        rarity_score: p.rarityScore,
-        _pendingData: p // Store original pending capture data
-      }));
+      const combined: CombinedCapture[] = validPending
+        .map(p => ({
+          id: p.id,
+          image_key: '', // Will use imageUri instead
+          imageUri: p.imageUri,
+          captured_at: p.capturedAt,
+          capturedAt: p.capturedAt,
+          isPending: p.status !== 'temporary', // Temporary captures are not "pending"
+          pendingStatus: p.status,
+          pendingError: p.error,
+          location: p.location,
+          // Add fields for temporary captures
+          item_name: p.label,
+          rarity_tier: p.rarityTier,
+          rarity_score: p.rarityScore,
+          _pendingData: p // Store original pending capture data
+        }))
+        .sort((a, b) => {
+          // Sort by capturedAt in descending order (newest first)
+          const dateA = new Date(a.capturedAt || 0).getTime();
+          const dateB = new Date(b.capturedAt || 0).getTime();
+          return dateB - dateA;
+        });
       setPendingCaptures(combined);
       
       // Log temporary captures

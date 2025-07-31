@@ -62,11 +62,19 @@ export const fetchItemCaptures = async (
 };
 
 export const createCapture = async (
-  capture: Omit<Capture, "id" | "captured_at">
+  capture: Omit<Capture, "id" | "captured_at">,
+  capturedAt?: string // Optional timestamp for offline captures
 ): Promise<Capture | null> => {
+  const insertData: any = { ...capture };
+  
+  // If capturedAt is provided, include it in the insert
+  if (capturedAt) {
+    insertData.captured_at = capturedAt;
+  }
+  
   const { data, error } = await supabase
     .from(Tables.CAPTURES)
-    .insert(capture)
+    .insert(insertData)
     .select()
     .single();
 

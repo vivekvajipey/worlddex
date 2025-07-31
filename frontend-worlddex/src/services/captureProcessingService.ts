@@ -12,11 +12,12 @@ export interface ProcessCaptureParams {
   rarityScore?: number;
   location?: { latitude: number; longitude: number };
   tier1Response?: any; // For XP value
+  originalCapturedAt?: string; // For offline captures to preserve original timestamp
   
   // Service dependencies (injected to avoid circular deps)
   services: {
     incrementOrCreateItem: (label: string) => Promise<{ item: any; isGlobalFirst: boolean }>;
-    uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any) => Promise<any>;
+    uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any, capturedAt?: string) => Promise<any>;
     incrementCaptureCount: () => Promise<void>;
     fetchUserCollectionsByUser: (userId: string) => Promise<any[]>;
     fetchCollectionItems: (collectionId: string) => Promise<any[]>;
@@ -101,6 +102,7 @@ export async function processCaptureAfterIdentification(
     rarityTier,
     rarityScore,
     tier1Response,
+    originalCapturedAt,
     services,
     enableTemporaryCapture,
     onProgress
@@ -115,7 +117,7 @@ export async function processCaptureAfterIdentification(
         onProgress?.('Saving temporary capture...');
         const tempCapture = await OfflineCaptureService.saveTemporaryCapture({
           imageUri: capturedUri,
-          capturedAt: new Date().toISOString(),
+          capturedAt: originalCapturedAt || new Date().toISOString(),
           label: identifiedLabel,
           rarityTier,
           rarityScore
@@ -159,7 +161,8 @@ export async function processCaptureAfterIdentification(
       capturedUri,
       "image/jpeg",
       `${Date.now()}.jpg`,
-      capturePayload
+      capturePayload,
+      originalCapturedAt // Pass the original timestamp if available
     );
 
     if (!captureRecord) {
