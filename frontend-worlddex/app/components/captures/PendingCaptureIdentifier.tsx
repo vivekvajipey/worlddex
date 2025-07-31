@@ -9,8 +9,7 @@ import PolaroidDevelopment from "../camera/PolaroidDevelopment";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { usePhotoUpload } from "../../../src/hooks/usePhotoUpload";
 import { useItems } from "../../../database/hooks/useItems";
-import { incrementUserField } from "../../../database/hooks/useUsers";
-import { useUser } from "../../../database/hooks/useUsers";
+import { incrementUserField, useUser, fetchUser } from "../../../database/hooks/useUsers";
 import { calculateAndAwardCoins } from "../../../database/hooks/useCoins";
 import { calculateAndAwardCaptureXP } from "../../../database/hooks/useXP";
 import { fetchCollectionItems } from "../../../database/hooks/useCollectionItems";
@@ -50,9 +49,9 @@ export default function PendingCaptureIdentifier({
   const [identificationComplete, setIdentificationComplete] = useState(false);
   const [rarityTier, setRarityTier] = useState<"common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary">("common");
   const [rarityScore, setRarityScore] = useState<number | undefined>(undefined);
-  const [isCapturePublic, setIsCapturePublic] = useState(true);
   const isRejectedRef = useRef(false);
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
+  const userPreferencePromiseRef = useRef<Promise<any> | null>(null);
 
   // Start identification when pendingCapture is set
   useEffect(() => {
@@ -119,6 +118,14 @@ export default function PendingCaptureIdentifier({
     setVlmCaptureSuccess(null);
     setIdentifiedLabel(null);
     setIdentificationComplete(false);
+    
+    // Start fetching user preference in parallel (non-blocking)
+    if (session?.user?.id) {
+      userPreferencePromiseRef.current = fetchUser(session.user.id).catch((err) => {
+        console.warn('[PendingCaptureIdentifier] Failed to fetch user preference:', err);
+        return null;
+      });
+    }
     
     try {
       // Check if image file exists before processing
@@ -278,12 +285,17 @@ export default function PendingCaptureIdentifier({
       !isRejectedRef.current
     ) {
       try {
+        // Get the user preference from the parallel fetch
+        const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
+        const isPublic = userData?.default_public_captures || false;
+        console.log('[PendingCaptureIdentifier] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', '(from user preference)');
+        
         // Use the shared service to process the capture
         const result = await processCaptureAfterIdentification({
           userId: session.user.id,
           identifiedLabel,
           capturedUri: pendingCapture.imageUri,
-          isCapturePublic,
+          isCapturePublic: isPublic,
           rarityTier,
           rarityScore,
           tier1Response: tier1,
@@ -439,7 +451,6 @@ export default function PendingCaptureIdentifier({
     vlmCaptureSuccess,
     identifiedLabel,
     incrementOrCreateItem,
-    isCapturePublic,
     rarityTier,
     rarityScore,
     uploadCapturePhoto,
