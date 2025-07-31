@@ -83,32 +83,6 @@ export const useTutorialFlow = (userId: string | null): UseTutorialFlowReturn =>
     };
   }, [resetIdleTimer]);
 
-  // Check for progressive onboarding modals (circle and swipe)
-  useEffect(() => {
-    if (!user || !userId) return;
-
-    // Show circle tutorial modal after 3 captures
-    if (user.total_captures && user.total_captures >= 3 && !user.onboarding_circle_shown) {
-      enqueueModal({
-        type: 'onboardingCircle',
-        data: {},
-        priority: 80,
-        persistent: false
-      });
-      updateUserField(userId, 'onboarding_circle_shown', true).catch(console.error);
-    }
-
-    // Show swipe tutorial modal after 10 captures
-    if (user.total_captures && user.total_captures >= 10 && !user.onboarding_swipe_shown) {
-      enqueueModal({
-        type: 'onboardingSwipe',
-        data: {},
-        priority: 80,
-        persistent: false
-      });
-      updateUserField(userId, 'onboarding_swipe_shown', true).catch(console.error);
-    }
-  }, [user, userId, enqueueModal]);
 
   // Handle first capture completion
   const handleFirstCapture = useCallback(async () => {

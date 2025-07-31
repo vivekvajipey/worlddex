@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import CoinRewardModal from '../CoinRewardModal';
 import LevelUpModal from '../LevelUpModal';
 import { LocationPrompt } from '../permissions/LocationPrompt';
-import OnboardingCircleModal from '../OnboardingCircleModal';
-import OnboardingSwipeModal from '../OnboardingSwipeModal';
 import { useModalQueue } from '../../../src/contexts/ModalQueueContext';
 import { usePathname, useRouter } from 'expo-router';
 import { useAlert } from '../../../src/contexts/AlertContext';
@@ -121,23 +119,6 @@ export const ModalCoordinator: React.FC = () => {
         />
       );
 
-    case 'onboardingCircle':
-      return (
-        <OnboardingCircleModal
-          key={currentModal.id}
-          visible={true}
-          onClose={dismissCurrentModal}
-        />
-      );
-
-    case 'onboardingSwipe':
-      return (
-        <OnboardingSwipeModal
-          key={currentModal.id}
-          visible={true}
-          onClose={dismissCurrentModal}
-        />
-      );
 
     default:
       console.warn(`Unknown modal type: ${currentModal.type}`);

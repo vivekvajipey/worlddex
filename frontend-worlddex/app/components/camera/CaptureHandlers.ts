@@ -1,4 +1,4 @@
-import { RefObject } from 'react';
+import { RefObject, useRef } from 'react';
 import { CameraView } from 'expo-camera';
 import { PostHog } from 'posthog-react-native';
 import { CameraDispatch, CameraActions } from '../../../src/hooks/useCameraReducer';
@@ -8,6 +8,7 @@ import { UsePhotoUploadResult } from '../../../src/hooks/usePhotoUpload';
 import { CameraCaptureHandle } from './CameraCapture';
 import type { Capture, CollectionItem } from '../../../database/types';
 import { processCaptureAfterIdentification } from '../../../src/services/captureProcessingService';
+import { fetchUser } from '../../../database/hooks/useUsers';
 
 interface CaptureHandlerDependencies {
   // State from reducer
@@ -18,7 +19,6 @@ interface CaptureHandlerDependencies {
   captureBox: { x: number; y: number; width: number; height: number } | null;
   rarityTier: string;
   rarityScore?: number;
-  isCapturePublic: boolean;
   
   // External hooks
   identify: UseIdentifyResult['identify'];
@@ -61,7 +61,6 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     captureBox,
     rarityTier,
     rarityScore,
-    isCapturePublic,
     identify,
     uploadPhoto,
     uploadCapturePhoto,
@@ -88,6 +87,9 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     permission,
     requestPermission
   } = deps;
+  
+  // Store the user preference promise
+  const userPreferencePromiseRef = useRef<Promise<any> | null>(null);
 
   const handleCapture = async (
     points: { x: number; y: number }[],
@@ -127,6 +129,14 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
 
     // Reset VLM state for new capture
     dispatch(actions.resetIdentification());
+    
+    // Start fetching user preference in parallel (non-blocking)
+    if (userId) {
+      userPreferencePromiseRef.current = fetchUser(userId).catch((err) => {
+        console.warn('[CaptureHandlers] Failed to fetch user preference:', err);
+        return null;
+      });
+    }
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -234,6 +244,14 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
 
     dispatch(actions.startCapture());
     dispatch(actions.vlmProcessingStart());
+    
+    // Start fetching user preference in parallel (non-blocking)
+    if (userId) {
+      userPreferencePromiseRef.current = fetchUser(userId).catch((err) => {
+        console.warn('[CaptureHandlers] Failed to fetch user preference:', err);
+        return null;
+      });
+    }
 
     try {
       if (!cameraCaptureRef.current) {
@@ -368,12 +386,16 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       !savedOffline
     ) {
       try {
-        console.log('[CaptureHandlers] Processing capture with visibility from camera state:', isCapturePublic ? 'PUBLIC' : 'PRIVATE');
+        // Get the user preference from the parallel fetch
+        const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
+        const isPublic = userData?.default_public_captures || false;
+        console.log('[CaptureHandlers] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', '(from user preference)');
+        
         const result = await processCaptureAfterIdentification({
           userId,
           identifiedLabel,
           capturedUri,
-          isCapturePublic,
+          isCapturePublic: isPublic,
           rarityTier,
           rarityScore,
           tier1Response,
@@ -429,7 +451,6 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     dispatch(actions.captureFailed());
     dispatch(actions.resetCapture());
     dispatch(actions.resetIdentification());
-    dispatch(actions.setPublicStatus(true));
     
     cameraCaptureRef.current?.resetLasso();
     setSavedOffline(false);

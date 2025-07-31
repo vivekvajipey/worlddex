@@ -33,7 +33,6 @@ export interface CameraState {
   
   // Metadata
   metadata: {
-    isPublic: boolean;
     rarityTier: RarityTier;
     rarityScore: number | undefined;
   };
@@ -58,7 +57,6 @@ export type CameraAction =
   | { type: 'RESET_IDENTIFICATION' }
   
   // Metadata actions
-  | { type: 'SET_PUBLIC_STATUS'; payload: boolean }
   | { type: 'SET_RARITY'; payload: { tier: RarityTier; score?: number } }
   | { type: 'RESET_METADATA' }
   
@@ -84,7 +82,6 @@ const initialState: CameraState = {
     isComplete: false
   },
   metadata: {
-    isPublic: false,
     rarityTier: "common",
     rarityScore: undefined
   }
@@ -197,16 +194,6 @@ function cameraReducer(state: CameraState, action: CameraAction): CameraState {
       };
     
     // Metadata actions
-    case 'SET_PUBLIC_STATUS':
-      console.log('[CameraReducer] SET_PUBLIC_STATUS:', action.payload ? 'PUBLIC' : 'PRIVATE', 'at', new Date().toISOString());
-      return {
-        ...state,
-        metadata: {
-          ...state.metadata,
-          isPublic: action.payload
-        }
-      };
-    
     case 'SET_RARITY':
       return {
         ...state,
@@ -264,10 +251,6 @@ export const cameraActions = {
   resetIdentification: (): CameraAction => ({ type: 'RESET_IDENTIFICATION' }),
   
   // Metadata actions
-  setPublicStatus: (isPublic: boolean): CameraAction => ({ 
-    type: 'SET_PUBLIC_STATUS', 
-    payload: isPublic 
-  }),
   setRarity: (tier: RarityTier, score?: number): CameraAction => ({ 
     type: 'SET_RARITY', 
     payload: { tier, score } 
@@ -291,21 +274,12 @@ export interface UseCameraReducerReturn {
   vlmSuccess: boolean | null;
   identifiedLabel: string | null;
   identificationComplete: boolean;
-  isCapturePublic: boolean;
   rarityTier: RarityTier;
   rarityScore: number | undefined;
 }
 
-export function useCameraReducer(defaultIsPublic: boolean = false): UseCameraReducerReturn {
-  const initState = {
-    ...initialState,
-    metadata: {
-      ...initialState.metadata,
-      isPublic: defaultIsPublic
-    }
-  };
-  console.log('[CameraReducer] Initializing with isPublic:', defaultIsPublic, 'at', new Date().toISOString());
-  const [state, dispatch] = useReducer(cameraReducer, initState);
+export function useCameraReducer(): UseCameraReducerReturn {
+  const [state, dispatch] = useReducer(cameraReducer, initialState);
   
   // Log actions in development
   const dispatchWithLogging = useCallback((action: CameraAction) => {
@@ -328,7 +302,6 @@ export function useCameraReducer(defaultIsPublic: boolean = false): UseCameraRed
     vlmSuccess: state.identification.vlmSuccess,
     identifiedLabel: state.identification.label,
     identificationComplete: state.identification.isComplete,
-    isCapturePublic: state.metadata.isPublic,
     rarityTier: state.metadata.rarityTier,
     rarityScore: state.metadata.rarityScore
   };

@@ -28,7 +28,7 @@ import { useCaptureProcessing } from "../../src/hooks/useCaptureProcessing";
 import { useModalSequence } from "../../src/hooks/useModalSequence";
 import { useCameraReducer } from "../../src/hooks/useCameraReducer";
 import { useItems } from "../../database/hooks/useItems";
-import { incrementUserField, useUser } from "../../database/hooks/useUsers";
+import { incrementUserField } from "../../database/hooks/useUsers";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import { 
@@ -48,9 +48,6 @@ export default function CameraScreen({}: CameraScreenProps) {
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
   const { session } = useAuth();
   const userId = session?.user?.id || null;
-  
-  // Get user data to initialize default visibility
-  const { user } = useUser(userId);
 
   // Use camera reducer for consolidated state management
   const {
@@ -64,10 +61,9 @@ export default function CameraScreen({}: CameraScreenProps) {
     vlmSuccess: vlmCaptureSuccess,
     identifiedLabel,
     identificationComplete,
-    isCapturePublic,
     rarityTier,
     rarityScore
-  } = useCameraReducer(user?.default_public_captures || false);
+  } = useCameraReducer();
   
 
   // VLM
@@ -108,7 +104,6 @@ export default function CameraScreen({}: CameraScreenProps) {
     captureBox,
     rarityTier,
     rarityScore,
-    isCapturePublic,
     identify,
     uploadPhoto,
     uploadCapturePhoto,
@@ -238,8 +233,6 @@ export default function CameraScreen({}: CameraScreenProps) {
             error={polaroidError}
             identificationComplete={identificationComplete}
             isOfflineSave={savedOffline}
-            isPublic={isCapturePublic}
-            onSetPublic={(value) => dispatch(actions.setPublicStatus(value))}
             isIdentifying={idLoading}
             rarityTier={rarityTier}
             onReject={() => {

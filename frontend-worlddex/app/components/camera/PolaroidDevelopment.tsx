@@ -4,13 +4,10 @@ import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
 import { backgroundColor } from "../../../src/utils/colors";
-import { rarityColorBg, rarityColorTxt } from "../../../src/utils/rarityColors";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../../../src/contexts/AuthContext";
-import { useUser } from "../../../database/hooks/useUsers";
 import { usePostHog } from "posthog-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { rarityStyles, legendaryGradientColors, getGlowColor, RarityTier } from "../../../src/utils/rarityStyles";
+import { rarityStyles, RarityTier } from "../../../src/utils/rarityStyles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -41,8 +38,6 @@ interface PolaroidDevelopmentProps {
   isIdentifying?: boolean;
   label?: string; // Optional string for the identified subject
   onReject?: () => void; // Optional function to reject the capture
-  isPublic: boolean; // Current public/private state from camera
-  onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
   identificationComplete?: boolean; // prop to indicate when all identification is complete
   rarityTier?: RarityTier;
   error?: Error | null;
@@ -58,8 +53,6 @@ export default function PolaroidDevelopment({
   isIdentifying = false,
   label,
   onReject,
-  isPublic,
-  onSetPublic,
   identificationComplete = false, // Default to false for backward compatibility
   rarityTier = "common", // Default to common if no rarity tier is provided
   error = null,
@@ -506,7 +499,6 @@ export default function PolaroidDevelopment({
     if (posthog) {
       posthog.capture("capture_accepted", {
         objectType: label || "unknown",
-        isPublic: isPublic
       });
     }
     if (isCompleted && !isMinimizing) {
@@ -632,17 +624,6 @@ export default function PolaroidDevelopment({
     }
   }, [captureSuccess, label]);
 
-  // Handle public/private toggle
-  const handlePrivacyToggle = (newIsPublic: boolean) => {
-    if (posthog) {
-      posthog.capture("privacy_toggled", {
-        isPublic: newIsPublic
-      });
-    }
-    if (onSetPublic) {
-      onSetPublic(newIsPublic);
-    }
-  };
 
   // Get rarity styles for the polaroid frame
   const getRarityStyles = () => {

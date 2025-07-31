@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { usePathname } from 'expo-router';
 
-export type ModalType = 'coinReward' | 'levelUp' | 'locationPrompt' | 'notificationPrompt' | 'onboardingCircle' | 'onboardingSwipe';
+export type ModalType = 'coinReward' | 'levelUp' | 'locationPrompt' | 'notificationPrompt';
 
 export interface QueuedModal {
   id: string;
