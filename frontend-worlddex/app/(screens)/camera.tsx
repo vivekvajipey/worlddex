@@ -8,7 +8,6 @@ import { usePostHog } from "posthog-react-native";
 import CameraCapture, { CameraCaptureHandle } from "../components/camera/CameraCapture";
 import PolaroidDevelopment from "../components/camera/PolaroidDevelopment";
 import CameraTutorialOverlay from "../components/camera/CameraTutorialOverlay";
-import { CameraPlaceholder } from "../components/camera/CameraPlaceholder";
 import { CameraDebugLogger } from "../components/camera/CameraDebugLogger";
 import { CameraPermissionHandler } from "../components/camera/CameraPermissionHandler";
 import { CameraEffects } from "../components/camera/CameraEffects";
@@ -18,7 +17,6 @@ import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { IdentifyRequest } from "../../../shared/types/identify";
 import { useModalQueue } from "../../src/contexts/ModalQueueContext";
-import { TestModalFailsafeButton } from "../components/TestModalFailsafeButton";
 
 // Import new custom hooks
 import { useCaptureLimitsWithPersistence } from "../../src/hooks/useCaptureLimitsWithPersistence";

@@ -2,6 +2,10 @@
 
 This file contains important context and gotchas for future Claude Code instances working on this codebase.
 
+## Linear Task Management
+- **LINEAR_MANAGER_NOTES.md** - Contains Linear API learnings, state UUIDs, and task-specific context/discussions
+- Use this file to preserve context from task planning sessions and implementation decisions
+
 ## StyledAlert System
 
 ### Overview
