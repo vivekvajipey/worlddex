@@ -68,13 +68,13 @@ export const ModalCoordinator: React.FC = () => {
   }, [dismissCurrentModal]);
 
   // Debug logs - comment out after testing
-  console.log("=== MODAL COORDINATOR ===");
-  console.log("isShowingModal:", isShowingModal);
-  console.log("currentModal type:", currentModal?.type);
-  console.log("currentModal id:", currentModal?.id);
-  console.log("pathname:", pathname);
-  console.log("isReady:", isReady);
-  console.log("hasActiveAlert:", hasActiveAlert);
+  // console.log("=== MODAL COORDINATOR ===");
+  // console.log("isShowingModal:", isShowingModal);
+  // console.log("currentModal type:", currentModal?.type);
+  // console.log("currentModal id:", currentModal?.id);
+  // console.log("pathname:", pathname);
+  // console.log("isReady:", isReady);
+  // console.log("hasActiveAlert:", hasActiveAlert);
 
   // Don't render modals until the screen is ready and no alert is active
   if (!isReady || !isShowingModal || !currentModal || hasActiveAlert) {

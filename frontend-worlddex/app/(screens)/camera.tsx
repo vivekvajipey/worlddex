@@ -18,6 +18,7 @@ import { usePhotoUpload } from "../../src/hooks/usePhotoUpload";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { IdentifyRequest } from "../../../shared/types/identify";
 import { useModalQueue } from "../../src/contexts/ModalQueueContext";
+import { TestModalFailsafeButton } from "../components/TestModalFailsafeButton";
 
 // Import new custom hooks
 import { useCaptureLimitsWithPersistence } from "../../src/hooks/useCaptureLimitsWithPersistence";
@@ -242,6 +243,9 @@ export default function CameraScreen({}: CameraScreenProps) {
             }}
           />
         )}
+        
+        {/* Temporary test button for modal failsafe - REMOVE AFTER TESTING */}
+        <TestModalFailsafeButton />
       </View>
     </GestureHandlerRootView>
     </CameraPermissionHandler>

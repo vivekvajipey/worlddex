@@ -164,14 +164,14 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   }, [isShowingModal, currentModal]);
 
   // Debug logging for modal queue state
-  useEffect(() => {
-    console.log("=== MODAL QUEUE STATE ===");
-    console.log("isShowingModal:", isShowingModal);
-    console.log("currentModal:", currentModal);
-    console.log("isProcessing:", isProcessing);
-    console.log("queue length:", queue.length);
-    console.log("queue:", queue.map(m => ({ type: m.type, id: m.id })));
-  }, [isShowingModal, currentModal, isProcessing, queue]);
+  // useEffect(() => {
+  //   console.log("=== MODAL QUEUE STATE ===");
+  //   console.log("isShowingModal:", isShowingModal);
+  //   console.log("currentModal:", currentModal);
+  //   console.log("isProcessing:", isProcessing);
+  //   console.log("queue length:", queue.length);
+  //   console.log("queue:", queue.map(m => ({ type: m.type, id: m.id })));
+  // }, [isShowingModal, currentModal, isProcessing, queue]);
 
   const value: ModalQueueContextType = {
     currentModal,

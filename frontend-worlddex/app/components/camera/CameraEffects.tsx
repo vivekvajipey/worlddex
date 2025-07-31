@@ -67,11 +67,11 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
   }, [userId, initializeOfflineService, syncWithDatabase]);
 
   // Debug modal queue state
-  useEffect(() => {
-    console.log("=== MODAL QUEUE STATE ===");
-    console.log("isShowingModal:", isShowingModal);
-    console.log("currentModal:", currentModal);
-  }, [isShowingModal, currentModal]);
+  // useEffect(() => {
+  //   console.log("=== MODAL QUEUE STATE ===");
+  //   console.log("isShowingModal:", isShowingModal);
+  //   console.log("currentModal:", currentModal);
+  // }, [isShowingModal, currentModal]);
 
   // Watch for network errors during capture to trigger offline save
   useEffect(() => {
