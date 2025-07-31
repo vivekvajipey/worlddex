@@ -15,6 +15,7 @@ import { NotificationPermissionManager } from "./components/permissions/Notifica
 import { ModalQueueProvider } from "../src/contexts/ModalQueueContext";
 import { ModalCoordinator } from "./components/modals/ModalCoordinator";
 import { AlertProvider } from "../src/contexts/AlertContext";
+import { BackgroundTouchDetector } from "./components/BackgroundTouchDetector";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -144,9 +145,11 @@ export default function RootLayout() {
           <AlertProvider>
             <QueryClientProvider client={queryClient}>
               <ModalQueueProvider>
-                <Slot />
-                <NotificationPermissionManager />
-                <ModalCoordinator />
+                <BackgroundTouchDetector>
+                  <Slot />
+                  <NotificationPermissionManager />
+                  <ModalCoordinator />
+                </BackgroundTouchDetector>
               </ModalQueueProvider>
             </QueryClientProvider>
           </AlertProvider>

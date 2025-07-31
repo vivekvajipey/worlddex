@@ -22,6 +22,7 @@ import { useAlert } from "../../src/contexts/AlertContext";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { CombinedCapture } from "../../src/types/combinedCapture";
 import { checkServerConnection } from "../../src/utils/networkUtils";
+import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
@@ -35,6 +36,7 @@ const { width } = Dimensions.get("window");
 
 export default function PersonalCapturesScreen() {
   const router = useRouter();
+  const { isShowingModal, dismissCurrentModal } = useModalQueue();
   const [activeTab, setActiveTab] = useState("WorldDex");
   const [selectedCapture, setSelectedCapture] = useState<CombinedCapture | null>(null);
   const [captureModalVisible, setCaptureModalVisible] = useState(false);
@@ -53,6 +55,7 @@ export default function PersonalCapturesScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   // Add a ref to track if we're responding to a tab click
   const isTabClickRef = useRef(false);
+  const rapidTapRef = useRef({ count: 0, lastTap: 0 });
   const { session } = useAuth();
   const userId = session?.user?.id || null;
 
@@ -621,8 +624,36 @@ export default function PersonalCapturesScreen() {
     }
   }, [posthog]);
 
+  // Handle rapid taps to detect stuck modal
+  const handleBackgroundPress = () => {
+    const now = Date.now();
+    const tapData = rapidTapRef.current;
+    
+    // Reset if more than 1 second between taps
+    if (now - tapData.lastTap > 1000) {
+      tapData.count = 0;
+    }
+    
+    tapData.count++;
+    tapData.lastTap = now;
+    
+    // 3 rapid taps = user is frustrated
+    if (tapData.count >= 3) {
+      console.log('[PersonalCaptures] Rapid taps detected - checking for stuck modal');
+      if (isShowingModal) {
+        console.log('[PersonalCaptures] Dismissing stuck modal');
+        dismissCurrentModal();
+      }
+      tapData.count = 0;
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView 
+      className="flex-1 bg-background"
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={handleBackgroundPress}
+    >
         {/* Header with back button and tabs */}
         <View className="relative">
           {/* Back button */}

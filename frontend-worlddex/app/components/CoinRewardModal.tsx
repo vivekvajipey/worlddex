@@ -5,6 +5,7 @@ import retroCoin from "../../assets/images/retro_coin.png";
 import { usePostHog } from "posthog-react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../src/utils/colors";
+import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 
 interface CoinRewardModalProps {
   visible: boolean;
@@ -28,6 +29,7 @@ export default function CoinRewardModal({
   newLevel
 }: CoinRewardModalProps) {
   const posthog = usePostHog();
+  const { confirmModalMounted } = useModalQueue();
   
   // console.log("=== COIN REWARD MODAL RENDER ===");
   // console.log("visible:", visible);
@@ -44,16 +46,21 @@ export default function CoinRewardModal({
   // }, []);
   
   useEffect(() => {
-    // Track screen view when modal becomes visible
-    if (visible && (total !== undefined || xpTotal !== undefined) && posthog) {
-      posthog.screen("Reward-Modal", {
-        totalCoins: total,
-        totalXP: xpTotal,
-        levelUp: levelUp,
-        newLevel: newLevel
-      });
+    if (visible) {
+      // Confirm modal has mounted
+      confirmModalMounted();
+      
+      // Track screen view when modal becomes visible
+      if ((total !== undefined || xpTotal !== undefined) && posthog) {
+        posthog.screen("Reward-Modal", {
+          totalCoins: total,
+          totalXP: xpTotal,
+          levelUp: levelUp,
+          newLevel: newLevel
+        });
+      }
     }
-  }, [visible, total, xpTotal, levelUp, newLevel, posthog]);
+  }, [visible, total, xpTotal, levelUp, newLevel, posthog, confirmModalMounted]);
   
   // Track reward events when shown
   useEffect(() => {

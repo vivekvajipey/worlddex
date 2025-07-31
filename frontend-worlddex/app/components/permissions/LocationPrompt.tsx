@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useModalQueue } from '../../../src/contexts/ModalQueueContext';
 
 interface LocationPromptProps {
   visible: boolean;
@@ -16,6 +17,14 @@ export const LocationPrompt: React.FC<LocationPromptProps> = ({
   onEnableLocation,
   onSkip
 }) => {
+  const { confirmModalMounted } = useModalQueue();
+  
+  useEffect(() => {
+    if (visible) {
+      confirmModalMounted();
+    }
+  }, [visible, confirmModalMounted]);
+  
   return (
     <Modal
       visible={visible}

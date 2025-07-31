@@ -18,6 +18,8 @@ interface ModalQueueContextType {
   dismissCurrentModal: () => void;
   clearQueue: () => void;
   queueLength: number;
+  confirmModalMounted: () => void;
+  reportBackgroundTouch: () => void;
 }
 
 const ModalQueueContext = createContext<ModalQueueContextType | undefined>(undefined);
@@ -39,6 +41,7 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   const [currentModal, setCurrentModal] = useState<QueuedModal | null>(null);
   const [isShowingModal, setIsShowingModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [modalMountDeadline, setModalMountDeadline] = useState<number | null>(null);
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const modalVerificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,6 +89,9 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
           setCurrentModal(next);
           setIsShowingModal(true);
           
+          // Set mount deadline - modal has 300ms to mount
+          setModalMountDeadline(Date.now() + 300);
+          
           // Remove from queue
           setQueue(prev => prev.filter(m => m.id !== next.id));
           setIsProcessing(false);
@@ -93,6 +99,24 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
       });
     }
   }, [isShowingModal, isProcessing, queue]);
+
+  // Check mount deadline - aggressive 300ms timeout
+  useEffect(() => {
+    if (!modalMountDeadline || !isShowingModal) return;
+    
+    const checkInterval = setInterval(() => {
+      if (Date.now() > modalMountDeadline) {
+        console.error('[ModalQueue] CRITICAL: Modal failed to mount in 300ms - force closing');
+        setCurrentModal(null);
+        setIsShowingModal(false);
+        setModalMountDeadline(null);
+        setIsProcessing(false);
+        clearInterval(checkInterval);
+      }
+    }, 50); // Check every 50ms for fast detection
+    
+    return () => clearInterval(checkInterval);
+  }, [modalMountDeadline, isShowingModal]);
 
   const enqueueModal = useCallback((modal: Omit<QueuedModal, 'id'>) => {
     const id = `${modal.type}-${Date.now()}-${Math.random()}`;
@@ -107,6 +131,7 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
     requestAnimationFrame(() => {
       setCurrentModal(null);
       setIsShowingModal(false);
+      setModalMountDeadline(null);
       
       // Force processing flag reset in case it got stuck
       if (isProcessing) {
@@ -120,7 +145,27 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
     setQueue([]);
     setCurrentModal(null);
     setIsShowingModal(false);
+    setModalMountDeadline(null);
   }, []);
+
+  // Modal confirms it has mounted successfully
+  const confirmModalMounted = useCallback(() => {
+    console.log('[ModalQueue] Modal confirmed mounted');
+    setModalMountDeadline(null);
+  }, []);
+
+  // Background was touched while modal should be showing
+  const reportBackgroundTouch = useCallback(() => {
+    if (isShowingModal) {
+      console.error('[ModalQueue] CRITICAL: Background touch detected with modal showing - immediate recovery');
+      setCurrentModal(null);
+      setIsShowingModal(false);
+      setModalMountDeadline(null);
+      setIsProcessing(false);
+      // Clear queue to prevent further issues
+      setQueue([]);
+    }
+  }, [isShowingModal]);
 
   // Failsafe: State consistency check
   // If modal should be showing but isn't rendering properly, reset state
@@ -179,7 +224,9 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
     enqueueModal,
     dismissCurrentModal,
     clearQueue,
-    queueLength: queue.length
+    queueLength: queue.length,
+    confirmModalMounted,
+    reportBackgroundTouch
   };
 
   return (
