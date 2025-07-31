@@ -71,6 +71,19 @@ export default function PersonalCapturesScreen() {
   }, [capturesLoading, captures]);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
+  // Debug log for modal states - uncomment if needed
+  // useEffect(() => {
+  //   console.log("[MODAL DEBUG] Current modal states:", {
+  //     captureModalVisible,
+  //     collectionDetailVisible,
+  //     selectedPendingCapture: !!selectedPendingCapture,
+  //     deleteModalVisible,
+  //     selectedCaptureId: selectedCapture?.id,
+  //     selectedCollectionId,
+  //     captureToDeleteId: captureToDelete?.id
+  //   });
+  // }, [captureModalVisible, collectionDetailVisible, selectedPendingCapture, deleteModalVisible, selectedCapture?.id, selectedCollectionId, captureToDelete?.id]);
+
   // Fetch pending captures on mount
   const fetchPendingCaptures = useCallback(async () => {
     if (!userId) {
