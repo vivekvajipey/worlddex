@@ -21,6 +21,7 @@ import { usePostHog } from "posthog-react-native";
 import { useAlert } from "../../src/contexts/AlertContext";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { CombinedCapture } from "../../src/types/combinedCapture";
+import { checkServerConnection } from "../../src/utils/networkUtils";
 
 // Import the extracted components
 import WorldDexTab from "../components/captures/WorldDexTab";
@@ -359,9 +360,21 @@ export default function PersonalCapturesScreen() {
     };
   }, []);
 
-  const handleCapturePress = (capture: CombinedCapture) => {
+  const handleCapturePress = async (capture: CombinedCapture) => {
     // Check if this is a pending capture that needs identification
     if (capture.isPending && capture.pendingStatus !== 'temporary') {
+      // Check server connection first
+      const isConnected = await checkServerConnection();
+      if (!isConnected) {
+        showAlert({
+          title: "No Connection",
+          message: "Unable to reach the server. Please check your internet connection and try again.",
+          icon: "wifi-outline",
+          iconColor: "#EF4444"
+        });
+        return;
+      }
+      
       // Get the original pending capture data
       const pendingData = (capture as any)._pendingData;
       if (pendingData) {
