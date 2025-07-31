@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { useModalQueue } from '../../src/contexts/ModalQueueContext';
 
@@ -8,32 +8,15 @@ interface BackgroundTouchDetectorProps {
 
 export const BackgroundTouchDetector: React.FC<BackgroundTouchDetectorProps> = ({ children }) => {
   const { isShowingModal, reportBackgroundTouch } = useModalQueue();
-  const [touchCount, setTouchCount] = useState(0);
-  const lastTouchRef = useRef<number>(0);
 
   const handleBackgroundTouch = () => {
-    const now = Date.now();
-    
-    // Reset count if more than 1 second since last touch
-    if (now - lastTouchRef.current > 1000) {
-      setTouchCount(0);
-    }
-    
-    lastTouchRef.current = now;
-    
     if (isShowingModal) {
-      setTouchCount(prev => {
-        const newCount = prev + 1;
-        console.log(`[BackgroundTouch] Touch ${newCount} detected while modal showing`);
-        
-        if (newCount >= 2) {
-          // Second touch means immediate recovery
-          reportBackgroundTouch();
-          return 0;
-        }
-        return newCount;
-      });
+      // This touch should have been blocked by a modal - immediate recovery
+      console.error('[BackgroundTouch] CRITICAL: Touch detected with modal showing - immediate dismissal!');
+      reportBackgroundTouch();
+      return true; // Capture this touch to prevent propagation
     }
+    return false;
   };
 
   return (
@@ -49,10 +32,7 @@ export const BackgroundTouchDetector: React.FC<BackgroundTouchDetectorProps> = (
             bottom: 0,
             zIndex: 1, // Low z-index, should be behind everything
           }}
-          onStartShouldSetResponder={() => {
-            handleBackgroundTouch();
-            return false; // Don't capture the touch, let it pass through
-          }}
+          onStartShouldSetResponder={handleBackgroundTouch}
         />
       )}
       
