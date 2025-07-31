@@ -198,6 +198,7 @@ function cameraReducer(state: CameraState, action: CameraAction): CameraState {
     
     // Metadata actions
     case 'SET_PUBLIC_STATUS':
+      console.log('[CameraReducer] SET_PUBLIC_STATUS:', action.payload ? 'PUBLIC' : 'PRIVATE', 'at', new Date().toISOString());
       return {
         ...state,
         metadata: {
@@ -295,8 +296,16 @@ export interface UseCameraReducerReturn {
   rarityScore: number | undefined;
 }
 
-export function useCameraReducer(): UseCameraReducerReturn {
-  const [state, dispatch] = useReducer(cameraReducer, initialState);
+export function useCameraReducer(defaultIsPublic: boolean = false): UseCameraReducerReturn {
+  const initState = {
+    ...initialState,
+    metadata: {
+      ...initialState.metadata,
+      isPublic: defaultIsPublic
+    }
+  };
+  console.log('[CameraReducer] Initializing with isPublic:', defaultIsPublic, 'at', new Date().toISOString());
+  const [state, dispatch] = useReducer(cameraReducer, initState);
   
   // Log actions in development
   const dispatchWithLogging = useCallback((action: CameraAction) => {

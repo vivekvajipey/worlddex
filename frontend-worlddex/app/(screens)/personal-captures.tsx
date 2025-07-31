@@ -61,12 +61,12 @@ export default function PersonalCapturesScreen() {
   // Log when captures are loaded from hook
   useEffect(() => {
     if (!capturesLoading && captures.length > 0) {
-      console.log("[CAPTURE FLOW] WorldDex loaded captures from hook", {
-        timestamp: new Date().toISOString(),
-        captureCount: captures.length,
-        latestCapture: captures[0]?.captured_at,
-        isUsingCache: true
-      });
+      // console.log("[CAPTURE FLOW] WorldDex loaded captures from hook", {
+      //   timestamp: new Date().toISOString(),
+      //   captureCount: captures.length,
+      //   latestCapture: captures[0]?.captured_at,
+      //   isUsingCache: true
+      // });
     }
   }, [capturesLoading, captures]);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
@@ -161,10 +161,10 @@ export default function PersonalCapturesScreen() {
   }, []);
 
   useEffect(() => {
-    console.log("[CAPTURE FLOW] WorldDex screen opened", {
-      timestamp: new Date().toISOString(),
-      cachedCaptureCount: captures.length
-    });
+    // console.log("[CAPTURE FLOW] WorldDex screen opened", {
+    //   timestamp: new Date().toISOString(),
+    //   cachedCaptureCount: captures.length
+    // });
     fetchPendingCaptures();
   }, [fetchPendingCaptures, captures.length]);
 
@@ -249,10 +249,10 @@ export default function PersonalCapturesScreen() {
   const refreshData = useCallback(async (showLoadingIndicator = true) => {
     if (!userId) return;
 
-    console.log("[CAPTURE FLOW] WorldDex manual refresh triggered", {
-      timestamp: new Date().toISOString(),
-      userId
-    });
+    // console.log("[CAPTURE FLOW] WorldDex manual refresh triggered", {
+    //   timestamp: new Date().toISOString(),
+    //   userId
+    // });
 
     if (showLoadingIndicator) {
       setIsRefreshing(true);
@@ -276,12 +276,12 @@ export default function PersonalCapturesScreen() {
       setRefreshedCaptures(freshCaptures);
       setUserCollectionsData(userAddedCollections);
       
-      console.log("[CAPTURE FLOW] WorldDex refresh complete", {
-        timestamp: new Date().toISOString(),
-        freshCaptureCount: freshCaptures.length,
-        latestCapture: freshCaptures[0]?.captured_at,
-        collectionsCount: userAddedCollections.length
-      });
+      // console.log("[CAPTURE FLOW] WorldDex refresh complete", {
+      //   timestamp: new Date().toISOString(),
+      //   freshCaptureCount: freshCaptures.length,
+      //   latestCapture: freshCaptures[0]?.captured_at,
+      //   collectionsCount: userAddedCollections.length
+      // });
       
       // Also refresh pending captures
       await fetchPendingCaptures();

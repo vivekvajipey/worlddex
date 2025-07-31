@@ -41,6 +41,7 @@ interface PolaroidDevelopmentProps {
   isIdentifying?: boolean;
   label?: string; // Optional string for the identified subject
   onReject?: () => void; // Optional function to reject the capture
+  isPublic: boolean; // Current public/private state from camera
   onSetPublic?: (isPublic: boolean) => void; // Callback for public/private toggle
   identificationComplete?: boolean; // prop to indicate when all identification is complete
   rarityTier?: RarityTier;
@@ -57,6 +58,7 @@ export default function PolaroidDevelopment({
   isIdentifying = false,
   label,
   onReject,
+  isPublic,
   onSetPublic,
   identificationComplete = false, // Default to false for backward compatibility
   rarityTier = "common", // Default to common if no rarity tier is provided
@@ -65,17 +67,11 @@ export default function PolaroidDevelopment({
   isOfflineSave = false
 }: PolaroidDevelopmentProps) {
 
-  // Get user settings
-  const { session } = useAuth();
-  const userId = session?.user?.id || null;
-  const { user } = useUser(userId);
-  
   // State tracking - moved to top before any useEffects
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isRipping, setIsRipping] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [initialAnimationDone, setInitialAnimationDone] = useState(false);
-  const [isPublic, setIsPublic] = useState(false);
   
   // Track when PENDING animation completes
   const [pendingAnimationComplete, setPendingAnimationComplete] = useState(false);
@@ -148,15 +144,6 @@ export default function PolaroidDevelopment({
   // Rarity effect animations
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0.5)).current;
-
-  // Set the initial public/private setting based on user's default preference
-  useEffect(() => {
-    if (user) {
-      const defaultSetting = user.default_public_captures || false;
-      console.log('[PolaroidDevelopment] Setting initial visibility:', defaultSetting ? 'PUBLIC' : 'PRIVATE', 'from user default_public_captures:', user.default_public_captures);
-      setIsPublic(defaultSetting);
-    }
-  }, [user]);
 
   const posthog = usePostHog();
 
@@ -652,7 +639,6 @@ export default function PolaroidDevelopment({
         isPublic: newIsPublic
       });
     }
-    setIsPublic(newIsPublic);
     if (onSetPublic) {
       onSetPublic(newIsPublic);
     }

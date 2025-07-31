@@ -368,6 +368,7 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       !savedOffline
     ) {
       try {
+        console.log('[CaptureHandlers] Processing capture with visibility from camera state:', isCapturePublic ? 'PUBLIC' : 'PRIVATE');
         const result = await processCaptureAfterIdentification({
           userId,
           identifiedLabel,

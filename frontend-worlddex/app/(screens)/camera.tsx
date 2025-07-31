@@ -28,7 +28,7 @@ import { useCaptureProcessing } from "../../src/hooks/useCaptureProcessing";
 import { useModalSequence } from "../../src/hooks/useModalSequence";
 import { useCameraReducer } from "../../src/hooks/useCameraReducer";
 import { useItems } from "../../database/hooks/useItems";
-import { incrementUserField } from "../../database/hooks/useUsers";
+import { incrementUserField, useUser } from "../../database/hooks/useUsers";
 import { fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { fetchCollectionItems } from "../../database/hooks/useCollectionItems";
 import { 
@@ -48,6 +48,9 @@ export default function CameraScreen({}: CameraScreenProps) {
   const lastIdentifyPayloadRef = useRef<IdentifyRequest | null>(null);
   const { session } = useAuth();
   const userId = session?.user?.id || null;
+  
+  // Get user data to initialize default visibility
+  const { user } = useUser(userId);
 
   // Use camera reducer for consolidated state management
   const {
@@ -64,7 +67,8 @@ export default function CameraScreen({}: CameraScreenProps) {
     isCapturePublic,
     rarityTier,
     rarityScore
-  } = useCameraReducer();
+  } = useCameraReducer(user?.default_public_captures || false);
+  
 
   // VLM
   const {
@@ -234,6 +238,7 @@ export default function CameraScreen({}: CameraScreenProps) {
             error={polaroidError}
             identificationComplete={identificationComplete}
             isOfflineSave={savedOffline}
+            isPublic={isCapturePublic}
             onSetPublic={(value) => dispatch(actions.setPublicStatus(value))}
             isIdentifying={idLoading}
             rarityTier={rarityTier}
@@ -245,7 +250,7 @@ export default function CameraScreen({}: CameraScreenProps) {
         )}
         
         {/* Temporary test button for modal failsafe - REMOVE AFTER TESTING */}
-        <TestModalFailsafeButton />
+        {/* <TestModalFailsafeButton /> */}
       </View>
     </GestureHandlerRootView>
     </CameraPermissionHandler>

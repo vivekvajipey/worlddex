@@ -260,11 +260,13 @@ export default function Profile({ onOpenFeedback }: ProfileProps) {
   // Toggle default public/private setting
   const toggleDefaultPublicCaptures = async (value: boolean) => {
     try {
+      console.log('[Profile] Toggling default visibility to:', value ? 'PUBLIC' : 'PRIVATE');
       // Update state immediately for a smooth UI experience
       setDefaultPublicCaptures(value);
 
       // Update the user data in the database but don't refresh the entire component
-      await updateUser({ default_public_captures: value });
+      const success = await updateUser({ default_public_captures: value });
+      console.log('[Profile] Update result:', success ? 'SUCCESS' : 'FAILED');
 
       // Update the refreshedUser state locally without triggering a full refresh
       if (refreshedUser) {
