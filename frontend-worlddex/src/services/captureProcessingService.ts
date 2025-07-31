@@ -156,7 +156,7 @@ export async function processCaptureAfterIdentification(
 
     // 3. Upload photo and create capture record
     onProgress?.('Uploading capture...');
-    // console.log("[CAPTURE] Uploading photo and creating capture record");
+    console.log("[CAPTURE] Creating capture with visibility:", isCapturePublic ? 'PUBLIC' : 'PRIVATE', '(from isCapturePublic parameter)');
     const captureRecord = await services.uploadCapturePhoto(
       capturedUri,
       "image/jpeg",

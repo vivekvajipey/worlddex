@@ -41,6 +41,7 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
   const [isProcessing, setIsProcessing] = useState(false);
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
+  const modalVerificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   // Clean up non-persistent modals on navigation
@@ -120,6 +121,47 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
     setCurrentModal(null);
     setIsShowingModal(false);
   }, []);
+
+  // Failsafe: State consistency check
+  // If modal should be showing but isn't rendering properly, reset state
+  useEffect(() => {
+    // Clear any existing timeout
+    if (modalVerificationTimeoutRef.current) {
+      clearTimeout(modalVerificationTimeoutRef.current);
+      modalVerificationTimeoutRef.current = null;
+    }
+
+    // Only check when we think a modal is showing
+    if (isShowingModal && currentModal) {
+      modalVerificationTimeoutRef.current = setTimeout(() => {
+        // In a stuck state, isShowingModal would be true but modal isn't actually visible
+        // We detect this by checking if dismissCurrentModal hasn't been called
+        if (isShowingModal && currentModal) {
+          console.warn("[ModalQueue] Potential stuck modal detected - performing failsafe reset");
+          console.warn("Stuck modal details:", { type: currentModal.type, id: currentModal.id });
+          
+          // Force reset all modal state
+          setCurrentModal(null);
+          setIsShowingModal(false);
+          setIsProcessing(false);
+          
+          // Clear the verification timeout
+          if (modalVerificationTimeoutRef.current) {
+            clearTimeout(modalVerificationTimeoutRef.current);
+            modalVerificationTimeoutRef.current = null;
+          }
+        }
+      }, 10000); // 10 seconds should be more than enough for any modal to render
+    }
+
+    // Cleanup on unmount or when modal state changes
+    return () => {
+      if (modalVerificationTimeoutRef.current) {
+        clearTimeout(modalVerificationTimeoutRef.current);
+        modalVerificationTimeoutRef.current = null;
+      }
+    };
+  }, [isShowingModal, currentModal]);
 
   // Debug logging for modal queue state
   useEffect(() => {

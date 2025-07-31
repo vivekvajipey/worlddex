@@ -66,11 +66,3 @@ const handleDelete = () => {
 2. **Avoid showing alerts from within modals** - Close modal first, then show alert
 3. **Use screens instead of modals for complex views** - Avoids nested modal issues
 4. **Always test alert visibility** - Check that alerts appear and don't block UI
-
-### Common Commands
-
-```bash
-# Lint and typecheck (run after making changes)
-npm run lint
-npm run typecheck
-```

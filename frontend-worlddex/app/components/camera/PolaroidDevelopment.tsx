@@ -152,7 +152,9 @@ export default function PolaroidDevelopment({
   // Set the initial public/private setting based on user's default preference
   useEffect(() => {
     if (user) {
-      setIsPublic(user.default_public_captures || false);
+      const defaultSetting = user.default_public_captures || false;
+      console.log('[PolaroidDevelopment] Setting initial visibility:', defaultSetting ? 'PUBLIC' : 'PRIVATE', 'from user default_public_captures:', user.default_public_captures);
+      setIsPublic(defaultSetting);
     }
   }, [user]);
 
