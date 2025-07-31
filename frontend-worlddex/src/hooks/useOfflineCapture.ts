@@ -87,7 +87,7 @@ export const useOfflineCapture = (): UseOfflineCaptureReturn => {
         setTimeout(() => {
           showAlert({
             title: "Saved for Later",
-            message: "We'll identify your capture when you're back online.",
+            message: "Your capture can be identified when you're back online.",
             icon: "save-outline",
             iconColor: "#10B981"
           });

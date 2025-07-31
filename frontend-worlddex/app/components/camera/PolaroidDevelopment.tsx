@@ -77,23 +77,34 @@ export default function PolaroidDevelopment({
   const [initialAnimationDone, setInitialAnimationDone] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   
-  // Detect offline state (when showing "Saving...") and trigger proper flow
+  // Track when PENDING animation completes
+  const [pendingAnimationComplete, setPendingAnimationComplete] = useState(false);
+  
+  // Reset pending animation state when not in offline mode
   useEffect(() => {
-    
+    if (!isOfflineSave) {
+      setPendingAnimationComplete(false);
+    }
+  }, [isOfflineSave]);
+  
+  // Auto-dismiss timer - only starts after PENDING animation completes
+  useEffect(() => {
     // This state only happens when offline - captureSuccess null and isIdentifying false
     // Also handle network errors specifically
     const isNetworkError = error && error.message === 'Network request failed';
-    if (captureSuccess === null && isIdentifying === false && (!error || isNetworkError)) {
-      // Auto-dismiss after showing "Saving..." briefly
+    const isOfflineState = captureSuccess === null && isIdentifying === false && (!error || isNetworkError);
+    
+    if (isOfflineState && pendingAnimationComplete) {
+      // Start auto-dismiss timer only after PENDING animation is done
       const timer = setTimeout(() => {
         // Set completed state to trigger the minimize animation
         setIsCompleted(true);
-      }, 1500); // Same timing as our other auto-dismiss
+      }, 1000); // Wait 1.5s after PENDING animation completes
       return () => {
         clearTimeout(timer);
       };
     }
-  }, [captureSuccess, isIdentifying, error, onDismiss]);
+  }, [captureSuccess, isIdentifying, error, onDismiss, pendingAnimationComplete]);
   
   // Store reference to trigger animation later
   const shouldTriggerMinimize = useRef(false);
@@ -754,7 +765,10 @@ export default function PolaroidDevelopment({
           duration: 300,
           useNativeDriver: true,
         })
-      ]).start();
+      ]).start(() => {
+        // Mark PENDING animation as complete
+        setPendingAnimationComplete(true);
+      });
     }
   }, [isOfflineSave, initialAnimationDone]);
 
