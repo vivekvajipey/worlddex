@@ -17,6 +17,7 @@ interface AlertOptions {
 interface AlertContextType {
   showAlert: (options: AlertOptions) => void;
   hideAlert: () => void;
+  hasActiveAlert: boolean;
 }
 
 const AlertContext = createContext<AlertContextType | undefined>(undefined);
@@ -66,7 +67,7 @@ export const AlertProvider: React.FC<AlertProviderProps> = ({ children }) => {
   }));
 
   return (
-    <AlertContext.Provider value={{ showAlert, hideAlert }}>
+    <AlertContext.Provider value={{ showAlert, hideAlert, hasActiveAlert: alertState.visible }}>
       {children}
       <StyledAlert
         {...alertState}

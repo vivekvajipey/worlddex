@@ -66,20 +66,30 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
       console.log("[ModalQueue] Processing queue, length:", queue.length);
       setIsProcessing(true);
       
-      // Brief delay to allow UI to settle between modals
-      setTimeout(() => {
-        // Sort by priority (descending) and take first
-        const sorted = [...queue].sort((a, b) => b.priority - a.priority);
-        const next = sorted[0];
+      // Use requestAnimationFrame to ensure UI has settled
+      requestAnimationFrame(() => {
+        // Double-check we're still ready to show a modal
+        if (isShowingModal) {
+          console.log("[ModalQueue] Aborting - modal already showing");
+          setIsProcessing(false);
+          return;
+        }
         
-        console.log("[ModalQueue] Showing modal:", next.type, next.id);
-        setCurrentModal(next);
-        setIsShowingModal(true);
-        
-        // Remove from queue
-        setQueue(prev => prev.filter(m => m.id !== next.id));
-        setIsProcessing(false);
-      }, 300); // 300ms breathing room between modals
+        // Brief delay to allow UI to settle between modals
+        setTimeout(() => {
+          // Sort by priority (descending) and take first
+          const sorted = [...queue].sort((a, b) => b.priority - a.priority);
+          const next = sorted[0];
+          
+          console.log("[ModalQueue] Showing modal:", next.type, next.id);
+          setCurrentModal(next);
+          setIsShowingModal(true);
+          
+          // Remove from queue
+          setQueue(prev => prev.filter(m => m.id !== next.id));
+          setIsProcessing(false);
+        }, 300); // 300ms breathing room between modals
+      });
     }
   }, [isShowingModal, isProcessing, queue]);
 
@@ -91,15 +101,35 @@ export const ModalQueueProvider: React.FC<ModalQueueProviderProps> = ({ children
 
   const dismissCurrentModal = useCallback(() => {
     console.log("[ModalQueue] Dismissing modal:", currentModal?.type);
-    setCurrentModal(null);
-    setIsShowingModal(false);
-  }, [currentModal]);
+    
+    // Ensure clean state reset
+    requestAnimationFrame(() => {
+      setCurrentModal(null);
+      setIsShowingModal(false);
+      
+      // Force processing flag reset in case it got stuck
+      if (isProcessing) {
+        console.log("[ModalQueue] Resetting stuck processing flag");
+        setIsProcessing(false);
+      }
+    });
+  }, [currentModal, isProcessing]);
 
   const clearQueue = useCallback(() => {
     setQueue([]);
     setCurrentModal(null);
     setIsShowingModal(false);
   }, []);
+
+  // Debug logging for modal queue state
+  useEffect(() => {
+    console.log("=== MODAL QUEUE STATE ===");
+    console.log("isShowingModal:", isShowingModal);
+    console.log("currentModal:", currentModal);
+    console.log("isProcessing:", isProcessing);
+    console.log("queue length:", queue.length);
+    console.log("queue:", queue.map(m => ({ type: m.type, id: m.id })));
+  }, [isShowingModal, currentModal, isProcessing, queue]);
 
   const value: ModalQueueContextType = {
     currentModal,

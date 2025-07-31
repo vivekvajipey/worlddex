@@ -6,12 +6,14 @@ import OnboardingCircleModal from '../OnboardingCircleModal';
 import OnboardingSwipeModal from '../OnboardingSwipeModal';
 import { useModalQueue } from '../../../src/contexts/ModalQueueContext';
 import { usePathname, useRouter } from 'expo-router';
+import { useAlert } from '../../../src/contexts/AlertContext';
 import * as Location from 'expo-location';
 
 export const ModalCoordinator: React.FC = () => {
   const { currentModal, isShowingModal, dismissCurrentModal } = useModalQueue();
   const pathname = usePathname();
   const router = useRouter();
+  const { hasActiveAlert } = useAlert();
   const [isReady, setIsReady] = useState(false);
   const [lastPathname, setLastPathname] = useState(pathname);
   
@@ -72,9 +74,13 @@ export const ModalCoordinator: React.FC = () => {
   console.log("currentModal id:", currentModal?.id);
   console.log("pathname:", pathname);
   console.log("isReady:", isReady);
+  console.log("hasActiveAlert:", hasActiveAlert);
 
-  // Don't render modals until the screen is ready (prevents rendering issues during navigation)
-  if (!isReady || !isShowingModal || !currentModal) {
+  // Don't render modals until the screen is ready and no alert is active
+  if (!isReady || !isShowingModal || !currentModal || hasActiveAlert) {
+    if (hasActiveAlert && isShowingModal) {
+      console.log("[Modal] Deferring modal while alert is active");
+    }
     return null;
   }
 
