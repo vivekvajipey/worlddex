@@ -10,6 +10,7 @@ export const fetchCapture = async (
     .from(Tables.CAPTURES)
     .select("*")
     .eq("id", captureId)
+    .is("deleted_at", null)  // Exclude soft deleted captures
     .single();
 
   if (error) {
@@ -28,6 +29,7 @@ export const fetchUserCaptures = async (
     .from(Tables.CAPTURES)
     .select("*")
     .eq("user_id", userId)
+    .is("deleted_at", null)  // Exclude soft deleted captures
     .order("captured_at", { ascending: false })
     .limit(limit);
 
@@ -47,6 +49,7 @@ export const fetchItemCaptures = async (
     .from(Tables.CAPTURES)
     .select("*")
     .eq("item_id", itemId)
+    .is("deleted_at", null)  // Exclude soft deleted captures
     .order("captured_at", { ascending: false })
     .limit(limit);
 
@@ -95,16 +98,27 @@ export const updateCapture = async (
 };
 
 export const deleteCapture = async (captureId: string): Promise<boolean> => {
-  const { error } = await supabase
+  // Soft delete by setting deleted_at timestamp
+  const { data, error } = await supabase
     .from(Tables.CAPTURES)
-    .delete()
-    .eq("id", captureId);
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", captureId)
+    .select();
 
   if (error) {
-    console.error("Error deleting capture:", error);
+    console.error("Error soft deleting capture:", error);
     return false;
   }
 
+  // Check if any rows were actually updated
+  console.log("Soft delete operation result:", { data, captureId });
+  
+  // If no data returned, no rows were updated
+  if (!data || data.length === 0) {
+    console.error("No capture was soft deleted - possible RLS policy issue");
+    return false;
+  }
+  
   return true;
 };
 
@@ -131,6 +145,7 @@ export const fetchTopCaptures = async (
     .from(Tables.CAPTURES)
     .select("*", { count: "exact" })
     .eq("is_public", true)
+    .is("deleted_at", null)  // Exclude soft deleted captures
     .gte("like_count", minUpvotes)
     .order("captured_at", { ascending: false })
     .range(offset, offset + limit - 1);

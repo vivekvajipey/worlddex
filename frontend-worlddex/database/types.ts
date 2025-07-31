@@ -73,6 +73,7 @@ export type Capture = {
   transaction_type?: "buy-now" | "auction" | "trade";
   rarity_tier?: "common" | "uncommon" | "rare" | "epic" | "mythic" | "legendary";
   rarity_score?: number;
+  deleted_at?: string; // Soft delete timestamp
 };
 
 export type UserCollectionItem = {

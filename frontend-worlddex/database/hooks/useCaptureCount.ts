@@ -9,7 +9,8 @@ export const fetchCaptureCount = async (userId: string): Promise<number> => {
     const { count, error } = await supabase
       .from(Tables.CAPTURES)
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .is("deleted_at", null);  // Exclude soft deleted captures
 
     if (error) {
       console.error("Error fetching capture count:", error);

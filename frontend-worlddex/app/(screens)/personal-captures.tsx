@@ -476,8 +476,13 @@ export default function PersonalCapturesScreen() {
   const confirmDelete = async () => {
     if (!captureToDelete?.id) return;
 
+    console.log("Attempting to delete capture:", captureToDelete.id);
+    console.log("Current user ID:", userId);
+    console.log("Capture owner ID:", captureToDelete.user_id);
+    
     try {
       const success = await deleteCapture(captureToDelete.id);
+      console.log("Delete result:", success);
       if (success) {
         // Update the captures list
         setRefreshedCaptures(prev => prev.filter(c => c.id !== captureToDelete.id));
@@ -493,6 +498,24 @@ export default function PersonalCapturesScreen() {
             message: "Capture deleted successfully.",
             icon: "checkmark-circle",
             iconColor: "#10B981"
+          });
+        }, 300);
+        
+        // Refresh data to ensure consistency
+        setTimeout(() => {
+          refreshData(false); // Silent refresh without loading indicator
+        }, 500);
+      } else {
+        // If delete returns false, show error
+        setDeleteModalVisible(false);
+        setCaptureToDelete(null);
+        
+        setTimeout(() => {
+          showAlert({
+            title: "Cannot Delete Capture",
+            message: "This capture cannot be deleted.",
+            icon: "alert-circle-outline",
+            iconColor: "#EF4444"
           });
         }, 300);
       }

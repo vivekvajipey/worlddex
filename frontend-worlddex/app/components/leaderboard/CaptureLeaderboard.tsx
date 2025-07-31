@@ -59,7 +59,8 @@ const CaptureLeaderboard = () => {
         // Fallback to manual counting if the query doesn't work
         const { data: allCaptures } = await supabase
           .from(Tables.CAPTURES)
-          .select('user_id');
+          .select('user_id')
+          .is('deleted_at', null);  // Exclude soft deleted captures
 
         if (allCaptures && allCaptures.length > 0) {
           // Count captures per user manually
