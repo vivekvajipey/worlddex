@@ -273,7 +273,7 @@ export default function PendingCaptureIdentifier({
     }, 300); // Give modal time to close
   }, [pendingCapture, session, showAlert, onSuccess, posthog]);
 
-  const handleDismissPreview = useCallback(async () => {
+  const handleDismissPreview = useCallback(async (isPublic?: boolean) => {
     if (!pendingCapture || !session) {
       onClose();
       return;
@@ -287,17 +287,20 @@ export default function PendingCaptureIdentifier({
       !isRejectedRef.current
     ) {
       try {
-        // Get the user preference from the parallel fetch
-        const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
-        const isPublic = userData?.default_public_captures || false;
-        console.log('[PendingCaptureIdentifier] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', '(from user preference)');
+        // Use the isPublic value passed from PolaroidDevelopment if available, otherwise use user preference
+        let finalIsPublic = isPublic;
+        if (finalIsPublic === undefined) {
+          const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
+          finalIsPublic = userData?.default_public_captures || false;
+        }
+        console.log('[PendingCaptureIdentifier] Processing capture with visibility:', finalIsPublic ? 'PUBLIC' : 'PRIVATE', isPublic !== undefined ? '(from capture toggle)' : '(from user preference)');
         
         // Use the shared service to process the capture
         const result = await processCaptureAfterIdentification({
           userId: session.user.id,
           identifiedLabel,
           capturedUri: pendingCapture.imageUri,
-          isCapturePublic: isPublic,
+          isCapturePublic: finalIsPublic,
           rarityTier,
           rarityScore,
           tier1Response: tier1,
@@ -460,7 +463,8 @@ export default function PendingCaptureIdentifier({
     onClose,
     onSuccess,
     posthog,
-    tier1
+    tier1,
+    showKeepDeleteAlert
   ]);
 
   // Show error in polaroid to trigger break animation for all failures

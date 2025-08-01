@@ -363,7 +363,8 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     identifiedLabel: string | null,
     identificationComplete: boolean,
     isRejected: boolean,
-    tier1Response?: any
+    tier1Response?: any,
+    captureIsPublic?: boolean
   ) => {
     // console.log("=== DISMISSING POLAROID ===");
     // console.log("Current state:", {
@@ -386,10 +387,13 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       !savedOffline
     ) {
       try {
-        // Get the user preference from the parallel fetch
-        const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
-        const isPublic = userData?.default_public_captures || false;
-        console.log('[CaptureHandlers] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', '(from user preference)');
+        // Use the capture-specific privacy if provided, otherwise fall back to user preference
+        let isPublic = captureIsPublic;
+        if (isPublic === undefined) {
+          const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
+          isPublic = userData?.default_public_captures || false;
+        }
+        console.log('[CaptureHandlers] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', captureIsPublic !== undefined ? '(from capture toggle)' : '(from user preference)');
         
         const result = await processCaptureAfterIdentification({
           userId,

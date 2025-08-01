@@ -148,7 +148,7 @@ export default function CameraScreen({}: CameraScreenProps) {
 
 
   const dismissPolaroid = useCallback(
-    async () => {
+    async (isPublic?: boolean) => {
       await captureHandlers.dismissPolaroid(
         isCapturing,
         capturedUri,
@@ -156,7 +156,8 @@ export default function CameraScreen({}: CameraScreenProps) {
         identifiedLabel,
         identificationComplete,
         isRejectedRef.current,
-        tier1
+        tier1,
+        isPublic
       );
       // Reset rejection flag after dismissal
       isRejectedRef.current = false;

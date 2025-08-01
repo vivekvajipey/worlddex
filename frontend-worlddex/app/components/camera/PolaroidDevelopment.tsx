@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
@@ -9,8 +9,7 @@ import { usePostHog } from "posthog-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { rarityStyles, RarityTier, getGlowColor } from "../../../src/utils/rarityStyles";
 import { useAuth } from "../../../src/contexts/AuthContext";
-import { fetchUser, updateUserField } from "../../../database/hooks/useUsers";
-import { hasNetworkConnection } from "../../../src/utils/networkUtils";
+import { fetchUser } from "../../../database/hooks/useUsers";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -134,11 +133,8 @@ export default function PolaroidDevelopment({
   // Get user session
   const { session } = useAuth();
   const [isPublic, setIsPublic] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [showOfflineMessage, setShowOfflineMessage] = useState(false);
-  const [showErrorMessage, setShowErrorMessage] = useState(false);
   
-  // Fetch privacy preference on mount
+  // Fetch user's default preference on mount as the initial value
   useEffect(() => {
     if (session?.user?.id) {
       fetchUser(session.user.id).then(userData => {
@@ -399,7 +395,7 @@ export default function PolaroidDevelopment({
       }),
     ]).start(({ finished }) => {
       if (finished) {
-        onDismiss();
+        onDismiss(isPublic);
       }
     });
   };
@@ -510,7 +506,7 @@ export default function PolaroidDevelopment({
           }),
         ]).start(() => {
           // When animation completes, dismiss
-          setTimeout(onDismiss, 300);
+          setTimeout(() => onDismiss(isPublic), 300);
         });
       }, 50);
     });
@@ -1174,105 +1170,27 @@ export default function PolaroidDevelopment({
               borderRadius: 25,
               flexDirection: 'row',
               alignItems: 'center',
-              opacity: isUpdating ? 0.5 : 1,
             }}
-            onPress={async () => {
-              if (isUpdating || !session?.user?.id) return;
-              
-              // Check network status first
-              const isConnected = await hasNetworkConnection();
-              if (!isConnected) {
-                // Show inline message instead of alert to avoid nested modal issues
-                setShowOfflineMessage(true);
-                setTimeout(() => setShowOfflineMessage(false), 3000);
-                return;
-              }
-              
-              const newValue = !isPublic;
-              setIsUpdating(true);
-              
-              try {
-                // Update database first
-                const success = await updateUserField(session.user.id, 'default_public_captures', newValue);
-                
-                if (success) {
-                  // Only update local state if database update succeeded
-                  setIsPublic(newValue);
-                  console.log('[PolaroidDevelopment] Successfully updated privacy to:', newValue ? 'public' : 'private');
-                } else {
-                  // Database update failed - show inline feedback
-                  console.warn('[PolaroidDevelopment] Failed to update privacy preference');
-                  setShowErrorMessage(true);
-                  setTimeout(() => setShowErrorMessage(false), 3000);
-                }
-              } catch (error) {
-                console.error('[PolaroidDevelopment] Error updating privacy preference:', error);
-                setShowErrorMessage(true);
-                setTimeout(() => setShowErrorMessage(false), 3000);
-              } finally {
-                setIsUpdating(false);
-              }
+            onPress={() => {
+              setIsPublic(!isPublic);
             }}
             activeOpacity={0.7}
           >
-          {isUpdating ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <>
-              <Ionicons 
-                name={isPublic ? "earth" : "lock-closed"} 
-                size={20} 
-                color={isPublic ? "#10B981" : "white"} 
-              />
-              <Text style={{
-                marginLeft: 8,
-                color: 'white',
-                fontWeight: '600',
-                fontSize: 16,
-              }}>
-                {isPublic ? "Public" : "Private"}
-              </Text>
-            </>
-          )}
+          <Ionicons 
+            name={isPublic ? "earth" : "lock-closed"} 
+            size={20} 
+            color={isPublic ? "#10B981" : "white"} 
+          />
+          <Text style={{
+            marginLeft: 8,
+            color: 'white',
+            fontWeight: '600',
+            fontSize: 16,
+          }}>
+            {isPublic ? "Public" : "Private"}
+          </Text>
           </TouchableOpacity>
           
-          {/* Offline message */}
-          {showOfflineMessage && (
-            <View style={{
-              marginTop: 8,
-              backgroundColor: 'rgba(239, 68, 68, 0.9)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-            }}>
-              <Text style={{
-                color: 'white',
-                fontSize: 12,
-                fontWeight: '500',
-              }}>
-                Offline - Can't change privacy settings
-              </Text>
-            </View>
-          )}
-          
-          {/* Error message */}
-          {showErrorMessage && (
-            <View style={{
-              marginTop: 8,
-              backgroundColor: 'rgba(239, 68, 68, 0.9)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-            }}>
-              <Text style={{
-                color: 'white',
-                fontSize: 12,
-                fontWeight: '500',
-              }}>
-                Failed to update - Please try again
-              </Text>
-            </View>
-          )}
         </View>
       )}
 
