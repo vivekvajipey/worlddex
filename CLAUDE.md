@@ -70,3 +70,10 @@ const handleDelete = () => {
 2. **Avoid showing alerts from within modals** - Close modal first, then show alert
 3. **Use screens instead of modals for complex views** - Avoids nested modal issues
 4. **Always test alert visibility** - Check that alerts appear and don't block UI
+
+## ⚠️ CRITICAL PATH BUG
+**ALWAYS type "worlddex" NOT "worlddx" in file paths!**
+- ✅ Correct: `/Users/vivekvajipey/Development/jsv-ai/worlddex/frontend-worlddex/`
+- ❌ Wrong: `/Users/vivekvajipey/Development/jsv-ai/worlddx/frontend-worlddx/`
+
+Double-check every file path contains "worlddex" not "worlddx" to avoid "File does not exist" errors.

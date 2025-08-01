@@ -33,12 +33,10 @@ Look for [existing patterns/similar code]."
 
 ### ✅ Recently Completed
 - **JSV-399**: Daily capture limit not resetting - Set up pg_cron daily reset
+- **JSV-395**: VLM AbortError bug - Fixed stuck "..." state by handling AbortError in offline save flow
 - **JSV-357**: Black screen background - Gradient loading backgrounds  
 - **JSV-355**: Offline indicator - OfflineIndicator component
 - **JSV-330**: Public capture warning - Privacy toggle in PolaroidDevelopment
-
-### 🚨 Urgent Investigation Needed
-- **JSV-395**: VLM AbortError bug - Captures getting stuck with `[AbortError: Aborted]`
 
 ### 🔍 High Priority Investigations  
 - **JSV-398**: Social pages showing no connection when connected

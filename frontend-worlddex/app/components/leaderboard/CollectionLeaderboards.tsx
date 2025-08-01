@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Text,
@@ -30,7 +30,17 @@ type CollectionLeaderboard = {
   is_expanded: boolean;
 };
 
-const CollectionLeaderboards = () => {
+interface CollectionLeaderboardsProps {
+  refreshing?: boolean;
+  onRefreshComplete?: () => void;
+  onError?: (hasError: boolean) => void;
+}
+
+const CollectionLeaderboards: React.FC<CollectionLeaderboardsProps> = ({ 
+  refreshing = false, 
+  onRefreshComplete, 
+  onError 
+}) => {
   const { session } = useAuth();
   const currentUserId = session?.user?.id;
 
@@ -141,14 +151,23 @@ const CollectionLeaderboards = () => {
     } catch (err) {
       console.error("Collection leaderboards error:", err);
       setError(err instanceof Error ? err.message : "Failed to load collection leaderboards");
+      onError?.(true);
     } finally {
       setLoading(false);
+      onRefreshComplete?.();
     }
   };
 
   useEffect(() => {
     fetchCollectionLeaderboards();
   }, []);
+
+  // Handle refresh when refreshing prop becomes true
+  useEffect(() => {
+    if (refreshing) {
+      fetchCollectionLeaderboards();
+    }
+  }, [refreshing]);
 
   if (loading) {
     return (
@@ -158,32 +177,9 @@ const CollectionLeaderboards = () => {
     );
   }
 
+  // Don't render if there's an error - let parent handle it
   if (error) {
-    // Check if it's a network-related error
-    const isNetworkError = error.toLowerCase().includes('network') || 
-                          error.toLowerCase().includes('fetch') ||
-                          error.toLowerCase().includes('connection') ||
-                          error.toLowerCase().includes('timeout');
-    
-    if (isNetworkError) {
-      return (
-        <View className="p-4">
-          <OfflineIndicator message="Collection leaderboards unavailable offline" showSubtext={false} />
-        </View>
-      );
-    }
-    
-    return (
-      <View className="flex-1 justify-center items-center p-4">
-        <Text className="text-red-500">{error}</Text>
-        <Text
-          className="text-primary mt-4 font-lexend-medium"
-          onPress={fetchCollectionLeaderboards}
-        >
-          Tap to retry
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   if (collectionLeaderboards.length === 0) {

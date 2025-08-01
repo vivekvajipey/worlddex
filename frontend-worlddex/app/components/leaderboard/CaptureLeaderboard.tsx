@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Text,
@@ -23,28 +23,42 @@ type CaptureCount = {
   count: number;
 };
 
-const CaptureLeaderboard = () => {
+interface CaptureLeaderboardProps {
+  refreshing?: boolean;
+  onRefreshComplete?: () => void;
+  onError?: (hasError: boolean) => void;
+}
+
+const CaptureLeaderboard: React.FC<CaptureLeaderboardProps> = ({ 
+  refreshing = false, 
+  onRefreshComplete, 
+  onError 
+}) => {
   const { session } = useAuth();
   const currentUserId = session?.user?.id;
 
   const [topUsers, setTopUsers] = useState<UserWithCaptures[]>([]);
   const [currentUserData, setCurrentUserData] = useState<UserWithCaptures | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch top users and current user position
   const fetchLeaderboardData = async () => {
     try {
+      console.log("Starting fetchLeaderboardData...");
+      setError(null); // Clear any previous errors
       let captureCountsData: CaptureCount[] = [];
 
+      console.log("Calling supabase.rpc...");
       // Correct way to get counts grouped by user_id in Supabase
       const { data: counts, error: countError } = await supabase
         .rpc('get_user_capture_counts');
 
+      console.log("RPC result:", { counts, countError });
+
       if (countError) {
         console.error("Error counting captures:", countError);
-        throw countError;
+        throw new Error(`RPC Error: ${countError.message || countError}`);
       }
 
       if (counts && counts.length > 0) {
@@ -92,10 +106,18 @@ const CaptureLeaderboard = () => {
 
     } catch (err) {
       console.error("Leaderboard error:", err);
-      setError(err instanceof Error ? err.message : "Failed to load leaderboard");
+      console.error("Error type:", typeof err);
+      console.error("Error details:", JSON.stringify(err, null, 2));
+      
+      const errorMessage = err instanceof Error ? err.message : 
+                          typeof err === 'string' ? err : 
+                          "Failed to load leaderboard";
+      
+      setError(errorMessage);
+      onError?.(true);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      onRefreshComplete?.();
     }
   };
 
@@ -170,10 +192,12 @@ const CaptureLeaderboard = () => {
     fetchLeaderboardData();
   }, [currentUserId]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchLeaderboardData();
-  };
+  // Handle refresh when refreshing prop becomes true
+  useEffect(() => {
+    if (refreshing) {
+      fetchLeaderboardData();
+    }
+  }, [refreshing]);
 
   if (loading && !refreshing) {
     return (
@@ -183,32 +207,9 @@ const CaptureLeaderboard = () => {
     );
   }
 
+  // Don't render if there's an error - let parent handle it
   if (error) {
-    // Check if it's a network-related error
-    const isNetworkError = error.toLowerCase().includes('network') || 
-                          error.toLowerCase().includes('fetch') ||
-                          error.toLowerCase().includes('connection') ||
-                          error.toLowerCase().includes('timeout');
-    
-    if (isNetworkError) {
-      return (
-        <View className="p-4">
-          <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />
-        </View>
-      );
-    }
-    
-    return (
-      <View className="flex-1 justify-center items-center p-4">
-        <Text className="text-red-500">{error}</Text>
-        <Text
-          className="text-primary mt-4 font-lexend-medium"
-          onPress={onRefresh}
-        >
-          Tap to retry
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   const renderLeaderboardItem = (item: UserWithCaptures) => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Modal,
@@ -39,20 +39,60 @@ interface SocialModalProps {
 }
 
 const LeaderboardTab = () => {
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setHasError(false); // Reset error state on refresh
+    // Components will handle their own refresh and call setRefreshing(false)
+  };
+
+  const handleRefreshComplete = () => {
+    setRefreshing(false);
+  };
+
+  const handleLeaderboardError = (error: boolean) => {
+    setHasError(error);
+  };
 
   return (
     <View className="flex-1 p-2">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <CaptureLeaderboard />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#6366f1"]}
+            tintColor="#6366f1"
+          />
+        }
+      >
+        {hasError ? (
+          <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />
+        ) : (
+          <>
+            <CaptureLeaderboard 
+              refreshing={refreshing}
+              onRefreshComplete={handleRefreshComplete}
+              onError={handleLeaderboardError} 
+            />
 
-        <View className="px-4 py-6">
-          <View className="border-t border-gray-200" />
-        </View>
+            <View className="px-4 py-6">
+              <View className="border-t border-gray-200" />
+            </View>
 
-        <View>
-          <Text className="text-xl font-lexend-bold mb-4 text-center">Collection Leaderboards</Text>
-          <CollectionLeaderboards />
-        </View>
+            <View>
+              <Text className="text-xl font-lexend-bold mb-4 text-center">Collection Leaderboards</Text>
+              <CollectionLeaderboards 
+                refreshing={refreshing}  
+                onRefreshComplete={handleRefreshComplete}
+                onError={handleLeaderboardError} 
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
