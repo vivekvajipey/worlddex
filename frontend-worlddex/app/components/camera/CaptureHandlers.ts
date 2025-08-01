@@ -366,17 +366,14 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
     tier1Response?: any,
     captureIsPublic?: boolean
   ) => {
-    // console.log("=== DISMISSING POLAROID ===");
-    // console.log("Current state:", {
-    //   isCapturing,
-    //   capturedUri,
-    //   vlmCaptureSuccess,
-    //   identifiedLabel,
-    //   identificationComplete,
-    //   isRejected
-    // });
+    // Immediately reset UI state - don't wait for network operations
+    dispatch(actions.captureFailed());
+    dispatch(actions.resetCapture());
+    dispatch(actions.resetIdentification());
+    cameraCaptureRef.current?.resetLasso();
+    setSavedOffline(false);
 
-    // Handle successful identification - save to database
+    // Handle successful identification - save to database in background
     if (
       identificationComplete &&
       vlmCaptureSuccess === true &&
@@ -386,54 +383,55 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
       !isRejected &&
       !savedOffline
     ) {
-      try {
-        // Use the capture-specific privacy if provided, otherwise fall back to user preference
-        let isPublic = captureIsPublic;
-        if (isPublic === undefined) {
-          const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
-          isPublic = userData?.default_public_captures || false;
-        }
-        console.log('[CaptureHandlers] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', captureIsPublic !== undefined ? '(from capture toggle)' : '(from user preference)');
-        
-        const result = await processCaptureAfterIdentification({
-          userId,
-          identifiedLabel,
-          capturedUri,
-          isCapturePublic: isPublic,
-          rarityTier,
-          rarityScore,
-          tier1Response,
-          enableTemporaryCapture: true, // Enable for immediate display in WorldDex
-          services: {
-            incrementOrCreateItem,
-            uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any) => 
-              uploadCapturePhoto(uri, type, filename, payload), // No timestamp for online captures
-            incrementCaptureCount,
-            fetchUserCollectionsByUser,
-            fetchCollectionItems,
-            checkUserHasCollectionItem,
-            createUserCollectionItem
+      // Run network operations in background without blocking UI
+      setTimeout(async () => {
+        try {
+          // Use the capture-specific privacy if provided, otherwise fall back to user preference
+          let isPublic = captureIsPublic;
+          if (isPublic === undefined) {
+            const userData = userPreferencePromiseRef.current ? await userPreferencePromiseRef.current : null;
+            isPublic = userData?.default_public_captures || false;
           }
-        });
-
-        if (result.success && result.captureRecord) {
-          // console.log("[CAPTURE] Successfully saved to database, queueing modals...");
-          // Queue post-capture modals with the capture ID
-          await queuePostCaptureModals({
+          console.log('[CaptureHandlers] Processing capture with visibility:', isPublic ? 'PUBLIC' : 'PRIVATE', captureIsPublic !== undefined ? '(from capture toggle)' : '(from user preference)');
+          
+          const result = await processCaptureAfterIdentification({
             userId,
-            captureId: result.captureRecord.id,
-            itemName: identifiedLabel,
+            identifiedLabel,
+            capturedUri,
+            isCapturePublic: isPublic,
             rarityTier,
-            xpValue: result.xpAwarded,
-            isGlobalFirst: result.isGlobalFirst
+            rarityScore,
+            tier1Response,
+            enableTemporaryCapture: true, // Enable for immediate display in WorldDex
+            services: {
+              incrementOrCreateItem,
+              uploadCapturePhoto: (uri: string, type: string, filename: string, payload: any) => 
+                uploadCapturePhoto(uri, type, filename, payload), // No timestamp for online captures
+              incrementCaptureCount,
+              fetchUserCollectionsByUser,
+              fetchCollectionItems,
+              checkUserHasCollectionItem,
+              createUserCollectionItem
+            }
           });
-        } else {
-          console.error("[CAPTURE] Failed to process capture:", result.error);
+
+          if (result.success && result.captureRecord) {
+            // Queue post-capture modals with the capture ID
+            await queuePostCaptureModals({
+              userId,
+              captureId: result.captureRecord.id,
+              itemName: identifiedLabel,
+              rarityTier,
+              xpValue: result.xpAwarded,
+              isGlobalFirst: result.isGlobalFirst
+            });
+          } else {
+            console.error("[CAPTURE] Failed to process capture:", result.error);
+          }
+        } catch (error) {
+          console.error("[CAPTURE] Error saving capture to database:", error);
         }
-      } catch (error) {
-        console.error("[CAPTURE] Error saving capture to database:", error);
-        // Could show an error alert here if needed
-      }
+      }, 0);
     } else {
       // Log why we're not saving
       if (isRejected) {
@@ -450,16 +448,6 @@ export const createCaptureHandlers = (deps: CaptureHandlerDependencies) => {
         console.log("[CAPTURE] Not saving: No user ID");
       }
     }
-
-    // Reset capture state
-    dispatch(actions.captureFailed());
-    dispatch(actions.resetCapture());
-    dispatch(actions.resetIdentification());
-    
-    cameraCaptureRef.current?.resetLasso();
-    setSavedOffline(false);
-    
-    // Note: The caller should reset isRejectedRef after calling this function
   };
 
   return {

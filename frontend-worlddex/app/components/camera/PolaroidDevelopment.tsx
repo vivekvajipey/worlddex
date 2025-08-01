@@ -395,6 +395,7 @@ export default function PolaroidDevelopment({
       }),
     ]).start(({ finished }) => {
       if (finished) {
+        // Execute onDismiss in background without blocking UI cleanup
         onDismiss(isPublic);
       }
     });
@@ -505,8 +506,8 @@ export default function PolaroidDevelopment({
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // When animation completes, dismiss
-          setTimeout(() => onDismiss(isPublic), 300);
+          // When animation completes, dismiss immediately
+          onDismiss(isPublic);
         });
       }, 50);
     });

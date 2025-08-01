@@ -35,8 +35,10 @@ Look for [existing patterns/similar code]."
 - 2025-08-01: Unified parent error handling prevents redundant error messages (JSV-398 leaderboard fix)
 - 2025-08-01: File path bug: Always type "worlddex" not "worlddx" - added to CLAUDE.md for future instances
 - 2025-08-01: Flexbox alignment > absolute positioning for header elements - more maintainable and reliable
-- 2025-08-01: react-native-tab-view > PanResponder for tabbed interfaces - native performance, smoother gestures
-- 2025-08-01: Memoization + FlatList virtualization essential for complex tab views - prevents unnecessary re-renders
+- 2025-08-01: Velocity-based gesture detection > distance-only for responsive UX - feels more natural
+- 2025-08-01: React.memo + useCallback essential for complex tab components - prevents unnecessary re-renders during gestures
+- 2025-08-01: Custom optimized implementation > problematic native modules when compatibility issues arise
+- 2025-08-01: flex-1 + flex-shrink-0 pattern solves text/badge cutoff issues - proper flex constraints prevent layout crushing
 
 ## Strategic Design Insights (Big Rethink)
 - 2025-08-01: o3/GPT-4.5 consultation valuable but needs critical analysis - don't accept suggestions blindly
@@ -100,7 +102,7 @@ Look for [existing patterns/similar code]."
 3. Review offline capture sync logic to prevent double-counting ✅
 4. Consider using single source of truth (captures table) for all counts ✅
 
-**Implementation Status (JSV-401):**
+**Implementation Status (JSV-401): ✅ COMPLETED**
 1. Created database triggers in `fix_total_captures_sync.sql`:
    - Auto-increment on capture insert
    - Auto-decrement on soft delete
@@ -113,9 +115,7 @@ Look for [existing patterns/similar code]."
 4. Created verification script `verify_total_captures_sync.sql`
 
 **Next Steps:**
-- Deploy the database migration
-- Verify sync is working correctly
-- Add PostHog tracking for capture saves (JSV-276)
+- Add PostHog tracking for capture saves (JSV-276) - remaining task for PostHog investigation
 
 ## Current Priority Tasks (Aug 1, 2025)
 
@@ -153,13 +153,11 @@ Look for [existing patterns/similar code]."
 
 **Next Phase**: Detailed design discussions → Implementation planning → Technical execution
 
-### 🚨 **New Urgent Issues** 
-- **JSV-406**: Swipe detection not performant on Social page ✅ FIXED (see below)
+### 🚨 **Current Urgent Issues** 
 - **JSV-410**: Long blurry screen after capture (networking/performance issue)
 - **JSV-426**: Volume button to capture (user-requested feature)
 
 ### 🔥 **Current High Priority Tasks**
-- **JSV-408**: Make rarities not cutoff in Social page ✅ FIXED (see below)
 - **JSV-412**: Add notes per capture (new feature)
 - **JSV-256**: Share captures outside of the app
 - **JSV-276**: Make sure PostHog is tracking everything correctly 🔍 UNDER INVESTIGATION
@@ -264,3 +262,5 @@ Many Low priority tasks for UI polish, minor features, and optimizations
   - Added numberOfLines={1} and ellipsizeMode="tail" for long item names
   - Optimized FlatList with windowSize, maxToRenderPerBatch, removeClippedSubviews
 - **Performance Gains**: 60-120fps smooth tab switching, instant gesture response, proper text layout
+- **Final Implementation**: Custom optimized solution avoids RNCViewPager dependency issues while achieving native-like performance
+- **Key Techniques**: Velocity-based gestures + spring animations + comprehensive memoization + proper flex constraints
