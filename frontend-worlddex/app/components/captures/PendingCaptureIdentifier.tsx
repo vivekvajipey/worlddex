@@ -221,7 +221,7 @@ export default function PendingCaptureIdentifier({
   const showKeepDeleteAlert = useCallback((reason: string, message: string) => {
     setTimeout(() => {
       showAlert({
-        title: reason === "user_rejected" ? "Keep or Delete?" : "No Object Detected",
+        title: reason === "user_rejected" ? "Keep or Delete?" : "Nothing Detected",
         message,
         icon: reason === "user_rejected" ? "trash-outline" : "help-circle-outline",
         iconColor: reason === "user_rejected" ? "#EF4444" : "#F59E0B",

@@ -28,25 +28,137 @@ Look for [existing patterns/similar code]."
 - 2025-07-31: State updates require UUID lookup, not direct string values
 - 2025-08-01: Always update Linear tickets with implementation details after completion for future reference
 - 2025-08-01: Always read latest manager notes when resuming work - parallel branches may have updated task status
+- 2025-08-01: Collaborative investigation approach works well - explore first, discuss findings, then implement
+- 2025-08-01: Simple fixes can resolve critical UX bugs - one-line change fixed JSV-395 stuck state issue
+- 2025-08-01: Testing with reduced timeouts is effective for reproducing timeout-related bugs
+- 2025-08-01: Request-based error handling > proactive health checks - more accurate, efficient, and handles edge cases
+- 2025-08-01: Unified parent error handling prevents redundant error messages (JSV-398 leaderboard fix)
+- 2025-08-01: File path bug: Always type "worlddex" not "worlddx" - added to CLAUDE.md for future instances
+- 2025-08-01: Flexbox alignment > absolute positioning for header elements - more maintainable and reliable
+
+## Strategic Design Insights (Big Rethink)
+- 2025-08-01: o3/GPT-4.5 consultation valuable but needs critical analysis - don't accept suggestions blindly
+- 2025-08-01: Contextual rarity beats complex multi-axis scoring - simplicity with intelligence wins
+- 2025-08-01: Location-aware significance solves materialism problem naturally
+- 2025-08-01: Micro-collections + persistent collections hierarchy addresses engagement vs overwhelm
+- 2025-08-01: Natural social pressure > designed collaboration - proximity alerts, area momentum
+- 2025-08-01: User validation for identification accuracy is unscalable - focus on system optimization
+- 2025-08-01: Comprehensive Linear issues with full context enable effective fresh Claude discussions
+
+## JSV-276 & JSV-401 Investigation: Data Integrity Issues (Aug 1, 2025)
+
+### Key Findings:
+
+**PostHog Integration (JSV-276):**
+- PostHog is initialized in `app/_layout.tsx` with API key: `phc_EyLCiDrJnGPqXma1f21WFwgAmRf35KANelGXVzmDDz4`
+- Autocapture is enabled for lifecycle events, screens, and touches
+- Main capture-related events tracked:
+  - `capture_initiated` (with method: lasso/full_screen)
+  - `capture_lasso`, `capture_fullscreen`, `capture_square` (in CameraCapture.tsx)
+  - `object_identified` (successful identification in PolaroidDevelopment.tsx)
+  - `identification_failed` (failed identification)
+  - `offline_capture_saved` (when captures saved offline)
+  - Various UI events: `toggle_camera_facing`, `toggle_torch`, `tab_changed`
+
+**Data Flow for Captures:**
+1. When capture succeeds → `createCapture()` inserts into captures table
+2. `incrementUserField()` updates `users.total_captures` field
+3. `increment_item_captures` RPC updates `all_items.total_captures`
+
+**Leaderboard Data Source (JSV-401):**
+- Uses `get_user_capture_counts()` RPC function
+- RPC counts captures from captures table WHERE deleted_at IS NULL
+- Falls back to manual counting if RPC fails
+- Does NOT use the `users.total_captures` column
+
+**Potential Discrepancies Identified:**
+
+1. **Multiple Counting Systems:**
+   - PostHog events (client-side tracking)
+   - `users.total_captures` column (incremented via `incrementUserField`)
+   - Actual captures table count (used by leaderboard RPC)
+   - `all_items.total_captures` (for items)
+
+2. **Synchronization Issues:**
+   - `incrementUserField` is called separately from capture creation
+   - Offline captures may increment counters without successful database inserts
+   - No database triggers to keep `users.total_captures` in sync with captures table
+
+3. **Race Conditions:**
+   - Capture limits use local state + async database updates
+   - Pending sync mechanism in `useCaptureLimitsWithPersistence` may cause counting issues
+
+4. **Missing PostHog Events:**
+   - No "capture_saved" or "capture_created" event when database insert succeeds
+   - "object_identified" fires on UI completion, not database save
+
+**Recommended Actions:**
+1. Add PostHog event when capture is successfully saved to database
+2. Create database trigger to keep users.total_captures in sync with captures table
+3. Review offline capture sync logic to prevent double-counting
+4. Consider using single source of truth (captures table) for all counts
 
 ## Current Priority Tasks (Aug 1, 2025)
 
-### ✅ Recently Completed
-- **JSV-399**: Daily capture limit not resetting - Set up pg_cron daily reset
-- **JSV-395**: VLM AbortError bug - Fixed stuck "..." state by handling AbortError in offline save flow
-- **JSV-357**: Black screen background - Gradient loading backgrounds  
-- **JSV-355**: Offline indicator - OfflineIndicator component
-- **JSV-330**: Public capture warning - Privacy toggle in PolaroidDevelopment
+### ✅ Recently Completed (ALL Major Technical Issues Resolved!)
+- **JSV-399**: Daily capture limit not resetting - Set up pg_cron daily reset ✅
+- **JSV-398**: Social pages false offline - Replaced proactive health checks with request-based error handling ✅
+- **JSV-395**: VLM AbortError bug - Fixed stuck "..." state by handling AbortError in offline save flow ✅
+- **JSV-391**: Social modal to page conversion - Eliminated nested modal issues, proper navigation with flexbox layout ✅
+- **JSV-389**: WorldDex pagination loading - Complete DRY pagination infrastructure with infinite scroll ✅
+- **JSV-390**: WorldDex personal captures drag reload - Pull-to-refresh functionality ✅
+- **JSV-331**: Modal for pending capture without connection - Offline handling for pending captures ✅
+- **JSV-357**: Black screen background - Gradient loading backgrounds ✅
+- **JSV-355**: Offline indicator - OfflineIndicator component ✅
+- **JSV-330**: Public capture warning - Privacy toggle in PolaroidDevelopment ✅
+- **JSV-333**: Rename "No object Detected" - Simple string change ✅
+- **JSV-312**: Resample usernames - Username generation improvements ✅
+- **JSV-240**: Add offline screens for social tabs - Context-specific offline indicators ✅
+- Plus many others... All major technical/UX issues are now resolved! 🎉
 
-### 🔍 High Priority Investigations  
-- **JSV-398**: Social pages showing no connection when connected
-- **JSV-391**: Convert social modal to page (architectural change)
-- **JSV-389**: Add WorldDex collection pagination loading states
+### 🎯 **THE BIG RETHINK - Strategic Design Phase**
+**JSV-402**: The Big Rethink consultation with o3/GPT-4.5 completed. Core insights:
 
-### 🔥 High Priority Features
-- **JSV-328**: Store pfp locally so it doesn't need to load  
-- **JSV-358**: Introduce lasso capture on Level 2
+**Key Breakthrough Directions:**
+1. **Contextual Rarity**: Location-aware significance (pigeon in subway vs park)
+2. **Micro + Persistent Collections**: Achievable momentum + long-term goals
+3. **Natural Social Pressure**: Proximity alerts, area discovery momentum
+4. **Anti-Materialism**: Celebrate discovery/context over expensive objects
+
+**Created Comprehensive Design Issues:**
+- **Contextual rarity system and collection architecture design** (Urgent)
+- **Natural social pressure and community engagement features** (Urgent)  
+- **User onboarding and first experience design** (High)
+- **Progressive disclosure and complexity management system** (Low)
+- **Gamification and reward psychology system** (Low)
+
+**Next Phase**: Detailed design discussions → Implementation planning → Technical execution
+
+### 🚨 **New Urgent Issues** 
+- **JSV-406**: Swipe detection not performant on Social page (regression from modal→page conversion)
+- **JSV-410**: Long blurry screen after capture (networking/performance issue)
+- **JSV-426**: Volume button to capture (user-requested feature)
+
+### 🔥 **Current High Priority Tasks**
+- **JSV-408**: Make rarities not cutoff in Social page (UI bug)
+- **JSV-412**: Add notes per capture (new feature)
 - **JSV-256**: Share captures outside of the app
+- **JSV-276**: Make sure PostHog is tracking everything correctly 🔍 UNDER INVESTIGATION
+- **JSV-221**: Make accept and reject buttons clear
+- **JSV-401**: Leaderboard total captures is not correct number (data issue) 🔍 UNDER INVESTIGATION
+- **JSV-411**: Test on different iPhone models (testing infrastructure)
+
+### 📊 Medium Priority Tasks
+- **JSV-285**: Ban users (Medium) - User moderation system
+- **JSV-307**: Change fire emoji on streak - replace other emojis too (Medium)
+- **JSV-142**: Think of example photos/labels for rarities (Medium) - Assigned to Shan
+- **JSV-158**: Make collections more intuitive and straightforward (Medium)
+- **JSV-186**: User Profiles to feature captures (Medium)
+- **JSV-400**: Include location in collections Capture page (Medium)
+- **JSV-251**: User table's total_captures column looks off (Medium)
+
+### 🧹 Lower Priority/Polish Tasks
+Many Low priority tasks for UI polish, minor features, and optimizations
 
 ## App Visual Style
 - **Primary**: #F97316 (Tangerine Orange)
@@ -91,6 +203,17 @@ Look for [existing patterns/similar code]."
   - Added to WorldDexTab footer when only pending captures visible
   - Extended to Leaderboard, Social, and Marketplace tabs with context-specific messages
   - Made subtext optional (showSubtext prop) for non-capture contexts
+
+### JSV-398: Social pages false offline ✅ COMPLETED
+- **Problem**: Social pages showing "no connection" even when connected after JSV-355 implementation
+- **Root Cause**: Proactive health checks with 3-second timeouts were too strict, causing false offline states
+- **Architecture Change**: Replaced proactive polling with request-based error handling
+- **Implementation (Aug 1, 2025)**:
+  - Removed `hasNetworkConnection()` calls from all social tabs (Leaderboard, Social, Marketplace)
+  - Added error handling to actual data requests (useTopCaptures, useListings, RPC calls)
+  - Unified leaderboard error handling - parent shows single offline indicator vs duplicate errors
+  - Shows offline only when actual data requests fail AND no cached data available
+- **Benefits**: More accurate (tests real endpoints), more efficient (no health checks), better UX
 
 ### JSV-330: Public capture warning ✅ COMPLETED
 - **Critical**: Privacy concern - users must know when capture is public
