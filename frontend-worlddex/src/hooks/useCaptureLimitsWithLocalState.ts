@@ -56,7 +56,7 @@ export const useCaptureLimitsWithLocalState = (userId: string | null): UseCaptur
     // Update database in background
     try {
       await incrementUserField(userId, "daily_captures_used", 1);
-      await incrementUserField(userId, "total_captures", 1);
+      // total_captures is now handled by database triggers
     } catch (error) {
       console.error('Failed to update capture count in database:', error);
       // Rollback local state if database update fails

@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   TouchableOpacity,
   Dimensions,
   Animated,
   PanResponder,
-  ScrollView,
   SafeAreaView,
   Text,
   FlatList,
@@ -22,7 +21,6 @@ import { useTopCaptures } from "../../database/hooks/useCaptures";
 import CapturePost from "../components/social/CapturePost";
 import { useDownloadUrls } from "../../src/hooks/useDownloadUrls";
 import MarketplaceFeed from "../components/marketplace/MarketplaceFeed";
-import { Listing } from "../../database/types";
 import CreateListingScreen from "../components/marketplace/CreateListingScreen";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { useUser } from "../../database/hooks/useUsers";
@@ -32,29 +30,62 @@ import { supabase } from "../../database/supabase-client";
 import { usePostHog } from "posthog-react-native";
 import OfflineIndicator from "../components/OfflineIndicator";
 
-const { width } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 
-const LeaderboardTab = () => {
+// Memoized Leaderboard Tab Component
+const LeaderboardTab = React.memo(() => {
   const [refreshing, setRefreshing] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setHasError(false); // Reset error state on refresh
-    // Components will handle their own refresh and call setRefreshing(false)
-  };
+    setHasError(false);
+  }, []);
 
-  const handleRefreshComplete = () => {
+  const handleRefreshComplete = useCallback(() => {
     setRefreshing(false);
-  };
+  }, []);
 
-  const handleLeaderboardError = (error: boolean) => {
+  const handleLeaderboardError = useCallback((error: boolean) => {
     setHasError(error);
-  };
+  }, []);
 
+  const renderContent = useCallback(() => {
+    if (hasError) {
+      return <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />;
+    }
+
+    return (
+      <>
+        <CaptureLeaderboard 
+          refreshing={refreshing}
+          onRefreshComplete={handleRefreshComplete}
+          onError={handleLeaderboardError} 
+        />
+
+        <View className="px-4 py-6">
+          <View className="border-t border-gray-200" />
+        </View>
+
+        <View>
+          <Text className="text-xl font-lexend-bold mb-4 text-center">Collection Leaderboards</Text>
+          <CollectionLeaderboards 
+            refreshing={refreshing}  
+            onRefreshComplete={handleRefreshComplete}
+            onError={handleLeaderboardError} 
+          />
+        </View>
+      </>
+    );
+  }, [hasError, refreshing, handleRefreshComplete, handleLeaderboardError]);
+
+  // Convert to FlatList for better performance
   return (
     <View className="flex-1 p-2">
-      <ScrollView 
+      <FlatList
+        data={[{ key: 'content' }]}
+        renderItem={renderContent}
+        keyExtractor={(item) => item.key}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -64,39 +95,13 @@ const LeaderboardTab = () => {
             tintColor="#6366f1"
           />
         }
-      >
-        {hasError ? (
-          <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />
-        ) : (
-          <>
-            <CaptureLeaderboard 
-              refreshing={refreshing}
-              onRefreshComplete={handleRefreshComplete}
-              onError={handleLeaderboardError} 
-            />
-
-            <View className="px-4 py-6">
-              <View className="border-t border-gray-200" />
-            </View>
-
-            <View>
-              <Text className="text-xl font-lexend-bold mb-4 text-center">Collection Leaderboards</Text>
-              <CollectionLeaderboards 
-                refreshing={refreshing}  
-                onRefreshComplete={handleRefreshComplete}
-                onError={handleLeaderboardError} 
-              />
-            </View>
-          </>
-        )}
-      </ScrollView>
+      />
     </View>
   );
-};
+});
 
-const SocialTab = () => {
-
-  // Use the top captures hook with pagination
+// Memoized Social Tab Component
+const SocialTab = React.memo(() => {
   const {
     captures,
     loading,
@@ -111,27 +116,21 @@ const SocialTab = () => {
     minUpvotes: 0
   });
 
-  // Collect all image keys from the captures for batch download
   const imageKeys = useMemo(() => {
     return captures.map(capture => capture.image_key).filter(Boolean) as string[];
   }, [captures]);
 
-  // Fetch all image URLs in batch
   const { items: imageUrlItems, loading: imageUrlsLoading } = useDownloadUrls(imageKeys);
 
-  // Create a mapping from image keys to download URLs
   const imageUrlMap = useMemo(() => {
     return Object.fromEntries(imageUrlItems.map(item => [item.key, item.downloadUrl]));
   }, [imageUrlItems]);
 
-  // Event handlers
   const handleUserPress = useCallback((userId: string) => {
-    // Navigate to user profile (implementation depends on app structure)
     console.log("Navigate to user profile:", userId);
-    // We'll implement proper navigation when routes are set up
   }, []);
 
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (!hasMore) return null;
 
     return (
@@ -142,9 +141,9 @@ const SocialTab = () => {
         </Text>
       </View>
     );
-  };
+  }, [hasMore]);
 
-  const renderEmpty = () => {
+  const renderEmpty = useCallback(() => {
     if (loading) return null;
 
     return (
@@ -158,16 +157,14 @@ const SocialTab = () => {
         </Text>
       </View>
     );
-  };
+  }, [loading]);
 
-  // Show offline indicator if there's a network error and no data
   if (error && captures.length === 0) {
     return <OfflineIndicator message="Social feed unavailable offline" showSubtext={false} />;
   }
 
   return (
     <View className="flex-1 bg-background">
-      {/* Feed */}
       <FlatList
         data={captures}
         keyExtractor={(item) => item.id || item.image_key}
@@ -201,9 +198,12 @@ const SocialTab = () => {
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
+        removeClippedSubviews={true}
+        windowSize={10}
+        maxToRenderPerBatch={5}
+        updateCellsBatchingPeriod={50}
       />
 
-      {/* Pagination indicator */}
       {pageCount > 1 && (
         <View className="absolute bottom-4 left-0 right-0 items-center">
           <View className="bg-gray-800/70 px-4 py-2 rounded-full">
@@ -215,17 +215,19 @@ const SocialTab = () => {
       )}
     </View>
   );
-};
+});
 
-const MarketplaceTab = () => {
+// Memoized Marketplace Tab Component
+const MarketplaceTab = React.memo(() => {
   const { session } = useAuth();
   const { user } = useUser(session?.user?.id || null);
   const [localBalance, setLocalBalance] = useState(user?.balance ?? 0);
+  
   useEffect(() => {
     setLocalBalance(user?.balance ?? 0);
   }, [user?.balance]);
 
-  const refreshUserBalance = async () => {
+  const refreshUserBalance = useCallback(async () => {
     if (!user?.id) return;
     const { data, error } = await supabase
       .from("users")
@@ -233,30 +235,27 @@ const MarketplaceTab = () => {
       .eq("id", user.id)
       .single();
     if (!error && data) setLocalBalance(data.balance);
-  };
+  }, [user?.id]);
 
   const [createListingVisible, setCreateListingVisible] = useState(false);
   const [marketplaceFeedKey, setMarketplaceFeedKey] = useState(0);
   const [marketplaceRefreshKey, setMarketplaceRefreshKey] = useState(0);
 
-  const handleMarketplaceRefresh = () => {
+  const handleMarketplaceRefresh = useCallback(() => {
     setMarketplaceRefreshKey((k) => k + 1);
     refreshUserBalance();
-  };
+  }, [refreshUserBalance]);
 
-  const refreshMarketplaceFeed = () => {
+  const refreshMarketplaceFeed = useCallback(() => {
     setMarketplaceFeedKey((k) => k + 1);
-  };
+  }, []);
 
-  const handleUserPress = (userId: string) => {
-    // Navigate to user profile
+  const handleUserPress = useCallback((userId: string) => {
     console.log("Navigate to user profile:", userId);
-  };
-
+  }, []);
 
   return (
     <View className="flex-1 bg-background">
-      {/* Floating user balance icon */}
       <View style={{ position: "absolute", top: 10, right: 20, zIndex: 20 }}>
         <View className="flex-row items-center justify-center bg-accent-200 border border-primary rounded-full px-3 py-1 shadow-md" style={{ minWidth: 54 }}>
           <Image
@@ -275,7 +274,6 @@ const MarketplaceTab = () => {
         onUserPress={handleUserPress}
       />
 
-      {/* Create Listing FAB */}
       <TouchableOpacity
         onPress={() => setCreateListingVisible(true)}
         className="absolute bottom-6 right-6 w-16 h-16 rounded-full bg-primary justify-center items-center shadow-lg"
@@ -283,7 +281,6 @@ const MarketplaceTab = () => {
         <Ionicons name="add" size={30} color="#FFF" />
       </TouchableOpacity>
 
-      {/* Create Listing Modal */}
       <CreateListingScreen
         visible={createListingVisible}
         onClose={() => setCreateListingVisible(false)}
@@ -291,283 +288,158 @@ const MarketplaceTab = () => {
       />
     </View>
   );
-};
+});
 
 export default function SocialScreen() {
   const posthog = usePostHog();
   const router = useRouter();
   const { isShowingModal, dismissCurrentModal } = useModalQueue();
 
+  const [activeTab, setActiveTab] = useState("Social");
+  const translateX = useRef(new Animated.Value(-screenWidth)).current;
+  const currentIndex = useRef(1);
+
+  const tabs = useMemo(() => ["Leaderboard", "Social", "Marketplace"], []);
+
   useEffect(() => {
-    // Track screen view when component mounts
     if (posthog) {
       posthog.screen("Social");
     }
   }, [posthog]);
 
-  // Handle rapid taps to detect stuck modal
-  const rapidTapRef = useRef({ count: 0, lastTap: 0 });
-  const handleBackgroundPress = () => {
-    const now = Date.now();
-    const tapData = rapidTapRef.current;
-    
-    // Reset if more than 1 second between taps
-    if (now - tapData.lastTap > 1000) {
-      tapData.count = 0;
-    }
-    
-    tapData.count++;
-    tapData.lastTap = now;
-    
-    // 3 rapid taps = user is frustrated
-    if (tapData.count >= 3) {
-      console.log('[SocialScreen] Rapid taps detected - checking for stuck modal');
-      if (isShowingModal) {
-        console.log('[SocialScreen] Dismissing stuck modal');
-        dismissCurrentModal();
-      }
-      tapData.count = 0;
-    }
-  };
-
-  // Changed initial state to "Social" instead of "Leaderboard"
-  const [activeTab, setActiveTab] = useState("Social");
-  const scrollX = useRef(new Animated.Value(width)).current; // Initialize to width (Social tab position)
-  const scrollViewRef = useRef<ScrollView>(null);
-  const currentPageRef = useRef(1); // Initialize to 1 (Social tab index)
-  // Add a ref to track if we're responding to a tab click
-  const isTabClickRef = useRef(false);
-
-  // Track tab changes
-  const handleTabChange = (tabName: string) => {
-    setActiveTab(tabName);
-  };
-
-  // Reset to Social tab when screen opens
-  useEffect(() => {
-    setActiveTab("Social");
-    scrollX.setValue(width); // Set to width (Social tab position)
-    currentPageRef.current = 1; // Set to 1 (Social tab index)
-
-    // Ensure the scroll view is at the Social tab position
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ x: width, animated: false });
-    }, 100);
-  }, []);
-
-  // Effect to update active tab based on scroll position
-  useEffect(() => {
-    const listener = scrollX.addListener(({ value }) => {
-      // Skip updating the active tab if we're currently responding to a tab click
-      if (isTabClickRef.current) return;
-
-      // Calculate which page we're on based on scroll position
-      const pageIndex = Math.round(value / width);
-
-      if (pageIndex === 0) {
-        handleTabChange("Leaderboard");
-        currentPageRef.current = 0;
-        if (posthog) {
-          posthog.screen("Leaderboard", {
-            screen: "Social",
-            tab: "Leaderboard"
-          });
-        }
-      } else if (pageIndex === 1) {
-        handleTabChange("Social");
-        currentPageRef.current = 1;
-        if (posthog) {
-          posthog.screen("Social", {
-            screen: "Social",
-            tab: "Social"
-          });
-        }
-      } else if (pageIndex === 2) {
-        handleTabChange("Marketplace");
-        currentPageRef.current = 2;
-        if (posthog) {
-          posthog.screen("Marketplace", {
-            screen: "Social",
-            tab: "Marketplace"
-          });
-        }
-      }
-    });
-
-    return () => {
-      scrollX.removeListener(listener);
-    };
-  }, []);
-
-  const handleTabPress = (tab: string) => {
-    // Track tab changes with PostHog
-    if (posthog && tab !== activeTab) {
-      posthog.capture("tab_changed", {
-        screen: "Social",
-        tab: tab
-      });
-    }
-    
-    // Set the flag to indicate we're responding to a tab click
-    isTabClickRef.current = true;
-
-    let pageIndex = 0;
-
-    if (tab === "Leaderboard") {
-      pageIndex = 0;
-    } else if (tab === "Social") {
-      pageIndex = 1;
-    } else if (tab === "Marketplace") {
-      pageIndex = 2;
-    }
-
-    // Don't update the activeTab immediately
-    currentPageRef.current = pageIndex;
-    scrollViewRef.current?.scrollTo({
-      x: pageIndex * width,
-      animated: true
-    });
-
-    // Update activeTab after a delay to match the scroll animation
-    setTimeout(() => {
-      setActiveTab(tab);
-
-      // Clear the flag after the animation is complete
-      setTimeout(() => {
-        isTabClickRef.current = false;
-      }, 50);
-    }, 200); // Most of the scroll animation duration
-  };
-
-  // Create pan responder for swipe gestures
+  // Optimized pan responder with momentum
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        return Math.abs(gestureState.dx) > 5;
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < 10;
       },
-      onPanResponderRelease: (evt, gestureState) => {
-        const currentPage = currentPageRef.current;
-
-        if (gestureState.dx < -50) {
-          // Swiping left - go to next tab if possible
-          if (currentPage < 2) {
-            const nextPage = currentPage + 1;
-            const nextTab = nextPage === 1 ? "Social" : "Marketplace";
-            handleTabPress(nextTab);
+      onPanResponderGrant: () => {
+        translateX.stopAnimation();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        translateX.setValue(-currentIndex.current * screenWidth + gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const velocity = gestureState.vx;
+        const threshold = screenWidth / 3;
+        
+        let nextIndex = currentIndex.current;
+        
+        // Use velocity for more responsive swiping
+        if (Math.abs(velocity) > 0.3) {
+          if (velocity > 0 && currentIndex.current > 0) {
+            nextIndex = currentIndex.current - 1;
+          } else if (velocity < 0 && currentIndex.current < tabs.length - 1) {
+            nextIndex = currentIndex.current + 1;
           }
-        } else if (gestureState.dx > 50) {
-          // Swiping right - go to previous tab if possible
-          if (currentPage > 0) {
-            const prevPage = currentPage - 1;
-            const prevTab = prevPage === 0 ? "Leaderboard" : "Social";
-            handleTabPress(prevTab);
+        } else {
+          // Fall back to distance-based detection
+          if (gestureState.dx > threshold && currentIndex.current > 0) {
+            nextIndex = currentIndex.current - 1;
+          } else if (gestureState.dx < -threshold && currentIndex.current < tabs.length - 1) {
+            nextIndex = currentIndex.current + 1;
           }
         }
+        
+        animateToTab(nextIndex);
       },
     })
   ).current;
 
+  const animateToTab = useCallback((index: number) => {
+    currentIndex.current = index;
+    setActiveTab(tabs[index]);
+    
+    Animated.spring(translateX, {
+      toValue: -index * screenWidth,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 10,
+    }).start();
+
+    // Track tab changes
+    if (posthog) {
+      posthog.screen(tabs[index], {
+        screen: "Social",
+        tab: tabs[index]
+      });
+    }
+  }, [translateX, tabs, posthog]);
+
+  const handleTabPress = useCallback((tabName: string) => {
+    const index = tabs.indexOf(tabName);
+    if (index !== -1) {
+      animateToTab(index);
+    }
+  }, [tabs, animateToTab]);
+
+  // Reset to Social tab on mount
+  useEffect(() => {
+    animateToTab(1);
+  }, []);
+
   return (
-    <SafeAreaView 
-      className="flex-1 bg-background"
-      onStartShouldSetResponder={() => true}
-      onResponderGrant={handleBackgroundPress}
-    >
+    <SafeAreaView className="flex-1 bg-background">
       <StatusBar barStyle="dark-content" />
 
       {/* Header with back button and tabs */}
-      <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
-        {/* Back button */}
+      <View>
         <TouchableOpacity
           onPress={() => router.back()}
-          className="p-2"
+          className="absolute left-4 top-4 p-2 z-10"
         >
           <Ionicons name="chevron-back" size={28} color="#9CA3AF" />
         </TouchableOpacity>
         
         {/* Header Tabs - centered */}
-        <View className="flex-row justify-center flex-1">
-          <View className="items-center mr-4">
-            <TouchableOpacity
-              onPress={() => handleTabPress("Leaderboard")}
-              className="flex-row items-center"
-            >
-              <Text
-                className={`text-lg font-lexend-bold ${activeTab === "Leaderboard" ? "text-primary" : "text-gray-400"}`}
+        <View className="flex-row justify-center items-center pt-4 pb-2">
+          <View className="flex-row">
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => handleTabPress(tab)}
+                className="mx-4"
               >
-                Leaderboard
-              </Text>
-            </TouchableOpacity>
-            {activeTab === "Leaderboard" && (
-              <View className="h-[3px] w-16 bg-primary mt-1 rounded-full" />
-            )}
-          </View>
-
-          <View className="items-center mx-4">
-            <TouchableOpacity
-              onPress={() => handleTabPress("Social")}
-              className="flex-row items-center"
-            >
-              <Text
-                className={`text-lg font-lexend-bold ${activeTab === "Social" ? "text-primary" : "text-gray-400"}`}
-              >
-                Social
-              </Text>
-            </TouchableOpacity>
-            {activeTab === "Social" && (
-              <View className="h-[3px] w-12 bg-primary mt-1 rounded-full" />
-            )}
-          </View>
-
-          <View className="items-center ml-4">
-            <TouchableOpacity
-              onPress={() => handleTabPress("Marketplace")}
-              className="flex-row items-center"
-            >
-              <Text
-                className={`text-lg font-lexend-bold ${activeTab === "Marketplace" ? "text-primary" : "text-gray-400"}`}
-              >
-                Marketplace
-              </Text>
-            </TouchableOpacity>
-            {activeTab === "Marketplace" && (
-              <View className="h-[3px] w-12 bg-primary mt-1 rounded-full" />
-            )}
+                <View className="items-center">
+                  <Text
+                    className={`text-lg font-lexend-bold ${
+                      activeTab === tab ? "text-primary" : "text-gray-400"
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                  {activeTab === tab && (
+                    <View className="h-[3px] w-full bg-primary mt-1 rounded-full" />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </View>
 
-      {/* Scrollable content */}
-        <View className="flex-1">
-          <Animated.ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-            {...panResponder.panHandlers}
-            className="flex-1"
-          >
-            {/* Leaderboard Tab */}
-            <View style={{ width, height: '100%' }}>
-              <LeaderboardTab />
-            </View>
-
-            {/* Social Feed Tab */}
-            <View style={{ width, height: '100%' }}>
-              <SocialTab />
-            </View>
-
-            {/* Marketplace Tab */}
-            <View style={{ width, height: '100%' }}>
-              <MarketplaceTab />
-            </View>
-          </Animated.ScrollView>
-        </View>
-      </SafeAreaView>
+      {/* Animated content container */}
+      <View className="flex-1" {...panResponder.panHandlers}>
+        <Animated.View
+          style={{
+            flexDirection: 'row',
+            width: screenWidth * tabs.length,
+            transform: [{ translateX }],
+            flex: 1,
+          }}
+        >
+          <View style={{ width: screenWidth }}>
+            <LeaderboardTab />
+          </View>
+          <View style={{ width: screenWidth }}>
+            <SocialTab />
+          </View>
+          <View style={{ width: screenWidth }}>
+            <MarketplaceTab />
+          </View>
+        </Animated.View>
+      </View>
+    </SafeAreaView>
   );
 }

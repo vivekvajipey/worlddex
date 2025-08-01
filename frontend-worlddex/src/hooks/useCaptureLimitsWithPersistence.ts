@@ -116,7 +116,7 @@ export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptu
           // Try to sync with database
           const success = await incrementUserField(userId, "daily_captures_used", pendingCount);
           if (success) {
-            await incrementUserField(userId, "total_captures", pendingCount);
+            // total_captures is now handled by database triggers
             await AsyncStorage.removeItem(PENDING_SYNC_KEY);
           }
         }
@@ -179,7 +179,7 @@ export const useCaptureLimitsWithPersistence = (userId: string | null): UseCaptu
       incrementUserField(userId, "daily_captures_used", 1)
         .then(async (success) => {
           if (success) {
-            await incrementUserField(userId, "total_captures", 1);
+            // total_captures is now handled by database triggers
             
             // Also sync any pending identify attempts
             if (pendingIdentifyAttempts > 0) {

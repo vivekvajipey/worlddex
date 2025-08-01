@@ -166,12 +166,16 @@ const CapturePost: React.FC<CapturePostProps> = ({
 
         {/* Caption and Rarity */}
         <View className="p-3">
-          <View className="flex-row items-center justify-between mb-1">
-            <Text className="font-lexend-bold text-text-primary text-lg">
+          <View className="flex-row items-center mb-1">
+            <Text 
+              className="font-lexend-bold text-text-primary text-lg flex-1 mr-2"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {capture.item_name}
             </Text>
             {capture.rarity_tier && (
-              <View className={`${getBadgeColor()} px-3 py-1 rounded-full`}>
+              <View className={`${getBadgeColor()} px-3 py-1 rounded-full flex-shrink-0`}>
                 <Text className="text-white font-lexend-medium">
                   {badgeText}
                 </Text>

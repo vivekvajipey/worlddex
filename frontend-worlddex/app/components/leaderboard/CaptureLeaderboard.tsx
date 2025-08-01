@@ -6,8 +6,6 @@ import {
 } from "react-native";
 import { supabase, Tables } from "../../../database/supabase-client";
 import { useAuth } from "../../../src/contexts/AuthContext";
-import { fetchCaptureCount } from "../../../database/hooks/useCaptureCount";
-import { fetchUser } from "../../../database/hooks/useUsers";
 import OfflineIndicator from "../OfflineIndicator";
 
 type UserWithCaptures = {
@@ -16,11 +14,6 @@ type UserWithCaptures = {
   profile_picture_key?: string;
   capture_count: number;
   position: number;
-};
-
-type CaptureCount = {
-  user_id: string;
-  count: number;
 };
 
 interface CaptureLeaderboardProps {
@@ -46,58 +39,76 @@ const CaptureLeaderboard: React.FC<CaptureLeaderboardProps> = ({
   const fetchLeaderboardData = async () => {
     try {
       setError(null); // Clear any previous errors
-      let captureCountsData: CaptureCount[] = [];
 
-      // Correct way to get counts grouped by user_id in Supabase
-      const { data: counts, error: countError } = await supabase
-        .rpc('get_user_capture_counts');
+      // Get users ordered by total_captures
+      const { data: users, error: userError } = await supabase
+        .from(Tables.USERS)
+        .select('id, username, profile_picture_key, total_captures')
+        .order('total_captures', { ascending: false })
+        .limit(50); // Get top 50 for position calculation
 
-      if (countError) {
-        throw new Error(`RPC Error: ${countError.message || countError}`);
+      if (userError) {
+        throw new Error(`Database Error: ${userError.message || userError}`);
       }
 
-      if (counts && counts.length > 0) {
-        // Format the data as needed for processing
-        captureCountsData = counts.map((item: { user_id: string; count: string }) => ({
-          user_id: item.user_id,
-          count: parseInt(item.count)
-        }));
-
-        // Sort by count descending
-        captureCountsData.sort((a, b) => b.count - a.count);
-      } else {
-        // Fallback to manual counting if the query doesn't work
-        const { data: allCaptures } = await supabase
-          .from(Tables.CAPTURES)
-          .select('user_id')
-          .is('deleted_at', null);  // Exclude soft deleted captures
-
-        if (allCaptures && allCaptures.length > 0) {
-          // Count captures per user manually
-          const userCaptureMap = new Map<string, number>();
-          allCaptures.forEach((capture) => {
-            const userId = capture.user_id;
-            userCaptureMap.set(userId, (userCaptureMap.get(userId) || 0) + 1);
-          });
-
-          // Convert to array format
-          userCaptureMap.forEach((count, userId) => {
-            captureCountsData.push({ user_id: userId, count });
-          });
-
-          // Sort by count descending
-          captureCountsData.sort((a, b) => b.count - a.count);
-        }
-      }
-
-      if (captureCountsData.length === 0) {
+      if (!users || users.length === 0) {
         setTopUsers([]);
         setCurrentUserData(null);
         return;
       }
 
-      // Process the data we got
-      await processCaptureData(captureCountsData);
+      // Get top 3 users
+      const topUsersData: UserWithCaptures[] = users.slice(0, 3).map((user, index) => ({
+        id: user.id,
+        username: user.username,
+        profile_picture_key: user.profile_picture_key,
+        capture_count: user.total_captures || 0,
+        position: index + 1
+      }));
+
+      setTopUsers(topUsersData);
+
+      // Get current user's position if they're not in top 3
+      if (currentUserId && !topUsersData.some(u => u.id === currentUserId)) {
+        const currentUserIndex = users.findIndex(u => u.id === currentUserId);
+        
+        if (currentUserIndex !== -1) {
+          // User is in top 50
+          const userData = users[currentUserIndex];
+          setCurrentUserData({
+            id: userData.id,
+            username: userData.username,
+            profile_picture_key: userData.profile_picture_key,
+            capture_count: userData.total_captures || 0,
+            position: currentUserIndex + 1
+          });
+        } else {
+          // User is not in top 50, fetch their data separately
+          const { data: userData, error: userDataError } = await supabase
+            .from(Tables.USERS)
+            .select('id, username, profile_picture_key, total_captures')
+            .eq('id', currentUserId)
+            .single();
+
+          if (userData && !userDataError) {
+            // Get exact position by counting users with more captures
+            const { count, error: countError } = await supabase
+              .from(Tables.USERS)
+              .select('id', { count: 'exact', head: true })
+              .gt('total_captures', userData.total_captures || 0);
+
+            const position = countError ? users.length + 1 : (count || 0) + 1;
+
+            setCurrentUserData({
+              id: userData.id,
+              username: userData.username,
+              profile_picture_key: userData.profile_picture_key,
+              capture_count: userData.total_captures || 0,
+              position: position
+            });
+          }
+        }
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 
@@ -112,72 +123,7 @@ const CaptureLeaderboard: React.FC<CaptureLeaderboardProps> = ({
     }
   };
 
-  // Process the capture count data to get user details
-  const processCaptureData = async (captureCountsData: CaptureCount[]) => {
-    try {
-      // Sort by count (highest first) if not already sorted
-      const sortedData = [...captureCountsData].sort((a, b) => b.count - a.count);
-
-      // Create a map of user positions
-      const userPositions = new Map<string, number>();
-      sortedData.forEach((item, index) => {
-        userPositions.set(item.user_id, index + 1);
-      });
-
-      // Get top 3 users
-      const topUserIds = sortedData.slice(0, 3).map(item => item.user_id);
-      const topUsersData: UserWithCaptures[] = [];
-
-      // Fetch user details for each top user
-      for (const userId of topUserIds) {
-        const userData = await fetchUser(userId);
-        if (userData) {
-          const captureCount = sortedData.find(c => c.user_id === userId)?.count || 0;
-          topUsersData.push({
-            id: userData.id,
-            username: userData.username,
-            profile_picture_key: userData.profile_picture_key,
-            capture_count: captureCount,
-            position: userPositions.get(userId) || 0
-          });
-        }
-      }
-
-      setTopUsers(topUsersData);
-
-      // Get current user's position if they're not in top 3
-      if (currentUserId && !topUserIds.includes(currentUserId)) {
-        const userData = await fetchUser(currentUserId);
-
-        // Find current user's capture count from the data
-        let captureCount = sortedData.find(c => c.user_id === currentUserId)?.count || 0;
-
-        // If not found in the data, fetch it directly
-        if (captureCount === 0) {
-          captureCount = await fetchCaptureCount(currentUserId);
-        }
-
-        // If user has 0 captures, put them at last place
-        let position = userPositions.get(currentUserId) || 0;
-        if (captureCount === 0) {
-          position = sortedData.length + 1; // Last place
-        }
-
-        if (userData) {
-          setCurrentUserData({
-            id: userData.id,
-            username: userData.username,
-            profile_picture_key: userData.profile_picture_key,
-            capture_count: captureCount,
-            position: position
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Error processing capture data:", err);
-      throw err; // Re-throw to be caught by the parent function
-    }
-  };
+  // Removed processCaptureData - no longer needed with direct query
 
   useEffect(() => {
     fetchLeaderboardData();
