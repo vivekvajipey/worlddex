@@ -93,6 +93,9 @@ const LeaderboardTab = () => {
 };
 
 const SocialTab = () => {
+  const [isOffline, setIsOffline] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
   // Use the top captures hook with pagination
   const {
     captures,
@@ -156,6 +159,37 @@ const SocialTab = () => {
     );
   };
 
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const isConnected = await hasNetworkConnection();
+      setIsOffline(!isConnected);
+      setIsChecking(false);
+    };
+    checkNetwork();
+
+    // Check network status every 5 seconds when offline
+    let intervalId: NodeJS.Timeout | null = null;
+    if (isOffline) {
+      intervalId = setInterval(checkNetwork, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOffline]);
+
+  if (isChecking) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#3B82F6" />
+      </View>
+    );
+  }
+
+  if (isOffline) {
+    return <OfflineIndicator message="Social feed unavailable offline" showSubtext={false} />;
+  }
+
   return (
     <View className="flex-1 bg-background">
       {/* Feed */}
@@ -209,6 +243,8 @@ const SocialTab = () => {
 };
 
 const MarketplaceTab = () => {
+  const [isOffline, setIsOffline] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const { session } = useAuth();
   const { user } = useUser(session?.user?.id || null);
   const [localBalance, setLocalBalance] = useState(user?.balance ?? 0);
@@ -243,6 +279,37 @@ const MarketplaceTab = () => {
     // Navigate to user profile
     console.log("Navigate to user profile:", userId);
   };
+
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const isConnected = await hasNetworkConnection();
+      setIsOffline(!isConnected);
+      setIsChecking(false);
+    };
+    checkNetwork();
+
+    // Check network status every 5 seconds when offline
+    let intervalId: NodeJS.Timeout | null = null;
+    if (isOffline) {
+      intervalId = setInterval(checkNetwork, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOffline]);
+
+  if (isChecking) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#F97316" />
+      </View>
+    );
+  }
+
+  if (isOffline) {
+    return <OfflineIndicator message="Marketplace unavailable offline" showSubtext={false} />;
+  }
 
   return (
     <View className="flex-1 bg-background">

@@ -3,6 +3,7 @@
 ## Quick Reference
 - **Update issue states**: Need UUID, not string. Use `list_issue_statuses` with team ID first.
 - **JSV AI Team ID**: `0d258193-c473-4a4e-8d20-9aba2f444e5e`
+- **After completing tasks**: Update Linear ticket description with implementation details
 
 ## State UUIDs (JSV AI)
 - Done: `8f0d6003-ec0e-4d70-8b37-e6718f0aac9d`
@@ -19,6 +20,8 @@ Look for [existing patterns/similar code]."
 
 ## Learned Patterns
 - 2025-07-31: State updates require UUID lookup, not direct string values
+- 2025-08-01: Always update Linear tickets with implementation details after completion for future reference
+- 2025-08-01: Always read latest manager notes when resuming work - parallel branches may have updated task status
 
 ## App Visual Style
 - **Primary**: #F97316 (Tangerine Orange)
@@ -34,12 +37,19 @@ Look for [existing patterns/similar code]."
 - **Status**: Done (fixed in recent commit)
 - **Issue**: Pending captures weren't respecting the isPublic preference setting
 
-### JSV-357: Replace black screen background
+### JSV-357: Replace black screen background ✅ COMPLETED
 - **Files**: app/(screens)/camera.tsx, app/components/camera/CameraPermissionHandler.tsx
 - **Context**: Black screen appears when `permission?.status == null` during camera permission resolution
 - **Current Flow**: CameraPermissionHandler → shows nothing while loading → CameraPlaceholder or CameraCapture
 - **Goal**: WorldDex-branded loading screen with Midjourney-generated background
 - **Considerations**: Background style, atmosphere, performance impact
+- **Implementation (Feb 1, 2025)**:
+  - Created `LoadingBackground` component with gradient backgrounds (not images)
+  - 5 gradient variants: warm, cool, sunset, mint, golden
+  - Added `useLoadingVariant` hook for random selection
+  - Updated loading states in: CameraPlaceholder, PendingCaptureIdentifier, WorldDexTab
+  - Shows during: camera permission loading, capture processing, WorldDex loading
+  - Clean, performant solution without external image assets
 
 ### JSV-355: Offline indicator ✅ COMPLETED
 - **Purpose**: Users think collection is missing when offline
@@ -48,11 +58,14 @@ Look for [existing patterns/similar code]."
 - **Existing Utils**: src/utils/networkUtils.ts has connection checking
 - **Goal**: Clean, subtle offline indicator following best practices
 - **Implementation (Jan 31, 2025)**:
-  - Created `OfflineIndicator` component with cloud-offline icon
+  - Created `OfflineIndicator` component with cloud-offline icon (app/components/OfflineIndicator.tsx)
   - Added offline state detection to personal-captures.tsx
   - Shows indicator only when offline AND no captures displayed
-  - Auto-refreshes when connection restored (5-second polling + event listeners)
+  - Auto-refreshes when connection restored (5-second polling, no window events in RN)
   - Follows existing design patterns (gray colors, Lexend font)
+  - Added to WorldDexTab footer when only pending captures visible
+  - Extended to Leaderboard, Social, and Marketplace tabs with context-specific messages
+  - Made subtext optional (showSubtext prop) for non-capture contexts
 
 ### JSV-330: Public capture warning
 - **Critical**: Privacy concern - users must know when capture is public
