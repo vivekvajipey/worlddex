@@ -8,6 +8,7 @@ import { supabase, Tables } from "../../../database/supabase-client";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { fetchCaptureCount } from "../../../database/hooks/useCaptureCount";
 import { fetchUser } from "../../../database/hooks/useUsers";
+import OfflineIndicator from "../OfflineIndicator";
 
 type UserWithCaptures = {
   id: string;
@@ -183,6 +184,20 @@ const CaptureLeaderboard = () => {
   }
 
   if (error) {
+    // Check if it's a network-related error
+    const isNetworkError = error.toLowerCase().includes('network') || 
+                          error.toLowerCase().includes('fetch') ||
+                          error.toLowerCase().includes('connection') ||
+                          error.toLowerCase().includes('timeout');
+    
+    if (isNetworkError) {
+      return (
+        <View className="p-4">
+          <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />
+        </View>
+      );
+    }
+    
     return (
       <View className="flex-1 justify-center items-center p-4">
         <Text className="text-red-500">{error}</Text>

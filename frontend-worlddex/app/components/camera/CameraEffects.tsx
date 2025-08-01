@@ -75,8 +75,8 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
 
   // Watch for network errors during capture to trigger offline save
   useEffect(() => {
-    if (idError && idError.message === 'Network request failed' && capturedUri && !savedOffline && userId) {
-      console.log("[OFFLINE FLOW] Detected network error from useIdentify");
+    if (idError && (idError.message === 'Network request failed' || idError.name === 'AbortError') && capturedUri && !savedOffline && userId) {
+      console.log("[OFFLINE FLOW] Detected network error or timeout from useIdentify");
       
       // Set states to trigger offline save flow
       setSavedOffline(true);
@@ -89,7 +89,7 @@ export const CameraEffects: React.FC<CameraEffectsProps> = ({
         captureBox,
         userId,
         method: 'auto_dismiss',
-        reason: 'network_error'
+        reason: idError.name === 'AbortError' ? 'timeout_error' : 'network_error'
       }).then(() => {
         console.log("[OFFLINE FLOW] Successfully saved offline capture from network error handler");
         cameraCaptureRef.current?.resetLasso();

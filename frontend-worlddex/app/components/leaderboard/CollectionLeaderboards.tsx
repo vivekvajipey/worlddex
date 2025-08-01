@@ -10,6 +10,7 @@ import { supabase, Tables } from "../../../database/supabase-client";
 import { useAuth } from "../../../src/contexts/AuthContext";
 import { fetchUser } from "../../../database/hooks/useUsers";
 import { Ionicons } from "@expo/vector-icons";
+import OfflineIndicator from "../OfflineIndicator";
 
 type CollectionLeaderboardItem = {
   id: string;
@@ -158,6 +159,20 @@ const CollectionLeaderboards = () => {
   }
 
   if (error) {
+    // Check if it's a network-related error
+    const isNetworkError = error.toLowerCase().includes('network') || 
+                          error.toLowerCase().includes('fetch') ||
+                          error.toLowerCase().includes('connection') ||
+                          error.toLowerCase().includes('timeout');
+    
+    if (isNetworkError) {
+      return (
+        <View className="p-4">
+          <OfflineIndicator message="Collection leaderboards unavailable offline" showSubtext={false} />
+        </View>
+      );
+    }
+    
     return (
       <View className="flex-1 justify-center items-center p-4">
         <Text className="text-red-500">{error}</Text>

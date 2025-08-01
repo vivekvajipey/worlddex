@@ -18,6 +18,12 @@ Context: [CLAUDE.md reference if relevant].
 Look for [existing patterns/similar code]."
 ```
 
+## Warm Start Philosophy
+- **Investigation First**: Don't implement immediately - explore and understand the issue
+- **Collaborative Approach**: Discuss findings and confirm root cause before coding
+- **Strategic Information**: Provide enough context to guide exploration without overwhelming
+- **Confirm Path Forward**: Get alignment on approach before implementation
+
 ## Learned Patterns
 - 2025-07-31: State updates require UUID lookup, not direct string values
 - 2025-08-01: Always update Linear tickets with implementation details after completion for future reference
@@ -25,17 +31,24 @@ Look for [existing patterns/similar code]."
 
 ## Current Priority Tasks (Aug 1, 2025)
 
-### 🚨 Urgent
-1. **JSV-399**: Daily capture limit not resetting (High) - Supabase issue
-2. **JSV-395**: Figure out VLM AbortError bug (Urgent) - Capture getting stuck
+### ✅ Recently Completed
+- **JSV-399**: Daily capture limit not resetting - Set up pg_cron daily reset
+- **JSV-357**: Black screen background - Gradient loading backgrounds  
+- **JSV-355**: Offline indicator - OfflineIndicator component
+- **JSV-330**: Public capture warning - Privacy toggle in PolaroidDevelopment
 
-### 🔥 High Priority  
-1. **JSV-398**: Social pages showing no connection even when connected (High)
-2. **JSV-391**: Make social a page instead of modal (High) 
-3. **JSV-389**: WorldDex collection pagination loading (High)
-4. **JSV-328**: Store pfp locally so it doesn't need to load (High)
-5. **JSV-358**: Introduce lasso capture on Level 2 (High)
-6. **JSV-256**: Share captures outside of the app (High)
+### 🚨 Urgent Investigation Needed
+- **JSV-395**: VLM AbortError bug - Captures getting stuck with `[AbortError: Aborted]`
+
+### 🔍 High Priority Investigations  
+- **JSV-398**: Social pages showing no connection when connected
+- **JSV-391**: Convert social modal to page (architectural change)
+- **JSV-389**: Add WorldDex collection pagination loading states
+
+### 🔥 High Priority Features
+- **JSV-328**: Store pfp locally so it doesn't need to load  
+- **JSV-358**: Introduce lasso capture on Level 2
+- **JSV-256**: Share captures outside of the app
 
 ## App Visual Style
 - **Primary**: #F97316 (Tangerine Orange)

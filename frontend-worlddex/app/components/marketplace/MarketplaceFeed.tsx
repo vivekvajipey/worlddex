@@ -16,6 +16,7 @@ import BuyNowListing from "./BuyNowListing";
 import TradeListing from "./TradeListing";
 import { Listing, Capture } from "../../../database/types";
 import { usePostHog } from "posthog-react-native";
+import OfflineIndicator from "../OfflineIndicator";
 
 // define filter options
 const filterOptions = [
@@ -56,6 +57,7 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
     listings,
     totalCount,
     loading,
+    error,
     refresh: refreshListingsData,
   } = useListings({ status: "active" }, { page, pageSize });
 
@@ -172,8 +174,19 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
       </View>
     ) : null;
 
-  const renderEmpty = () =>
-    !loading ? (
+  const renderEmpty = () => {
+    if (loading) return null;
+    
+    // Show offline indicator if there's a network error and no cached data
+    if (error && localListings.length === 0) {
+      return (
+        <View className="py-20 items-center">
+          <OfflineIndicator message="Marketplace unavailable offline" showSubtext={false} />
+        </View>
+      );
+    }
+    
+    return (
       <View className="py-20 items-center">
         <Text className="text-text-secondary mt-4 text-lg font-lexend-regular text-center">
           No active listings found
@@ -182,7 +195,8 @@ const MarketplaceFeed: React.FC<MarketplaceFeedProps> = ({
           Be the first to list your captures for sale or trade!
         </Text>
       </View>
-    ) : null;
+    );
+  };
 
   // expandable filter header
   const FilterHeader = () => (
