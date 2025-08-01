@@ -45,19 +45,14 @@ const CaptureLeaderboard: React.FC<CaptureLeaderboardProps> = ({
   // Fetch top users and current user position
   const fetchLeaderboardData = async () => {
     try {
-      console.log("Starting fetchLeaderboardData...");
       setError(null); // Clear any previous errors
       let captureCountsData: CaptureCount[] = [];
 
-      console.log("Calling supabase.rpc...");
       // Correct way to get counts grouped by user_id in Supabase
       const { data: counts, error: countError } = await supabase
         .rpc('get_user_capture_counts');
 
-      console.log("RPC result:", { counts, countError });
-
       if (countError) {
-        console.error("Error counting captures:", countError);
         throw new Error(`RPC Error: ${countError.message || countError}`);
       }
 
@@ -105,10 +100,6 @@ const CaptureLeaderboard: React.FC<CaptureLeaderboardProps> = ({
       await processCaptureData(captureCountsData);
 
     } catch (err) {
-      console.error("Leaderboard error:", err);
-      console.error("Error type:", typeof err);
-      console.error("Error details:", JSON.stringify(err, null, 2));
-      
       const errorMessage = err instanceof Error ? err.message : 
                           typeof err === 'string' ? err : 
                           "Failed to load leaderboard";

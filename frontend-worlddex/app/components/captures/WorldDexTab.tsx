@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, ActivityIndicator, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CombinedCapture } from "../../../src/types/combinedCapture";
 import CaptureThumbnail from "./CaptureThumbnail";
@@ -7,6 +7,8 @@ import { usePostHog } from "posthog-react-native";
 import OfflineIndicator from "../OfflineIndicator";
 import { LoadingBackground } from "../LoadingBackground";
 import { useLoadingVariant } from "../../../src/hooks/useLoadingVariant";
+import LoadingFooter from "../shared/LoadingFooter";
+import EmptyState from "../shared/EmptyState";
 
 interface WorldDexTabProps {
   displayCaptures: CombinedCapture[];
@@ -14,8 +16,13 @@ interface WorldDexTabProps {
   urlsLoading?: boolean;
   urlMap?: Record<string, string>;
   onCapturePress: (capture: CombinedCapture) => void;
-  active: boolean; // Add active prop to the interface
+  active: boolean;
   isOffline?: boolean;
+  // Pagination props
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 const WorldDexTab: React.FC<WorldDexTabProps> = ({
@@ -24,8 +31,12 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
   urlsLoading = false,
   urlMap = {},
   onCapturePress,
-  active, // Add active prop to the component
-  isOffline = false
+  active,
+  isOffline = false,
+  hasMore = false,
+  onLoadMore,
+  onRefresh,
+  refreshing = false
 }) => {
   const posthog = usePostHog();
   const loadingVariant = useLoadingVariant();
@@ -56,9 +67,11 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
     }
     
     return (
-      <View className="flex-1 justify-center items-center p-4">
-        <Text className="text-text-primary font-lexend-medium">No captures yet.</Text>
-      </View>
+      <EmptyState
+        icon="camera-outline"
+        title="No captures yet"
+        subtitle="Start capturing items to build your WorldDex collection!"
+      />
     );
   }
 

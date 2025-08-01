@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   View,
-  Modal,
   TouchableOpacity,
   Dimensions,
   Animated,
@@ -15,6 +14,8 @@ import {
   StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 import CaptureLeaderboard from "../components/leaderboard/CaptureLeaderboard";
 import CollectionLeaderboards from "../components/leaderboard/CollectionLeaderboards";
 import { useTopCaptures } from "../../database/hooks/useCaptures";
@@ -32,11 +33,6 @@ import { usePostHog } from "posthog-react-native";
 import OfflineIndicator from "../components/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
-
-interface SocialModalProps {
-  visible: boolean;
-  onClose: () => void;
-}
 
 const LeaderboardTab = () => {
   const [refreshing, setRefreshing] = useState(false);
@@ -298,15 +294,42 @@ const MarketplaceTab = () => {
   );
 };
 
-const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
+export default function SocialScreen() {
   const posthog = usePostHog();
+  const router = useRouter();
+  const { isShowingModal, dismissCurrentModal } = useModalQueue();
 
   useEffect(() => {
-    // Track screen view when modal becomes visible
-    if (visible && posthog) {
+    // Track screen view when component mounts
+    if (posthog) {
       posthog.screen("Social");
     }
-  }, [visible, posthog]);
+  }, [posthog]);
+
+  // Handle rapid taps to detect stuck modal
+  const rapidTapRef = useRef({ count: 0, lastTap: 0 });
+  const handleBackgroundPress = () => {
+    const now = Date.now();
+    const tapData = rapidTapRef.current;
+    
+    // Reset if more than 1 second between taps
+    if (now - tapData.lastTap > 1000) {
+      tapData.count = 0;
+    }
+    
+    tapData.count++;
+    tapData.lastTap = now;
+    
+    // 3 rapid taps = user is frustrated
+    if (tapData.count >= 3) {
+      console.log('[SocialScreen] Rapid taps detected - checking for stuck modal');
+      if (isShowingModal) {
+        console.log('[SocialScreen] Dismissing stuck modal');
+        dismissCurrentModal();
+      }
+      tapData.count = 0;
+    }
+  };
 
   // Changed initial state to "Social" instead of "Leaderboard"
   const [activeTab, setActiveTab] = useState("Social");
@@ -321,19 +344,17 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
     setActiveTab(tabName);
   };
 
-  // Reset to Social tab when modal opens
+  // Reset to Social tab when screen opens
   useEffect(() => {
-    if (visible) {
-      setActiveTab("Social");
-      scrollX.setValue(width); // Set to width (Social tab position)
-      currentPageRef.current = 1; // Set to 1 (Social tab index)
+    setActiveTab("Social");
+    scrollX.setValue(width); // Set to width (Social tab position)
+    currentPageRef.current = 1; // Set to 1 (Social tab index)
 
-      // Ensure the scroll view is at the Social tab position
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: width, animated: false });
-      }, 100);
-    }
-  }, [visible]);
+    // Ensure the scroll view is at the Social tab position
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ x: width, animated: false });
+    }, 100);
+  }, []);
 
   // Effect to update active tab based on scroll position
   useEffect(() => {
@@ -448,10 +469,23 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
   ).current;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-background">
-        <StatusBar barStyle="dark-content" />
+    <SafeAreaView 
+      className="flex-1 bg-background"
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={handleBackgroundPress}
+    >
+      <StatusBar barStyle="dark-content" />
 
+      {/* Header with back button and tabs */}
+      <View className="relative">
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="absolute left-4 top-4 z-10 p-2"
+        >
+          <Ionicons name="chevron-back" size={28} color="#9CA3AF" />
+        </TouchableOpacity>
+        
         {/* Header Tabs */}
         <View className="flex-row justify-center pt-4 pb-2">
           <View className="items-center mr-6">
@@ -502,8 +536,9 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
             )}
           </View>
         </View>
+      </View>
 
-        {/* Scrollable content */}
+      {/* Scrollable content */}
         <View className="flex-1">
           <Animated.ScrollView
             ref={scrollViewRef}
@@ -534,17 +569,6 @@ const SocialModal: React.FC<SocialModalProps> = ({ visible, onClose }) => {
             </View>
           </Animated.ScrollView>
         </View>
-
-        {/* Close Button */}
-        <TouchableOpacity
-          className="absolute top-12 right-4 w-10 h-10 rounded-full bg-primary justify-center items-center"
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={24} color="#FFF" />
-        </TouchableOpacity>
       </SafeAreaView>
-    </Modal>
   );
-};
-
-export default SocialModal;
+}

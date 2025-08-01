@@ -9,7 +9,6 @@ import Profile from './components/profile/Profile';
 import FeedbackForm from './components/profile/FeedbackForm';
 import { useAuth } from '../src/contexts/AuthContext';
 import { useAccountRecovery } from '../src/hooks/useAccountRecovery';
-import SocialModal from './(screens)/social';
 
 // This is the home route component at "/"
 export default function HomeScreen() {
@@ -18,7 +17,6 @@ export default function HomeScreen() {
   const pathname = usePathname();
   const router = useRouter();
   const [feedbackVisible, setFeedbackVisible] = useState(false);
-  const [socialModalVisible, setSocialModalVisible] = useState(false);
   const [capturesButtonClicked, setCapturesButtonClicked] = useState(false);
 
   // Check for account recovery on sign in
@@ -67,7 +65,7 @@ export default function HomeScreen() {
         </View>
         <TouchableOpacity
           className="w-20 h-20 rounded-full bg-background justify-center items-center shadow-lg overflow-hidden"
-          onPress={() => setSocialModalVisible(true)}
+          onPress={() => router.push('/(screens)/social')}
         >
           <Image
             source={require('../assets/images/Social Icon.png')}
@@ -95,11 +93,6 @@ export default function HomeScreen() {
       </View>
 
 
-      {/* Social Modal */}
-      <SocialModal
-        visible={socialModalVisible}
-        onClose={() => setSocialModalVisible(false)}
-      />
     </View>
   );
 }

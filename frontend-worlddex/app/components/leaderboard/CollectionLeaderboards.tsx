@@ -149,7 +149,6 @@ const CollectionLeaderboards: React.FC<CollectionLeaderboardsProps> = ({
 
       setCollectionLeaderboards(leaderboards);
     } catch (err) {
-      console.error("Collection leaderboards error:", err);
       setError(err instanceof Error ? err.message : "Failed to load collection leaderboards");
       onError?.(true);
     } finally {

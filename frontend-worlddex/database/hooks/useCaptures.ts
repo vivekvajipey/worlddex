@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, Tables } from "../supabase-client";
 import { Capture } from "../types";
+import { 
+  usePaginationState, 
+  PaginationConfig, 
+  PaginationResult, 
+  PaginatedResponse 
+} from "./utils/pagination";
+import { executePaginatedQuery, PaginationParams } from "./utils/supabaseHelpers";
 
 // Data access functions
 export const fetchCapture = async (
@@ -39,6 +46,20 @@ export const fetchUserCaptures = async (
   }
 
   return data || [];
+};
+
+export const fetchUserCapturesPaginated = async (
+  userId: string,
+  { page, pageSize }: PaginationParams
+): Promise<PaginatedResponse<Capture>> => {
+  const query = supabase
+    .from(Tables.CAPTURES)
+    .select("*")
+    .eq("user_id", userId)
+    .is("deleted_at", null)  // Exclude soft deleted captures
+    .order("captured_at", { ascending: false });
+
+  return executePaginatedQuery<Capture>(query, { page, pageSize });
 };
 
 export const fetchItemCaptures = async (
@@ -438,4 +459,21 @@ export const useItemCaptures = (itemId: string | null, limit: number = 20) => {
   }, [itemId, limit]);
 
   return { captures, loading, error };
+};
+
+export const usePagedUserCaptures = (
+  userId: string | null,
+  config: PaginationConfig = { limit: 20, autoFetch: true }
+): PaginationResult<Capture> => {
+  const fetcher = useCallback(
+    async (page: number, limit: number): Promise<PaginatedResponse<Capture>> => {
+      if (!userId) {
+        return { data: [], count: 0 };
+      }
+      return fetchUserCapturesPaginated(userId, { page, pageSize: limit });
+    },
+    [userId]
+  );
+
+  return usePaginationState<Capture>(fetcher, config, [userId]);
 };
