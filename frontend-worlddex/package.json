@@ -16,6 +16,7 @@
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-native-picker/picker": "2.9.0",
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
@@ -86,6 +87,8 @@
     "@types/react-native-uuid": "^1.4.0",
     "@types/react-test-renderer": "^18.3.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~8.0.1",
     "jest-expo": "^53.0.9",
     "react-test-renderer": "18.3.1",
     "ts-jest": "^29.4.0",
@@ -99,15 +102,24 @@
   "jest": {
     "preset": "react-native",
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/jest.setup.custom.js"],
-    "setupFilesAfterEnv": ["<rootDir>/src/hooks/__tests__/test-setup.ts"],
+    "setupFiles": [
+      "<rootDir>/jest.setup.custom.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/hooks/__tests__/test-setup.ts"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "transform": {
       "^.+\\.(js|jsx|ts|tsx)$": "babel-jest"
     },
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx"],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|posthog-react-native)"
     ],

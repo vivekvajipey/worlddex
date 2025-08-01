@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useUser } from '../../database/hooks/useUsers';
+import { updateUserField } from '../../database/hooks/useUsers';
 
 interface CameraSettingsContextType {
   isPublic: boolean;
@@ -15,14 +16,22 @@ export function CameraSettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useUser(userId);
   
   // Initialize with user's preference or false
-  const [isPublic, setIsPublic] = useState(false);
+  const [isPublic, setIsPublicState] = useState(false);
   
   // Update when user data loads
   useEffect(() => {
     if (user?.default_public_captures !== undefined) {
-      setIsPublic(user.default_public_captures);
+      setIsPublicState(user.default_public_captures);
     }
   }, [user?.default_public_captures]);
+  
+  // Function to update both state and database
+  const setIsPublic = async (value: boolean) => {
+    setIsPublicState(value);
+    if (userId) {
+      await updateUserField(userId, 'default_public_captures', value);
+    }
+  };
   
   return (
     <CameraSettingsContext.Provider value={{ isPublic, setIsPublic }}>

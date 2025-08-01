@@ -21,7 +21,7 @@ import { usePostHog } from "posthog-react-native";
 import { useAlert } from "../../src/contexts/AlertContext";
 import { OfflineCaptureService } from "../../src/services/offlineCaptureService";
 import { CombinedCapture } from "../../src/types/combinedCapture";
-import { checkServerConnection } from "../../src/utils/networkUtils";
+import { checkServerConnection, hasNetworkConnection } from "../../src/utils/networkUtils";
 import { useModalQueue } from "../../src/contexts/ModalQueueContext";
 
 // Import the extracted components
@@ -49,6 +49,7 @@ export default function PersonalCapturesScreen() {
   const [selectedPendingCapture, setSelectedPendingCapture] = useState<any>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [captureToDelete, setCaptureToDelete] = useState<Capture | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   
 
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -261,6 +262,10 @@ export default function PersonalCapturesScreen() {
       setIsRefreshing(true);
     }
 
+    // Check network connection
+    const isConnected = await hasNetworkConnection();
+    setIsOffline(!isConnected);
+
     try {
       // Fetch fresh captures data
       const freshCaptures = await fetchUserCaptures(userId, 100);
@@ -335,9 +340,39 @@ export default function PersonalCapturesScreen() {
       scrollViewRef.current?.scrollTo({ x: 0, animated: false });
     }, 100);
 
+    // Check network status on mount
+    const checkNetwork = async () => {
+      const isConnected = await hasNetworkConnection();
+      setIsOffline(!isConnected);
+    };
+    checkNetwork();
+
     // Refresh data from Supabase
     refreshData();
   }, [refreshData]);
+
+  // Add network state listener
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const isConnected = await hasNetworkConnection();
+      setIsOffline(!isConnected);
+      
+      // If we just came back online and have no captures, try refreshing
+      if (isConnected && !isOffline && displayCaptures?.length === 0) {
+        refreshData(false); // Silent refresh
+      }
+    };
+
+    // Check network status every 5 seconds when offline
+    let intervalId: NodeJS.Timeout | null = null;
+    if (isOffline) {
+      intervalId = setInterval(checkNetwork, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOffline, displayCaptures?.length, refreshData]);
 
   // Load user collections when they change
   useEffect(() => {
@@ -720,6 +755,7 @@ export default function PersonalCapturesScreen() {
                 urlsLoading={imageUrlsLoading}
                 urlMap={imageUrlMap}
                 onCapturePress={handleCapturePress}
+                isOffline={isOffline}
               />
             </View>
 

@@ -36,7 +36,7 @@ export const CameraPermissionHandler: React.FC<CameraPermissionHandlerProps> = (
 
   if (!permissionsResolved) {
     return <CameraPlaceholder 
-      permissionStatus={permission?.status || 'undetermined'} 
+      permissionStatus={null} 
       onRequestPermission={requestPermission} 
     />;
   }

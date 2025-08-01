@@ -20,6 +20,8 @@ import { usePostHog } from "posthog-react-native";
 import { useModalQueue } from "../../../src/contexts/ModalQueueContext";
 import { useAlert } from "../../../src/contexts/AlertContext";
 import { processCaptureAfterIdentification } from "../../../src/services/captureProcessingService";
+import { LoadingBackground } from "../LoadingBackground";
+import { useLoadingVariant } from "../../../src/hooks/useLoadingVariant";
 
 interface PendingCaptureIdentifierProps {
   pendingCapture: PendingCapture | null;
@@ -41,6 +43,7 @@ export default function PendingCaptureIdentifier({
   const { session } = useAuth();
   const { user } = useUser(session?.user?.id || null);
   const { items, incrementOrCreateItem } = useItems();
+  const loadingVariant = useLoadingVariant();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [vlmCaptureSuccess, setVlmCaptureSuccess] = useState<boolean | null>(null);
@@ -472,12 +475,13 @@ export default function PendingCaptureIdentifier({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black">
+      <View className="flex-1">
         {isProcessing && !idLoading && !identificationComplete ? (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#FFF" />
-            <Text className="text-white mt-4 font-lexend-medium">Processing image...</Text>
-          </View>
+          <LoadingBackground 
+            message="Processing your capture..."
+            showSpinner={true}
+            variant={loadingVariant}
+          />
         ) : (
           <PolaroidDevelopment
             photoUri={pendingCapture.imageUri}

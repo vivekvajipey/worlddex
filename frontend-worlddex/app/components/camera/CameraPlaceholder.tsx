@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LoadingBackground } from '../LoadingBackground';
+import { useLoadingVariant } from '@/src/hooks/useLoadingVariant';
 // Using expo-camera's permission status type for now
-type PermissionStatus = 'undetermined' | 'granted' | 'denied' | 'restricted';
+type PermissionStatus = 'undetermined' | 'granted' | 'denied' | 'restricted' | null;
 
 interface CameraPlaceholderProps {
   onRequestPermission: () => void;
@@ -16,6 +18,18 @@ export const CameraPlaceholder: React.FC<CameraPlaceholderProps> = ({
   const handleOpenSettings = () => {
     Linking.openSettings();
   };
+  const variant = useLoadingVariant();
+
+  // Show loading screen when permissions are being resolved
+  if (permissionStatus === null) {
+    return (
+      <LoadingBackground 
+        message="Preparing your camera..."
+        showSpinner={true}
+        variant={variant}
+      />
+    );
+  }
 
   return (
     <View className="flex-1 bg-black justify-center items-center px-8">

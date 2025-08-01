@@ -29,6 +29,8 @@ import { Image } from "expo-image";
 import retroCoin from "../../assets/images/retro_coin.png";
 import { supabase } from "../../database/supabase-client";
 import { usePostHog } from "posthog-react-native";
+import { hasNetworkConnection } from "../../src/utils/networkUtils";
+import OfflineIndicator from "../components/OfflineIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -38,6 +40,40 @@ interface SocialModalProps {
 }
 
 const LeaderboardTab = () => {
+  const [isOffline, setIsOffline] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const isConnected = await hasNetworkConnection();
+      setIsOffline(!isConnected);
+      setIsChecking(false);
+    };
+    checkNetwork();
+
+    // Check network status every 5 seconds when offline
+    let intervalId: NodeJS.Timeout | null = null;
+    if (isOffline) {
+      intervalId = setInterval(checkNetwork, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOffline]);
+
+  if (isChecking) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
+
+  if (isOffline) {
+    return <OfflineIndicator message="Leaderboard unavailable offline" showSubtext={false} />;
+  }
+
   return (
     <View className="flex-1 p-2">
       <ScrollView showsVerticalScrollIndicator={false}>

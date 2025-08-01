@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity } from "react-native";
+import { View, Animated, Dimensions, TouchableWithoutFeedback, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { BlurView } from "expo-blur";
 import Svg, { Path } from "react-native-svg";
@@ -7,7 +7,10 @@ import { backgroundColor } from "../../../src/utils/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { usePostHog } from "posthog-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { rarityStyles, RarityTier } from "../../../src/utils/rarityStyles";
+import { rarityStyles, RarityTier, getGlowColor } from "../../../src/utils/rarityStyles";
+import { useAuth } from "../../../src/contexts/AuthContext";
+import { fetchUser, updateUserField } from "../../../database/hooks/useUsers";
+import { hasNetworkConnection } from "../../../src/utils/networkUtils";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -127,6 +130,26 @@ export default function PolaroidDevelopment({
   const positionYAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
+  
+  // Get user session
+  const { session } = useAuth();
+  const [isPublic, setIsPublic] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showOfflineMessage, setShowOfflineMessage] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+  
+  // Fetch privacy preference on mount
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchUser(session.user.id).then(userData => {
+        if (userData) {
+          setIsPublic(userData.default_public_captures || false);
+        }
+      }).catch(err => {
+        console.warn('[PolaroidDevelopment] Failed to fetch user preference:', err);
+      });
+    }
+  }, [session?.user?.id]);
 
   // Rip animation values
   const leftPieceAnim = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -1132,6 +1155,126 @@ export default function PolaroidDevelopment({
           </Svg>
         </View>
       </Animated.View>
+
+      {/* Privacy indicator - show above the polaroid */}
+      {initialAnimationDone && !isRipping && !isMinimizing && identificationComplete && (
+        <View style={{
+          position: 'absolute',
+          top: SCREEN_HEIGHT / 2 - targetDimensions.height / 2 - 60,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          zIndex: 10,
+        }}>
+          <TouchableOpacity 
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 25,
+              flexDirection: 'row',
+              alignItems: 'center',
+              opacity: isUpdating ? 0.5 : 1,
+            }}
+            onPress={async () => {
+              if (isUpdating || !session?.user?.id) return;
+              
+              // Check network status first
+              const isConnected = await hasNetworkConnection();
+              if (!isConnected) {
+                // Show inline message instead of alert to avoid nested modal issues
+                setShowOfflineMessage(true);
+                setTimeout(() => setShowOfflineMessage(false), 3000);
+                return;
+              }
+              
+              const newValue = !isPublic;
+              setIsUpdating(true);
+              
+              try {
+                // Update database first
+                const success = await updateUserField(session.user.id, 'default_public_captures', newValue);
+                
+                if (success) {
+                  // Only update local state if database update succeeded
+                  setIsPublic(newValue);
+                  console.log('[PolaroidDevelopment] Successfully updated privacy to:', newValue ? 'public' : 'private');
+                } else {
+                  // Database update failed - show inline feedback
+                  console.warn('[PolaroidDevelopment] Failed to update privacy preference');
+                  setShowErrorMessage(true);
+                  setTimeout(() => setShowErrorMessage(false), 3000);
+                }
+              } catch (error) {
+                console.error('[PolaroidDevelopment] Error updating privacy preference:', error);
+                setShowErrorMessage(true);
+                setTimeout(() => setShowErrorMessage(false), 3000);
+              } finally {
+                setIsUpdating(false);
+              }
+            }}
+            activeOpacity={0.7}
+          >
+          {isUpdating ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <>
+              <Ionicons 
+                name={isPublic ? "earth" : "lock-closed"} 
+                size={20} 
+                color={isPublic ? "#10B981" : "white"} 
+              />
+              <Text style={{
+                marginLeft: 8,
+                color: 'white',
+                fontWeight: '600',
+                fontSize: 16,
+              }}>
+                {isPublic ? "Public" : "Private"}
+              </Text>
+            </>
+          )}
+          </TouchableOpacity>
+          
+          {/* Offline message */}
+          {showOfflineMessage && (
+            <View style={{
+              marginTop: 8,
+              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+            }}>
+              <Text style={{
+                color: 'white',
+                fontSize: 12,
+                fontWeight: '500',
+              }}>
+                Offline - Can't change privacy settings
+              </Text>
+            </View>
+          )}
+          
+          {/* Error message */}
+          {showErrorMessage && (
+            <View style={{
+              marginTop: 8,
+              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+            }}>
+              <Text style={{
+                color: 'white',
+                fontSize: 12,
+                fontWeight: '500',
+              }}>
+                Failed to update - Please try again
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Control buttons - only show after initial animation is done AND identification is complete */}
       {initialAnimationDone && !isRipping && !isMinimizing && identificationComplete && (
