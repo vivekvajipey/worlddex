@@ -99,20 +99,41 @@ const WorldDexTab: React.FC<WorldDexTabProps> = ({
         contentContainerStyle={{ paddingVertical: 8, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
         style={{ width: '100%', flex: 1 }}
+        // Pagination support
+        onEndReached={onLoadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#F97316"]}
+            tintColor="#F97316"
+          />
+        ) : undefined}
         ListFooterComponent={
-          isOffline && onlyPendingCaptures ? (
-            <View className="mt-8 px-4">
-              <View className="flex-row items-center justify-center mb-2">
-                <Ionicons name="cloud-offline-outline" size={24} color="#9CA3AF" />
-                <Text className="text-gray-400 font-lexend-medium text-base ml-2">
-                  Offline - Synced captures unavailable
+          <>
+            {/* Pagination loading footer */}
+            <LoadingFooter
+              loading={loading && displayCaptures.length > 0}
+              hasMore={hasMore}
+              color="#F97316"
+            />
+            
+            {/* Offline indicator for pending captures */}
+            {isOffline && onlyPendingCaptures && (
+              <View className="mt-8 px-4">
+                <View className="flex-row items-center justify-center mb-2">
+                  <Ionicons name="cloud-offline-outline" size={24} color="#9CA3AF" />
+                  <Text className="text-gray-400 font-lexend-medium text-base ml-2">
+                    Offline - Synced captures unavailable
+                  </Text>
+                </View>
+                <Text className="text-gray-500 font-lexend text-sm text-center">
+                  Connect to internet to see your full collection
                 </Text>
               </View>
-              <Text className="text-gray-500 font-lexend text-sm text-center">
-                Connect to internet to see your full collection
-              </Text>
-            </View>
-          ) : null
+            )}
+          </>
         }
       />
     </View>

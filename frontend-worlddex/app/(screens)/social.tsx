@@ -477,18 +477,18 @@ export default function SocialScreen() {
       <StatusBar barStyle="dark-content" />
 
       {/* Header with back button and tabs */}
-      <View className="relative">
+      <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
         {/* Back button */}
         <TouchableOpacity
           onPress={() => router.back()}
-          className="absolute left-4 top-4 z-10 p-2"
+          className="p-2"
         >
           <Ionicons name="chevron-back" size={28} color="#9CA3AF" />
         </TouchableOpacity>
         
-        {/* Header Tabs */}
-        <View className="flex-row justify-center pt-4 pb-2">
-          <View className="items-center mr-6">
+        {/* Header Tabs - centered */}
+        <View className="flex-row justify-center flex-1">
+          <View className="items-center mr-4">
             <TouchableOpacity
               onPress={() => handleTabPress("Leaderboard")}
               className="flex-row items-center"
@@ -504,7 +504,7 @@ export default function SocialScreen() {
             )}
           </View>
 
-          <View className="items-center mx-6">
+          <View className="items-center mx-4">
             <TouchableOpacity
               onPress={() => handleTabPress("Social")}
               className="flex-row items-center"
@@ -520,7 +520,7 @@ export default function SocialScreen() {
             )}
           </View>
 
-          <View className="items-center ml-6">
+          <View className="items-center ml-4">
             <TouchableOpacity
               onPress={() => handleTabPress("Marketplace")}
               className="flex-row items-center"

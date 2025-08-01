@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { useUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from "../../database/hooks/useCaptures";
+import { useUserCaptures, usePagedUserCaptures, fetchUserCaptures, deleteCapture, updateCapture } from "../../database/hooks/useCaptures";
 import { fetchAllCollections } from "../../database/hooks/useCollections";
 import { useUserCollectionsList, fetchUserCollectionsByUser } from "../../database/hooks/useUserCollections";
 import { Capture, Collection } from "../../database/types";
@@ -60,11 +60,25 @@ export default function PersonalCapturesScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id || null;
 
-  const { captures, loading: capturesLoading } = useUserCaptures(userId);
+  // Use paginated hook for better performance with large collections
+  const { 
+    data: paginatedCaptures, 
+    loading: paginatedLoading, 
+    hasMore, 
+    fetchNextPage, 
+    refreshData: refreshPaginatedData 
+  } = usePagedUserCaptures(userId, { limit: 20, autoFetch: true });
+  
+  // Keep the old hook for backward compatibility with existing refresh logic
+  const { captures: legacyCaptures, loading: capturesLoading } = useUserCaptures(userId, 100);
+  
+  // Use the best available captures - prefer paginated over legacy
+  const captures = paginatedCaptures.length > 0 ? paginatedCaptures : legacyCaptures;
+  const loading = paginatedLoading || capturesLoading;
   
   // Log when captures are loaded from hook
   useEffect(() => {
-    if (!capturesLoading && captures.length > 0) {
+    if (!loading && captures.length > 0) {
       // console.log("[CAPTURE FLOW] WorldDex loaded captures from hook", {
       //   timestamp: new Date().toISOString(),
       //   captureCount: captures.length,
@@ -72,7 +86,7 @@ export default function PersonalCapturesScreen() {
       //   isUsingCache: true
       // });
     }
-  }, [capturesLoading, captures]);
+  }, [loading, captures]);
   const { userCollections, loading: userCollectionsLoading } = useUserCollectionsList(userId);
 
   // Debug log for modal states - uncomment if needed
@@ -751,11 +765,15 @@ export default function PersonalCapturesScreen() {
               <WorldDexTab
                 active={activeTab === "WorldDex"}
                 displayCaptures={displayCaptures}
-                loading={capturesLoading || isRefreshing}
+                loading={loading || isRefreshing}
                 urlsLoading={imageUrlsLoading}
                 urlMap={imageUrlMap}
                 onCapturePress={handleCapturePress}
                 isOffline={isOffline}
+                hasMore={hasMore}
+                onLoadMore={fetchNextPage}
+                onRefresh={refreshPaginatedData}
+                refreshing={isRefreshing}
               />
             </View>
 
