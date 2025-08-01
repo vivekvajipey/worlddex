@@ -160,11 +160,10 @@ const SocialTab = () => {
     );
   };
 
-  // Show offline indicator if there's a network error
+  // Show offline indicator if there's a network error and no data
   if (error && captures.length === 0) {
     return <OfflineIndicator message="Social feed unavailable offline" showSubtext={false} />;
   }
-
 
   return (
     <View className="flex-1 bg-background">
