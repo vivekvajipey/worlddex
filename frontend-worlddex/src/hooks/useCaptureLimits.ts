@@ -29,7 +29,7 @@ export const useCaptureLimits = (userId: string | null): UseCaptureLimitsReturn 
     if (dailyCapturesUsed >= dailyCaptureLimit) {
       showAlert({
         title: "Daily Limit Reached",
-        message: "You have used all 10 daily captures! They will reset at midnight PST.",
+        message: "You have used all 10 daily captures! They will reset at midnight UTC.",
         icon: "timer-outline",
         iconColor: "#EF4444"
       });

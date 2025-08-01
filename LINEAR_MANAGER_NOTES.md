@@ -23,6 +23,20 @@ Look for [existing patterns/similar code]."
 - 2025-08-01: Always update Linear tickets with implementation details after completion for future reference
 - 2025-08-01: Always read latest manager notes when resuming work - parallel branches may have updated task status
 
+## Current Priority Tasks (Aug 1, 2025)
+
+### 🚨 Urgent
+1. **JSV-399**: Daily capture limit not resetting (High) - Supabase issue
+2. **JSV-395**: Figure out VLM AbortError bug (Urgent) - Capture getting stuck
+
+### 🔥 High Priority  
+1. **JSV-398**: Social pages showing no connection even when connected (High)
+2. **JSV-391**: Make social a page instead of modal (High) 
+3. **JSV-389**: WorldDex collection pagination loading (High)
+4. **JSV-328**: Store pfp locally so it doesn't need to load (High)
+5. **JSV-358**: Introduce lasso capture on Level 2 (High)
+6. **JSV-256**: Share captures outside of the app (High)
+
 ## App Visual Style
 - **Primary**: #F97316 (Tangerine Orange)
 - **Background**: #FFF4ED (Fantasy Pink - light cream)
@@ -67,9 +81,16 @@ Look for [existing patterns/similar code]."
   - Extended to Leaderboard, Social, and Marketplace tabs with context-specific messages
   - Made subtext optional (showSubtext prop) for non-capture contexts
 
-### JSV-330: Public capture warning
+### JSV-330: Public capture warning ✅ COMPLETED
 - **Critical**: Privacy concern - users must know when capture is public
 - **Current**: default_public_captures from CameraSettingsContext, no UI visibility
 - **Used In**: CaptureHandlers.ts when uploading photos
 - **Missing**: No toggle or indicator in camera UI showing current privacy setting
 - **Goal**: Design and implement clear visual indicator for public capture mode
+- **Implementation (Feb 1, 2025)**:
+  - Added privacy toggle to PolaroidDevelopment component (Public/Private with earth/lock icons)
+  - Toggle controls individual capture privacy, not user's default preference
+  - Shows user's default on mount, allows toggling for specific capture
+  - Privacy value passed through onDismiss to save functions
+  - Works for both regular captures and pending captures
+  - Clean, simple implementation without network checks
